@@ -1,0 +1,105 @@
+import com.google.protobuf.gradle.*
+
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.google.protobuf' version '0.9.4'
+}
+
+group = 'com.hustsimulator'
+version = '0.0.1-SNAPSHOT'
+description = 'Context and Domain API Service for HustSimulator V2'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+def grpcVersion = '1.68.0'
+def protobufVersion = '4.28.3'
+
+dependencies {
+	// Spring Boot Starters
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	// gRPC
+	implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
+	implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+	implementation "io.grpc:grpc-stub:${grpcVersion}"
+	implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+
+	// gRPC Spring Boot integration
+	implementation 'net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE'
+	implementation 'net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE'
+
+	// Jakarta annotation (required for gRPC generated code)
+	implementation 'jakarta.annotation:jakarta.annotation-api'
+
+	// javax.annotation for gRPC generated @Generated annotation (Java 9+ compatibility)
+	implementation 'javax.annotation:javax.annotation-api:1.3.2'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// DevTools
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// Database
+	runtimeOnly 'org.postgresql:postgresql'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.amqp:spring-rabbit-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+protobuf {
+	protoc {
+		artifact = "com.google.protobuf:protoc:${protobufVersion}"
+	}
+	plugins {
+		grpc {
+			artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+		}
+	}
+	generateProtoTasks {
+		all()*.plugins {
+			grpc {}
+		}
+	}
+}
+
+// Copy shared proto files from parent proto/ directory
+tasks.register('copyProtos', Copy) {
+	from '../proto'
+	into 'src/main/proto'
+}
+
+tasks.named('generateProto') {
+	dependsOn 'copyProtos'
+}
+
+tasks.named('processResources') {
+	dependsOn 'copyProtos'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

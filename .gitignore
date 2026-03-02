@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.gradle/
+build/
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Build outputs
+dist/
+out/
+target/
+*.jar
+*.class
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Generated proto
+game-server/src/generated/
+context-service/src/main/proto/
+context-service/build/
+
+# Docker
+docker-compose.override.yml

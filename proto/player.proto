@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package hustsimulator.player;
+
+import "common.proto";
+
+option java_package = "com.hustsimulator.context.grpc.proto";
+option java_outer_classname = "PlayerProto";
+
+// Player position update sent from game-server to context-service
+message PlayerPositionUpdate {
+  string player_id = 1;
+  hustsimulator.common.Coordinates position = 2;
+  hustsimulator.common.Timestamp timestamp = 3;
+  float speed = 4;       // Current movement speed
+  float heading = 5;     // Direction in degrees
+}
+
+// Request to get nearby players
+message NearbyPlayersRequest {
+  string player_id = 1;
+  hustsimulator.common.Coordinates position = 2;
+  double radius = 3;     // Radius in meters
+}
+
+// Player info in nearby response
+message PlayerInfo {
+  string player_id = 1;
+  string username = 2;
+  string avatar = 3;
+  hustsimulator.common.Coordinates position = 4;
+  bool is_online = 5;
+}
+
+message NearbyPlayersResponse {
+  repeated PlayerInfo players = 1;
+}
+
+// Batch position update (multiple players)
+message BatchPositionUpdate {
+  repeated PlayerPositionUpdate updates = 1;
+}
+
+// Player connection events
+message PlayerConnectionEvent {
+  string player_id = 1;
+  bool is_connected = 2;
+  hustsimulator.common.Timestamp timestamp = 3;
+}
+
+// Service: Game Server exposes player state to Context Service
+service PlayerStateService {
+  // Get players near a location
+  rpc GetNearbyPlayers(NearbyPlayersRequest) returns (NearbyPlayersResponse);
+
+  // Stream of position updates from game-server to context-service
+  rpc StreamPositionUpdates(stream PlayerPositionUpdate) returns (hustsimulator.common.StatusResponse);
+
+  // Notify context-service about player connection/disconnection
+  rpc NotifyPlayerConnection(PlayerConnectionEvent) returns (hustsimulator.common.StatusResponse);
+}

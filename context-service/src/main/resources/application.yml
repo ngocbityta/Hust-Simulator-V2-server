@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: context-service
+
+  # PostgreSQL + PostGIS
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}
+    username: ${POSTGRES_USER:hustsim}
+    password: ${POSTGRES_PASSWORD:hustsim_secret}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+    # Defer datasource initialization so app can start without DB
+    defer-datasource-initialization: true
+
+  # Allow startup without DB connection
+  sql:
+    init:
+      mode: never
+
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:hustsim_redis}
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:hustsim}
+    password: ${RABBITMQ_PASSWORD:hustsim_rabbit}
+
+  # Auto-configure: skip datasource auto-config if not available
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+# Server
+server:
+  port: ${CONTEXT_SERVICE_PORT:8080}
+
+# gRPC Server
+grpc:
+  server:
+    port: ${CONTEXT_SERVICE_GRPC_PORT:50052}
+  client:
+    game-server:
+      address: static://${GAME_SERVER_HOST:localhost}:${GAME_SERVER_GRPC_PORT:50051}
+      negotiation-type: plaintext
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
