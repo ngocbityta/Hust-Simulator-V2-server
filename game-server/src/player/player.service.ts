@@ -1,5 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+export enum ActivityState {
+    ROAMING = 'ROAMING',
+    IN_VIRTUAL_CLASS = 'IN_VIRTUAL_CLASS',
+    IN_EVENT = 'IN_EVENT',
+}
+
 interface PlayerState {
     playerId: string;
     username?: string;
@@ -8,6 +14,9 @@ interface PlayerState {
     speed: number;
     heading: number;
     isOnline: boolean;
+    activityState: ActivityState;
+    currentZoneId?: string;
+    sessionData?: Record<string, unknown>;
     lastUpdate: number;
 }
 
@@ -32,8 +41,30 @@ export class PlayerService {
             speed,
             heading,
             isOnline: true,
+            activityState: existing?.activityState ?? ActivityState.ROAMING,
             lastUpdate: Date.now(),
         });
+    }
+
+    updateActivityState(
+        playerId: string,
+        state: ActivityState,
+        zoneId?: string,
+        sessionData?: Record<string, unknown>,
+    ): { success: boolean; message: string } {
+        const existing = this.players.get(playerId);
+        if (!existing) {
+            this.logger.warn(`Cannot update activity state: player ${playerId} not found`);
+            return { success: false, message: 'Player not found' };
+        }
+
+        existing.activityState = state;
+        existing.currentZoneId = zoneId;
+        existing.sessionData = sessionData;
+        existing.lastUpdate = Date.now();
+
+        this.logger.log(`Player ${playerId} state changed to ${state}`);
+        return { success: true, message: 'OK' };
     }
 
     getNearbyPlayers(
@@ -67,6 +98,7 @@ export class PlayerService {
                 avatar: p.avatar || '',
                 position: p.position,
                 isOnline: p.isOnline,
+                activityState: p.activityState,
             })),
         };
     }

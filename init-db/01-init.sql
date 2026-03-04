@@ -171,6 +171,25 @@ CREATE TABLE search_history (
 );
 
 -- ============================================
+-- Player Activity State
+-- ============================================
+CREATE TYPE player_activity_state AS ENUM ('ROAMING', 'IN_VIRTUAL_CLASS', 'IN_EVENT');
+
+-- Player states table — tracks current activity of each player
+CREATE TABLE player_states (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_state player_activity_state NOT NULL DEFAULT 'ROAMING',
+    zone_id UUID REFERENCES campus_zones(id) ON DELETE SET NULL,
+    session_data JSONB DEFAULT '{}',
+    entered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_player_states_activity ON player_states (activity_state);
+CREATE INDEX idx_player_states_zone ON player_states (zone_id);
+
+-- ============================================
 -- Spatial Indexes for PostGIS
 -- ============================================
 CREATE INDEX idx_users_last_position ON users USING GIST (last_position);

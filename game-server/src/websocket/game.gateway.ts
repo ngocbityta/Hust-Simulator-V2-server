@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, WebSocket } from 'ws';
+import { PlayerService, ActivityState } from '../player/player.service';
 
 @WebSocketGateway({
     cors: { origin: '*' },
@@ -24,6 +25,8 @@ export class GameGateway
 
     // Track connected players: WebSocket -> playerId
     private connectedPlayers = new Map<WebSocket, string>();
+
+    constructor(private readonly playerService: PlayerService) { }
 
     afterInit() {
         this.logger.log('WebSocket Gateway initialized');
@@ -66,6 +69,48 @@ export class GameGateway
         this.logger.debug(`Player ${data.playerId} moved to (${data.position.latitude}, ${data.position.longitude})`);
 
         return { event: 'player:moved', data };
+    }
+
+    @SubscribeMessage('player:state_change')
+    handlePlayerStateChange(
+        @ConnectedSocket() client: WebSocket,
+        @MessageBody()
+        data: {
+            playerId: string;
+            activityState: ActivityState;
+            zoneId?: string;
+            sessionData?: Record<string, unknown>;
+        },
+    ) {
+        const validStates = Object.values(ActivityState);
+        if (!validStates.includes(data.activityState)) {
+            this.logger.warn(`Invalid activity state: ${data.activityState}`);
+            return { event: 'player:state_error', data: { message: 'Invalid activity state' } };
+        }
+
+        const result = this.playerService.updateActivityState(
+            data.playerId,
+            data.activityState,
+            data.zoneId,
+            data.sessionData,
+        );
+
+        if (result.success) {
+            // Broadcast state change to nearby players
+            this.server.clients.forEach((wsClient: WebSocket) => {
+                if (wsClient !== client && wsClient.readyState === WebSocket.OPEN) {
+                    wsClient.send(JSON.stringify({
+                        event: 'player:state_changed',
+                        data: {
+                            playerId: data.playerId,
+                            activityState: data.activityState,
+                        },
+                    }));
+                }
+            });
+        }
+
+        return { event: 'player:state_changed', data: result };
     }
 
     // Broadcast delta snapshot to specific clients

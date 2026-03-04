@@ -227,6 +227,20 @@ Table search_history {
 
 
 
+Table player_states {
+  id uuid [pk]
+  user_id uuid [unique, not null]
+
+  activity_state enum('ROAMING','IN_VIRTUAL_CLASS','IN_EVENT') [not null, default: 'ROAMING']
+
+  zone_id uuid           // zone hiện tại nếu đang trong class/event
+  session_data jsonb      // metadata bổ sung (class_id, event_id, v.v.)
+
+  entered_at datetime     // thời điểm vào trạng thái hiện tại
+  updated_at datetime
+}
+
+
 Ref: blocks.blocker_id > users.id
 Ref: blocks.blocked_id > users.id
 

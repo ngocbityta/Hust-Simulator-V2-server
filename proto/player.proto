@@ -7,6 +7,14 @@ import "common.proto";
 option java_package = "com.hustsimulator.context.grpc.proto";
 option java_outer_classname = "PlayerProto";
 
+// Player activity state enum
+enum PlayerActivityState {
+  PLAYER_ACTIVITY_STATE_UNSPECIFIED = 0;
+  ROAMING = 1;            // Moving on map via GPS
+  IN_VIRTUAL_CLASS = 2;   // Inside a virtual class
+  IN_EVENT = 3;           // Participating in an event
+}
+
 // Player position update sent from game-server to context-service
 message PlayerPositionUpdate {
   string player_id = 1;
@@ -30,6 +38,7 @@ message PlayerInfo {
   string avatar = 3;
   hustsimulator.common.Coordinates position = 4;
   bool is_online = 5;
+  PlayerActivityState activity_state = 6;
 }
 
 message NearbyPlayersResponse {
