@@ -231,7 +231,7 @@ Table player_states {
   id uuid [pk]
   user_id uuid [unique, not null]
 
-  activity_state enum('ROAMING','IN_VIRTUAL_CLASS','IN_EVENT') [not null, default: 'ROAMING']
+  activity_state enum('ROAMING','IN_RECURRING_EVENT','IN_EVENT') [not null, default: 'ROAMING']
 
   zone_id uuid           // zone hiện tại nếu đang trong class/event
   session_data jsonb      // metadata bổ sung (class_id, event_id, v.v.)

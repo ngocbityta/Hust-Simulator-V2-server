@@ -171,45 +171,107 @@ CREATE TABLE search_history (
 );
 
 -- ============================================
--- Player Activity State
+-- Virtual Maps (Map entity)
 -- ============================================
-CREATE TYPE player_activity_state AS ENUM ('ROAMING', 'IN_VIRTUAL_CLASS', 'IN_EVENT');
-
--- Player states table — tracks current activity of each player
-CREATE TABLE player_states (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    activity_state player_activity_state NOT NULL DEFAULT 'ROAMING',
-    zone_id UUID REFERENCES campus_zones(id) ON DELETE SET NULL,
-    session_data JSONB DEFAULT '{}',
-    entered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_player_states_activity ON player_states (activity_state);
-CREATE INDEX idx_player_states_zone ON player_states (zone_id);
-
--- ============================================
--- Spatial Indexes for PostGIS
--- ============================================
-CREATE INDEX idx_users_last_position ON users USING GIST (last_position);
-CREATE INDEX idx_posts_location ON posts USING GIST (location);
-
--- ============================================
--- Campus Zones (for spatial triggers / AOI)
--- ============================================
-CREATE TABLE campus_zones (
+CREATE TABLE virtual_maps (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,
-    type VARCHAR NOT NULL, -- BUILDING, CLASSROOM, LIBRARY, PARKING, EVENT_AREA, etc.
-    boundary GEOMETRY(POLYGON, 4326) NOT NULL,
-    center GEOMETRY(POINT, 4326),
-    radius FLOAT, -- approximate radius in meters
+    type VARCHAR NOT NULL,
+    radius FLOAT,
     metadata JSONB DEFAULT '{}',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_campus_zones_boundary ON campus_zones USING GIST (boundary);
-CREATE INDEX idx_campus_zones_center ON campus_zones USING GIST (center);
+-- ============================================
+-- Buildings (Building entity)
+-- ============================================
+CREATE TABLE buildings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    map_id UUID NOT NULL REFERENCES virtual_maps(id) ON DELETE CASCADE,
+    original_coordinates TEXT NOT NULL,
+    convex_polygons TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_buildings_map ON buildings (map_id);
+
+-- ============================================
+-- Rooms (Room entity)
+-- ============================================
+CREATE TABLE rooms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_rooms_building ON rooms (building_id);
+
+-- ============================================
+-- Events (Event entity)
+-- ============================================
+CREATE TABLE events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    description TEXT,
+    map_id UUID REFERENCES virtual_maps(id) ON DELETE SET NULL,
+    room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_events_map ON events (map_id);
+
+-- ============================================
+-- Recurring Events (RecurringEvent entity)
+-- ============================================
+CREATE TABLE recurring_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    description TEXT,
+    map_id UUID NOT NULL REFERENCES virtual_maps(id) ON DELETE CASCADE,
+    room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+    cron_expression VARCHAR NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_recurring_events_map ON recurring_events (map_id);
+
+-- ============================================
+-- User States (UserState entity)
+-- ============================================
+CREATE TABLE user_states (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_state VARCHAR(30) NOT NULL DEFAULT 'OUTSIDE_MAP',
+    map_id UUID REFERENCES virtual_maps(id) ON DELETE SET NULL,
+    building_id UUID REFERENCES buildings(id) ON DELETE SET NULL,
+    room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+    event_id UUID,
+    session_data JSONB DEFAULT '{}',
+    entered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_user_states_activity ON user_states (activity_state);
+CREATE INDEX idx_user_states_map ON user_states (map_id);
+CREATE INDEX idx_user_states_building ON user_states (building_id);
+CREATE INDEX idx_user_states_event ON user_states (event_id);
+
+-- ============================================
+-- Spatial Indexes for PostGIS
+-- ============================================
+CREATE INDEX idx_users_last_position ON users USING GIST (last_position);
+CREATE INDEX idx_posts_location ON posts USING GIST (location);

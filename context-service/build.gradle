@@ -62,6 +62,9 @@ dependencies {
 	// DevTools
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+	// JTS Topology Suite for geometry and convex polygons
+	implementation 'org.locationtech.jts:jts-core:1.19.0'
+
 	// Database
 	runtimeOnly 'org.postgresql:postgresql'
 

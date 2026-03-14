@@ -16,12 +16,10 @@ public class RabbitMQConfig {
     // Exchange names
     public static final String SPATIAL_EVENTS_EXCHANGE = "hustsim.spatial.events";
     public static final String TEMPORAL_EVENTS_EXCHANGE = "hustsim.temporal.events";
-    public static final String NOTIFICATION_EXCHANGE = "hustsim.notifications";
 
     // Queue names
     public static final String SPATIAL_TRIGGER_QUEUE = "hustsim.spatial.triggers";
     public static final String TEMPORAL_TRIGGER_QUEUE = "hustsim.temporal.triggers";
-    public static final String NOTIFICATION_QUEUE = "hustsim.notifications";
 
     // --- Exchanges ---
     @Bean
@@ -32,11 +30,6 @@ public class RabbitMQConfig {
     @Bean
     public TopicExchange temporalEventsExchange() {
         return new TopicExchange(TEMPORAL_EVENTS_EXCHANGE);
-    }
-
-    @Bean
-    public TopicExchange notificationExchange() {
-        return new TopicExchange(NOTIFICATION_EXCHANGE);
     }
 
     // --- Queues ---
@@ -50,11 +43,6 @@ public class RabbitMQConfig {
         return QueueBuilder.durable(TEMPORAL_TRIGGER_QUEUE).build();
     }
 
-    @Bean
-    public Queue notificationQueue() {
-        return QueueBuilder.durable(NOTIFICATION_QUEUE).build();
-    }
-
     // --- Bindings ---
     @Bean
     public Binding spatialTriggerBinding(Queue spatialTriggerQueue, TopicExchange spatialEventsExchange) {
@@ -64,11 +52,6 @@ public class RabbitMQConfig {
     @Bean
     public Binding temporalTriggerBinding(Queue temporalTriggerQueue, TopicExchange temporalEventsExchange) {
         return BindingBuilder.bind(temporalTriggerQueue).to(temporalEventsExchange).with("trigger.*");
-    }
-
-    @Bean
-    public Binding notificationBinding(Queue notificationQueue, TopicExchange notificationExchange) {
-        return BindingBuilder.bind(notificationQueue).to(notificationExchange).with("notify.*");
     }
 
     // --- Message Converter ---
@@ -84,3 +67,4 @@ public class RabbitMQConfig {
         return rabbitTemplate;
     }
 }
+

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, WebSocket } from 'ws';
-import { PlayerService, ActivityState } from '../player/player.service';
+import { PlayerService, UserActivityState } from '../player/player.service';
 
 @WebSocketGateway({
     cors: { origin: '*' },
@@ -23,7 +23,7 @@ export class GameGateway
     @WebSocketServer()
     server!: Server;
 
-    // Track connected players: WebSocket -> playerId
+    // Track connected players: WebSocket -> userId
     private connectedPlayers = new Map<WebSocket, string>();
 
     constructor(private readonly playerService: PlayerService) { }
@@ -37,72 +37,74 @@ export class GameGateway
     }
 
     handleDisconnect(client: WebSocket) {
-        const playerId = this.connectedPlayers.get(client);
-        if (playerId) {
+        const userId = this.connectedPlayers.get(client);
+        if (userId) {
             this.connectedPlayers.delete(client);
-            this.logger.debug(`Player ${playerId} disconnected. Total: ${this.connectedPlayers.size}`);
+            this.logger.debug(`User ${userId} disconnected. Total: ${this.connectedPlayers.size}`);
         }
     }
 
-    @SubscribeMessage('player:join')
-    handlePlayerJoin(
+    @SubscribeMessage('user:join')
+    handleUserJoin(
         @ConnectedSocket() client: WebSocket,
-        @MessageBody() data: { playerId: string },
+        @MessageBody() data: { userId: string },
     ) {
-        this.connectedPlayers.set(client, data.playerId);
-        this.logger.log(`Player ${data.playerId} joined`);
-        return { event: 'player:joined', data: { playerId: data.playerId } };
+        this.connectedPlayers.set(client, data.userId);
+        this.logger.log(`User ${data.userId} joined`);
+        return { event: 'user:joined', data: { userId: data.userId } };
     }
 
-    @SubscribeMessage('player:move')
-    handlePlayerMove(
+    @SubscribeMessage('user:move')
+    handleUserMove(
         @ConnectedSocket() client: WebSocket,
         @MessageBody()
         data: {
-            playerId: string;
+            userId: string;
             position: { latitude: number; longitude: number };
             speed: number;
             heading: number;
         },
     ) {
-        // TODO: Validate movement, update player state, broadcast to nearby players
-        this.logger.debug(`Player ${data.playerId} moved to (${data.position.latitude}, ${data.position.longitude})`);
+        // TODO: Validate movement, update user state, broadcast to nearby users
+        this.logger.debug(`User ${data.userId} moved to (${data.position.latitude}, ${data.position.longitude})`);
 
-        return { event: 'player:moved', data };
+        return { event: 'user:moved', data };
     }
 
-    @SubscribeMessage('player:state_change')
-    handlePlayerStateChange(
+    @SubscribeMessage('user:state_change')
+    handleUserStateChange(
         @ConnectedSocket() client: WebSocket,
         @MessageBody()
         data: {
-            playerId: string;
-            activityState: ActivityState;
-            zoneId?: string;
+            userId: string;
+            activityState: UserActivityState;
+            mapId?: string;
+            eventId?: string;
             sessionData?: Record<string, unknown>;
         },
     ) {
-        const validStates = Object.values(ActivityState);
+        const validStates = Object.values(UserActivityState);
         if (!validStates.includes(data.activityState)) {
             this.logger.warn(`Invalid activity state: ${data.activityState}`);
-            return { event: 'player:state_error', data: { message: 'Invalid activity state' } };
+            return { event: 'user:state_error', data: { message: 'Invalid activity state' } };
         }
 
         const result = this.playerService.updateActivityState(
-            data.playerId,
+            data.userId,
             data.activityState,
-            data.zoneId,
+            data.mapId,
+            data.eventId,
             data.sessionData,
         );
 
         if (result.success) {
-            // Broadcast state change to nearby players
+            // Broadcast state change to nearby users
             this.server.clients.forEach((wsClient: WebSocket) => {
                 if (wsClient !== client && wsClient.readyState === WebSocket.OPEN) {
                     wsClient.send(JSON.stringify({
-                        event: 'player:state_changed',
+                        event: 'user:state_changed',
                         data: {
-                            playerId: data.playerId,
+                            userId: data.userId,
                             activityState: data.activityState,
                         },
                     }));
@@ -110,7 +112,7 @@ export class GameGateway
             });
         }
 
-        return { event: 'player:state_changed', data: result };
+        return { event: 'user:state_changed', data: result };
     }
 
     // Broadcast delta snapshot to specific clients

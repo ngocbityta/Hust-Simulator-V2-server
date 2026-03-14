@@ -2,8 +2,8 @@ package com.hustsimulator.context.user;
 
 import com.hustsimulator.context.common.ResourceNotFoundException;
 import com.hustsimulator.context.entity.User;
-import com.hustsimulator.context.entity.UserRole;
-import com.hustsimulator.context.entity.UserStatus;
+import com.hustsimulator.context.enums.UserRole;
+import com.hustsimulator.context.enums.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

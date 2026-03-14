@@ -7,64 +7,64 @@ import "common.proto";
 option java_package = "com.hustsimulator.context.grpc.proto";
 option java_outer_classname = "PlayerProto";
 
-// Player activity state enum
-enum PlayerActivityState {
-  PLAYER_ACTIVITY_STATE_UNSPECIFIED = 0;
+// User activity state enum
+enum UserActivityState {
+  USER_ACTIVITY_STATE_UNSPECIFIED = 0;
   ROAMING = 1;            // Moving on map via GPS
-  IN_VIRTUAL_CLASS = 2;   // Inside a virtual class
+  IN_RECURRING_EVENT = 2;   // Inside a recurring event
   IN_EVENT = 3;           // Participating in an event
 }
 
-// Player position update sent from game-server to context-service
-message PlayerPositionUpdate {
-  string player_id = 1;
+// User position update sent from game-server to context-service
+message UserPositionUpdate {
+  string user_id = 1;
   hustsimulator.common.Coordinates position = 2;
   hustsimulator.common.Timestamp timestamp = 3;
   float speed = 4;       // Current movement speed
   float heading = 5;     // Direction in degrees
 }
 
-// Request to get nearby players
-message NearbyPlayersRequest {
-  string player_id = 1;
+// Request to get nearby users
+message NearbyUsersRequest {
+  string user_id = 1;
   hustsimulator.common.Coordinates position = 2;
   double radius = 3;     // Radius in meters
 }
 
-// Player info in nearby response
-message PlayerInfo {
-  string player_id = 1;
+// User info in nearby response
+message UserInfo {
+  string user_id = 1;
   string username = 2;
   string avatar = 3;
   hustsimulator.common.Coordinates position = 4;
   bool is_online = 5;
-  PlayerActivityState activity_state = 6;
+  UserActivityState activity_state = 6;
 }
 
-message NearbyPlayersResponse {
-  repeated PlayerInfo players = 1;
+message NearbyUsersResponse {
+  repeated UserInfo users = 1;
 }
 
-// Batch position update (multiple players)
+// Batch position update (multiple users)
 message BatchPositionUpdate {
-  repeated PlayerPositionUpdate updates = 1;
+  repeated UserPositionUpdate updates = 1;
 }
 
-// Player connection events
-message PlayerConnectionEvent {
-  string player_id = 1;
+// User connection events
+message UserConnectionEvent {
+  string user_id = 1;
   bool is_connected = 2;
   hustsimulator.common.Timestamp timestamp = 3;
 }
 
-// Service: Game Server exposes player state to Context Service
-service PlayerStateService {
-  // Get players near a location
-  rpc GetNearbyPlayers(NearbyPlayersRequest) returns (NearbyPlayersResponse);
+// Service: Game Server exposes user state to Context Service
+service UserStateService {
+  // Get users near a location
+  rpc GetNearbyUsers(NearbyUsersRequest) returns (NearbyUsersResponse);
 
   // Stream of position updates from game-server to context-service
-  rpc StreamPositionUpdates(stream PlayerPositionUpdate) returns (hustsimulator.common.StatusResponse);
+  rpc StreamPositionUpdates(stream UserPositionUpdate) returns (hustsimulator.common.StatusResponse);
 
-  // Notify context-service about player connection/disconnection
-  rpc NotifyPlayerConnection(PlayerConnectionEvent) returns (hustsimulator.common.StatusResponse);
+  // Notify context-service about user connection/disconnection
+  rpc NotifyUserConnection(UserConnectionEvent) returns (hustsimulator.common.StatusResponse);
 }

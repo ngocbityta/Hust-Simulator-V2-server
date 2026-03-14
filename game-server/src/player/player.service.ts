@@ -1,21 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-export enum ActivityState {
+export enum UserActivityState {
     ROAMING = 'ROAMING',
-    IN_VIRTUAL_CLASS = 'IN_VIRTUAL_CLASS',
+    IN_RECURRING_EVENT = 'IN_RECURRING_EVENT',
     IN_EVENT = 'IN_EVENT',
 }
 
-interface PlayerState {
-    playerId: string;
+interface UserState {
+    userId: string;
     username?: string;
     avatar?: string;
     position: { latitude: number; longitude: number };
     speed: number;
     heading: number;
     isOnline: boolean;
-    activityState: ActivityState;
-    currentZoneId?: string;
+    activityState: UserActivityState;
+    currentMapId?: string;
+    currentEventId?: string;
     sessionData?: Record<string, unknown>;
     lastUpdate: number;
 }
@@ -25,59 +26,61 @@ export class PlayerService {
     private readonly logger = new Logger(PlayerService.name);
 
     // In-memory player state (will be backed by Redis later)
-    private players = new Map<string, PlayerState>();
+    private players = new Map<string, UserState>();
 
     updatePosition(
-        playerId: string,
+        userId: string,
         position: { latitude: number; longitude: number },
         speed: number,
         heading: number,
     ): void {
-        const existing = this.players.get(playerId);
-        this.players.set(playerId, {
+        const existing = this.players.get(userId);
+        this.players.set(userId, {
             ...existing,
-            playerId,
+            userId,
             position,
             speed,
             heading,
             isOnline: true,
-            activityState: existing?.activityState ?? ActivityState.ROAMING,
+            activityState: existing?.activityState ?? UserActivityState.ROAMING,
             lastUpdate: Date.now(),
         });
     }
 
     updateActivityState(
-        playerId: string,
-        state: ActivityState,
-        zoneId?: string,
+        userId: string,
+        state: UserActivityState,
+        mapId?: string,
+        eventId?: string,
         sessionData?: Record<string, unknown>,
     ): { success: boolean; message: string } {
-        const existing = this.players.get(playerId);
+        const existing = this.players.get(userId);
         if (!existing) {
-            this.logger.warn(`Cannot update activity state: player ${playerId} not found`);
-            return { success: false, message: 'Player not found' };
+            this.logger.warn(`Cannot update activity state: user ${userId} not found`);
+            return { success: false, message: 'User not found' };
         }
 
         existing.activityState = state;
-        existing.currentZoneId = zoneId;
+        existing.currentMapId = mapId;
+        existing.currentEventId = eventId;
         existing.sessionData = sessionData;
         existing.lastUpdate = Date.now();
 
-        this.logger.log(`Player ${playerId} state changed to ${state}`);
+        this.logger.log(`User ${userId} state changed to ${state}`);
         return { success: true, message: 'OK' };
     }
 
     getNearbyPlayers(
-        playerId: string,
+        userId: string,
         position: { latitude: number; longitude: number },
         radius: number,
     ) {
         // Simple distance-based filtering (Haversine formula)
         // TODO: Replace with spatial index (QuadTree) for production
-        const nearby: PlayerState[] = [];
+        const nearby: UserState[] = [];
 
         this.players.forEach((player) => {
-            if (player.playerId === playerId || !player.isOnline) return;
+            if (player.userId === userId || !player.isOnline) return;
 
             const distance = this.haversineDistance(
                 position.latitude,
@@ -93,7 +96,7 @@ export class PlayerService {
 
         return {
             players: nearby.map((p) => ({
-                playerId: p.playerId,
+                userId: p.userId,
                 username: p.username || '',
                 avatar: p.avatar || '',
                 position: p.position,
@@ -104,24 +107,24 @@ export class PlayerService {
     }
 
     handleConnectionEvent(event: {
-        playerId: string;
+        userId: string;
         isConnected: boolean;
         timestamp: { millis: number };
     }) {
         if (event.isConnected) {
-            const existing = this.players.get(event.playerId);
+            const existing = this.players.get(event.userId);
             if (existing) {
                 existing.isOnline = true;
             }
         } else {
-            const existing = this.players.get(event.playerId);
+            const existing = this.players.get(event.userId);
             if (existing) {
                 existing.isOnline = false;
             }
         }
 
         this.logger.log(
-            `Player ${event.playerId} is now ${event.isConnected ? 'online' : 'offline'}`,
+            `User ${event.userId} is now ${event.isConnected ? 'online' : 'offline'}`,
         );
 
         return { success: true, message: 'OK' };
