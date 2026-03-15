@@ -11,6 +11,8 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, WebSocket } from 'ws';
 import { PlayerService, UserActivityState } from '../player/player.service';
+import { DisseminationService } from './dissemination.service';
+import { GrpcContextClient } from '../grpc/context.client';
 
 @WebSocketGateway({
     cors: { origin: '*' },
@@ -26,7 +28,11 @@ export class GameGateway
     // Track connected players: WebSocket -> userId
     private connectedPlayers = new Map<WebSocket, string>();
 
-    constructor(private readonly playerService: PlayerService) { }
+    constructor(
+        private readonly playerService: PlayerService,
+        private readonly disseminationService: DisseminationService,
+        private readonly grpcClient: GrpcContextClient,
+    ) { }
 
     afterInit() {
         this.logger.log('WebSocket Gateway initialized');
@@ -39,6 +45,7 @@ export class GameGateway
     handleDisconnect(client: WebSocket) {
         const userId = this.connectedPlayers.get(client);
         if (userId) {
+            this.disseminationService.removeClient(client);
             this.connectedPlayers.delete(client);
             this.logger.debug(`User ${userId} disconnected. Total: ${this.connectedPlayers.size}`);
         }
@@ -55,7 +62,7 @@ export class GameGateway
     }
 
     @SubscribeMessage('user:move')
-    handleUserMove(
+    async handleUserMove(
         @ConnectedSocket() client: WebSocket,
         @MessageBody()
         data: {
@@ -65,14 +72,41 @@ export class GameGateway
             heading: number;
         },
     ) {
-        // TODO: Validate movement, update user state, broadcast to nearby users
-        this.logger.debug(`User ${data.userId} moved to (${data.position.latitude}, ${data.position.longitude})`);
+        // 1. Update In-memory Player State
+        this.playerService.updatePosition(
+            data.userId,
+            data.position,
+            data.speed,
+            data.heading,
+        );
 
-        return { event: 'user:moved', data };
+        // 2. AOI-based State Dissemination via Redis Pub/Sub
+        await this.disseminationService.updateLocation(
+            client,
+            data.userId,
+            data.position.latitude,
+            data.position.longitude,
+            {
+                position: data.position,
+                speed: data.speed,
+                heading: data.heading,
+                type: 'move',
+            }
+        );
+
+        // 3. gRPC: Verification of Context Service connectivity
+        // We only do this occasionally or for specific triggers to avoid overhead
+        if (Math.random() < 0.1) {
+            this.grpcClient.checkPlayerZone(data.userId, data.position.latitude, data.position.longitude)
+                .then(res => this.logger.debug(`gRPC Zone Check for ${data.userId}: ${res.zones?.length || 0} zones`))
+                .catch(err => this.logger.error(`gRPC Error for ${data.userId}: ${err.message}`));
+        }
+
+        return { event: 'user:moved_ack', data: { timestamp: Date.now() } };
     }
 
     @SubscribeMessage('user:state_change')
-    handleUserStateChange(
+    async handleUserStateChange(
         @ConnectedSocket() client: WebSocket,
         @MessageBody()
         data: {
@@ -81,6 +115,7 @@ export class GameGateway
             mapId?: string;
             eventId?: string;
             sessionData?: Record<string, unknown>;
+            position?: { latitude: number; longitude: number };
         },
     ) {
         const validStates = Object.values(UserActivityState);
@@ -97,36 +132,21 @@ export class GameGateway
             data.sessionData,
         );
 
-        if (result.success) {
-            // Broadcast state change to nearby users
-            this.server.clients.forEach((wsClient: WebSocket) => {
-                if (wsClient !== client && wsClient.readyState === WebSocket.OPEN) {
-                    wsClient.send(JSON.stringify({
-                        event: 'user:state_changed',
-                        data: {
-                            userId: data.userId,
-                            activityState: data.activityState,
-                        },
-                    }));
+        if (result.success && data.position) {
+            // Disseminate state change to nearby users
+            await this.disseminationService.updateLocation(
+                client,
+                data.userId,
+                data.position.latitude,
+                data.position.longitude,
+                {
+                    activityState: data.activityState,
+                    mapId: data.mapId,
+                    type: 'state_change',
                 }
-            });
+            );
         }
 
-        return { event: 'user:state_changed', data: result };
-    }
-
-    // Broadcast delta snapshot to specific clients
-    broadcastToNearby(
-        position: { latitude: number; longitude: number },
-        radius: number,
-        event: string,
-        data: unknown,
-    ) {
-        // TODO: Implement spatial filtering - only send to players within radius
-        this.server.clients.forEach((client: WebSocket) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ event, data }));
-            }
-        });
+        return { event: 'user:state_changed_ack', data: result };
     }
 }
