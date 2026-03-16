@@ -62,6 +62,16 @@ message ActiveEventsResponse {
   repeated ContextEvent events = 1;
 }
 
+// Request to update player comprehensive state
+message UpdatePlayerStateRequest {
+  string player_id = 1;
+  hustsimulator.common.Coordinates position = 2;
+  string activity_state = 3;
+  string map_id = 4;
+  string event_id = 5;
+  hustsimulator.common.Timestamp timestamp = 6;
+}
+
 // Service: Context Service exposes domain logic to Game Server
 service ContextEngineService {
   // Check which zones a player is currently in
@@ -69,6 +79,9 @@ service ContextEngineService {
 
   // Report a spatial trigger (player entered/exited a zone)
   rpc ReportSpatialTrigger(SpatialTriggerEvent) returns (hustsimulator.common.StatusResponse);
+
+  // Update full player state (position + activity + context)
+  rpc UpdatePlayerState(UpdatePlayerStateRequest) returns (hustsimulator.common.StatusResponse);
 
   // Get active context events for a player
   rpc GetActiveEvents(ActiveEventsRequest) returns (ActiveEventsResponse);

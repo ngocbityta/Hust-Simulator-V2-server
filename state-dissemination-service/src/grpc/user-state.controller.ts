@@ -1,8 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import { PlayerService } from '../player/player.service';
-
-// gRPC server handler - exposes UserStateService to context-service
+import { GrpcService, GrpcMethodName } from '../common/enums/grpc.enum';
 
 @Controller()
 export class UserStateGrpcController {
@@ -10,8 +9,8 @@ export class UserStateGrpcController {
 
     constructor(private readonly playerService: PlayerService) { }
 
-    @GrpcMethod('UserStateService', 'GetNearbyUsers')
-    getNearbyUsers(request: {
+    @GrpcMethod(GrpcService.USER_STATE_SERVICE, GrpcMethodName.GET_NEARBY_USERS)
+    async getNearbyUsers(request: {
         userId: string;
         position: { latitude: number; longitude: number };
         radius: number;
@@ -19,15 +18,15 @@ export class UserStateGrpcController {
         this.logger.debug(
             `GetNearbyUsers called for user ${request.userId}`,
         );
-        return this.playerService.getNearbyPlayers(
+        return await this.playerService.getNearbyPlayers(
             request.userId,
             request.position,
             request.radius,
         );
     }
 
-    @GrpcMethod('UserStateService', 'NotifyUserConnection')
-    notifyUserConnection(request: {
+    @GrpcMethod(GrpcService.USER_STATE_SERVICE, GrpcMethodName.NOTIFY_USER_CONNECTION)
+    async notifyUserConnection(request: {
         userId: string;
         isConnected: boolean;
         timestamp: { millis: number };
@@ -35,6 +34,6 @@ export class UserStateGrpcController {
         this.logger.debug(
             `UserConnection: ${request.userId} - ${request.isConnected ? 'connected' : 'disconnected'}`,
         );
-        return this.playerService.handleConnectionEvent(request);
+        return await this.playerService.handleConnectionEvent(request);
     }
 }

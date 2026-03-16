@@ -1,8 +1,12 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import { WebSocket } from 'ws';
 import Redis from 'ioredis';
-import { SpatialService, GridCell } from '../player/spatial.service';
+import { ISpatialService } from '../spatial/spatial.interface';
+import { RedisService } from '../redis/redis.service';
+import { ISessionService } from './session.interface';
+import { IInterestService } from '../interest/interest.interface';
+import { RedisKey } from '../common/enums/redis-key.enum';
+import { WsEvent } from '../common/enums/ws-event.enum';
 
 @Injectable()
 export class DisseminationService implements OnModuleInit, OnModuleDestroy {
@@ -11,59 +15,38 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
   private pubClient: Redis;
   private subClient: Redis;
 
-  // Mapping from Cell Key -> Set of WebSocket clients subscribed to it
-  private cellSubscriptions = new Map<string, Set<WebSocket>>();
-  
-  // Mapping from WebSocket client -> Set of Cell Keys they are currently subscribed to
-  // (Used for efficient updates and cleanup on disconnect)
-  private clientInterests = new Map<WebSocket, Set<string>>();
+  private clientCenterCell = new Map<WebSocket, string>();
 
   constructor(
-    private readonly configService: ConfigService,
-    private readonly spatialService: SpatialService,
+    private readonly redisService: RedisService,
+    @Inject(ISpatialService) private readonly spatialService: ISpatialService,
+    @Inject(ISessionService) private readonly sessionService: ISessionService,
+    @Inject(IInterestService) private readonly interestService: IInterestService,
   ) {}
 
   onModuleInit() {
-    const redisConfig = {
-      host: this.configService.get<string>('REDIS_HOST', 'localhost'),
-      port: this.configService.get<number>('REDIS_PORT', 6379),
-      password: this.configService.get<string>('REDIS_PASSWORD'),
-    };
+    this.pubClient = this.redisService.pubClient;
+    this.subClient = this.redisService.subClient;
 
-    this.pubClient = new Redis(redisConfig);
-    this.subClient = new Redis(redisConfig);
-
-    // Subscribe to all game cell channels
-    this.subClient.psubscribe('game:cell:*', (err) => {
-      if (err) {
-        this.logger.error('Failed to psubscribe to game cells', err);
-      } else {
-        this.logger.log('Subscribed to all game cell channels');
-      }
-    });
-
-    this.subClient.on('pmessage', (pattern, channel, message) => {
+    this.subClient.on('message', (channel, message) => {
       this.handleRedisMessage(channel, message);
     });
   }
 
-  onModuleDestroy() {
-    this.pubClient.quit();
-    this.subClient.quit();
-  }
+  onModuleDestroy() {}
 
-  /**
-   * Updates a client's position and manages their AOI subscriptions.
-   */
   async updateLocation(client: WebSocket, userId: string, latitude: number, longitude: number, payload: any) {
     const currentCell = this.spatialService.getGridCell(latitude, longitude);
-    const aoiCells = this.spatialService.getAoiCells(currentCell);
-    const aoiKeys = new Set(aoiCells.map(c => this.spatialService.getCellKey(c)));
+    const currentCellKey = this.spatialService.getCellKey(currentCell);
+    
+    const lastCellKey = this.clientCenterCell.get(client);
+    if (lastCellKey !== currentCellKey) {
+      const aoiCells = this.spatialService.getAoiCells(currentCell);
+      const aoiKeys = new Set(aoiCells.map(c => this.spatialService.getCellKey(c)));
+      this.interestService.updateInterests(client, aoiKeys);
+      this.clientCenterCell.set(client, currentCellKey);
+    }
 
-    // 1. Update Subscriptions (AOI management)
-    this.manageSubscriptions(client, aoiKeys);
-
-    // 2. Publish player's state to their current cell
     const channel = this.spatialService.getCellChannel(currentCell);
     const message = JSON.stringify({
       userId,
@@ -74,72 +57,34 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
     await this.pubClient.publish(channel, message);
   }
 
-  /**
-   * Removes all subscriptions for a client (called on disconnect).
-   */
   removeClient(client: WebSocket) {
-    const interests = this.clientInterests.get(client);
-    if (interests) {
-      interests.forEach(cellKey => {
-        const clients = this.cellSubscriptions.get(cellKey);
-        if (clients) {
-          clients.delete(client);
-          if (clients.size === 0) {
-            this.cellSubscriptions.delete(cellKey);
-          }
-        }
-      });
-      this.clientInterests.delete(client);
-    }
-  }
-
-  private manageSubscriptions(client: WebSocket, newAoiKeys: Set<string>) {
-    const currentInterests = this.clientInterests.get(client) || new Set<string>();
-
-    // Subscribe to new cells
-    newAoiKeys.forEach(key => {
-      if (!currentInterests.has(key)) {
-        if (!this.cellSubscriptions.has(key)) {
-          this.cellSubscriptions.set(key, new Set());
-        }
-        this.cellSubscriptions.get(key)!.add(client);
-      }
-    });
-
-    // Unsubscribe from old cells
-    currentInterests.forEach(key => {
-      if (!newAoiKeys.has(key)) {
-        const clients = this.cellSubscriptions.get(key);
-        if (clients) {
-          clients.delete(client);
-          if (clients.size === 0) {
-            this.cellSubscriptions.delete(key);
-          }
-        }
-      }
-    });
-
-    // Update client's interest set
-    this.clientInterests.set(client, newAoiKeys);
+    this.interestService.removeClient(client);
+    this.clientCenterCell.delete(client);
   }
 
   private handleRedisMessage(channel: string, message: string) {
-    // Extract cell key from channel name: game:cell:x:y -> x:y
-    const cellKey = channel.replace('game:cell:', '');
-    const clients = this.cellSubscriptions.get(cellKey);
+    const cellKey = channel.replace(RedisKey.CELL_CHANNEL_PREFIX, '');
+    const clients = this.interestService.getClientsInCell(cellKey);
 
     if (clients && clients.size > 0) {
-      const payload = JSON.parse(message);
-      const wsMessage = JSON.stringify({
-        event: 'user:state_update',
-        data: payload,
-      });
+      try {
+        const payload = JSON.parse(message);
+        const wsMessage = JSON.stringify({
+          event: WsEvent.USER_STATE_UPDATE,
+          data: payload,
+        });
 
-      clients.forEach(client => {
-        if (client.readyState === 1) { // WebSocket.OPEN
-          client.send(wsMessage);
-        }
-      });
+        clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            const clientUserId = this.sessionService.getUserId(client);
+            if (clientUserId !== payload.userId) {
+              client.send(wsMessage);
+            }
+          }
+        });
+      } catch (err) {
+        this.logger.error('Failed to parse Redis message', err);
+      }
     }
   }
 }

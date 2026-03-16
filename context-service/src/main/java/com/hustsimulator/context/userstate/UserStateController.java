@@ -2,6 +2,8 @@ package com.hustsimulator.context.userstate;
 
 import com.hustsimulator.context.enums.UserActivityState;
 import com.hustsimulator.context.entity.UserState;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,11 +13,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/user-states")
 @RequiredArgsConstructor
+@Tag(name = "User State API", description = "Management of player sessions, activity states, and spatial contexts")
 public class UserStateController {
 
     private final UserStateService userStateService;
 
     @GetMapping("/user/{userId}")
+    @Operation(summary = "Get user state", description = "Retrieve current activity, map, and session data for a player")
     public UserState findByUserId(@PathVariable UUID userId) {
         return userStateService.findByUserId(userId);
     }
@@ -38,6 +42,7 @@ public class UserStateController {
     // --- Map ---
 
     @PutMapping("/{userId}/map")
+    @Operation(summary = "Change map", description = "Transfer a player to a different virtual map")
     public UserState changeMap(@PathVariable UUID userId, @RequestBody ChangeMapRequest request) {
         return userStateService.changeMap(userId, request.mapId());
     }
@@ -50,6 +55,7 @@ public class UserStateController {
     // --- Building ---
 
     @PutMapping("/{userId}/building")
+    @Operation(summary = "Join building", description = "Update player state when entering a physical building area")
     public UserState joinBuilding(@PathVariable UUID userId, @RequestBody JoinBuildingRequest request) {
         return userStateService.joinBuilding(userId, request.buildingId(), request.userX(), request.userY());
     }
@@ -93,6 +99,7 @@ public class UserStateController {
     // --- Activity ---
 
     @PutMapping("/{userId}/activity")
+    @Operation(summary = "Update activity state", description = "Directly modify a user's activity state (ROAMING, SPECTATING, etc.)")
     public UserState updateActivity(@PathVariable UUID userId, @RequestBody UpdateActivityRequest request) {
         return userStateService.updateActivity(userId, request.activityState(), request.sessionData());
     }

@@ -1,12 +1,23 @@
 import { Module } from '@nestjs/common';
 import { GameGateway } from './game.gateway';
 import { PlayerModule } from '../player/player.module';
+import { SpatialModule } from '../spatial/spatial.module';
 import { DisseminationService } from './dissemination.service';
+import { SessionService } from './session.service';
+import { InterestModule } from '../interest/interest.module';
 import { GrpcModule } from '../grpc/grpc.module';
+import { ISessionService } from './session.interface';
 
 @Module({
-    imports: [PlayerModule, GrpcModule],
-    providers: [GameGateway, DisseminationService],
-    exports: [GameGateway, DisseminationService],
+    imports: [PlayerModule, GrpcModule, SpatialModule, InterestModule],
+    providers: [
+        GameGateway, 
+        DisseminationService,
+        {
+            provide: ISessionService,
+            useClass: SessionService,
+        },
+    ],
+    exports: [GameGateway, DisseminationService, ISessionService],
 })
 export class WebsocketModule { }

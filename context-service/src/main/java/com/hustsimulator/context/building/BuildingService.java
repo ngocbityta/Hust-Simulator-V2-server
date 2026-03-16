@@ -40,26 +40,17 @@ public class BuildingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Building", id));
     }
 
-    /**
-     * Create a building from a list of clockwise-ordered points.
-     * The service will split the polygon into convex sub-polygons (triangles)
-     * using JTS PolygonTriangulator and store both the original coordinates
-     * and the resulting convex polygons as JSON.
-     */
     public Building create(CreateBuildingRequest request) {
         log.info("Creating building '{}' on map {}", request.name(), request.mapId());
 
-        // Parse user-provided points into a JTS Polygon
         List<double[]> points = request.points().stream()
                 .map(p -> new double[]{p.x(), p.y()})
                 .collect(Collectors.toList());
 
         Polygon polygon = GeometryUtils.createPolygon(points);
 
-        // Split into convex polygons (triangles)
         List<Polygon> convexPolygons = GeometryUtils.splitIntoConvexPolygons(polygon);
 
-        // Serialize
         String originalJson = serializePoints(request.points());
         String convexJson = serializeConvexPolygons(convexPolygons);
 
@@ -91,9 +82,6 @@ public class BuildingService {
         log.info("Deleted building: {}", id);
     }
 
-    /**
-     * Check if a point (x, y) is inside the building's convex polygons.
-     */
     public boolean isPointInsideBuilding(UUID buildingId, double x, double y) {
         Building building = findById(buildingId);
         List<Polygon> polygons = deserializeConvexPolygons(building.getConvexPolygons());

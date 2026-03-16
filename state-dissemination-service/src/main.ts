@@ -5,6 +5,7 @@ import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { WsAdapter } from '@nestjs/platform-ws';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -18,6 +19,16 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors();
+
+  // Swagger Documentation
+  const config = new DocumentBuilder()
+    .setTitle('HUST Simulator - State Dissemination Service')
+    .setDescription('Real-time spatial dissemination and player state synchronization')
+    .setVersion('1.0')
+    .addTag('dissemination')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
 
   // Connect gRPC microservice (exposes PlayerStateService)
   const grpcPort = configService.get<number>('GAME_SERVER_GRPC_PORT', 50051);

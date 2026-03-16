@@ -8,11 +8,14 @@ import {
     MessageBody,
     ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject } from '@nestjs/common';
 import { Server, WebSocket } from 'ws';
-import { PlayerService, UserActivityState } from '../player/player.service';
+import { PlayerService } from '../player/player.service';
+import { UserActivityState } from '../common/enums/user-activity-state.enum';
 import { DisseminationService } from './dissemination.service';
+import { ISessionService } from './session.interface';
 import { GrpcContextClient } from '../grpc/context.client';
+import { WsEvent } from '../common/enums/ws-event.enum';
 
 @WebSocketGateway({
     cors: { origin: '*' },
@@ -25,12 +28,12 @@ export class GameGateway
     @WebSocketServer()
     server!: Server;
 
-    // Track connected players: WebSocket -> userId
-    private connectedPlayers = new Map<WebSocket, string>();
-
+    // Sessions are now tracked in SessionService
+    
     constructor(
         private readonly playerService: PlayerService,
         private readonly disseminationService: DisseminationService,
+        @Inject(ISessionService) private readonly sessionService: ISessionService,
         private readonly grpcClient: GrpcContextClient,
     ) { }
 
@@ -39,51 +42,61 @@ export class GameGateway
     }
 
     handleConnection(client: WebSocket) {
-        this.logger.debug(`Client connected. Total: ${this.connectedPlayers.size + 1}`);
+        this.logger.debug(`Client connected. Total sessions: ${this.sessionService.getSessionCount() + 1}`);
     }
 
     handleDisconnect(client: WebSocket) {
-        const userId = this.connectedPlayers.get(client);
+        const userId = this.sessionService.getUserId(client);
+        this.disseminationService.removeClient(client);
         if (userId) {
-            this.disseminationService.removeClient(client);
-            this.connectedPlayers.delete(client);
-            this.logger.debug(`User ${userId} disconnected. Total: ${this.connectedPlayers.size}`);
+            this.sessionService.removeSession(client);
+            this.logger.debug(`User ${userId} disconnected. Total sessions: ${this.sessionService.getSessionCount()}`);
         }
     }
 
-    @SubscribeMessage('user:join')
-    handleUserJoin(
+    @SubscribeMessage(WsEvent.USER_JOIN)
+    async handleUserJoin(
         @ConnectedSocket() client: WebSocket,
         @MessageBody() data: { userId: string },
     ) {
-        this.connectedPlayers.set(client, data.userId);
+        this.sessionService.setSession(client, data.userId);
         this.logger.log(`User ${data.userId} joined`);
-        return { event: 'user:joined', data: { userId: data.userId } };
+
+        const playerState = await this.playerService.getPlayerState(data.userId);
+        if (playerState) {
+            await this.syncStateWithContext(data.userId, playerState);
+        }
+
+        return { event: WsEvent.USER_JOINED, data: { userId: data.userId } };
     }
 
-    @SubscribeMessage('user:move')
+    @SubscribeMessage(WsEvent.USER_MOVE)
     async handleUserMove(
         @ConnectedSocket() client: WebSocket,
         @MessageBody()
         data: {
-            userId: string;
             position: { latitude: number; longitude: number };
             speed: number;
             heading: number;
         },
     ) {
-        // 1. Update In-memory Player State
-        this.playerService.updatePosition(
-            data.userId,
+        const userId = this.sessionService.getUserId(client);
+        if (!userId) {
+            this.logger.warn(`Move attempt from unauthenticated client.`);
+            return { event: WsEvent.USER_ERROR, data: { message: 'Unauthorized' } };
+        }
+        this.logger.debug(`Processing move for user ${userId}`);
+
+        await this.playerService.updatePosition(
+            userId,
             data.position,
             data.speed,
             data.heading,
         );
 
-        // 2. AOI-based State Dissemination via Redis Pub/Sub
         await this.disseminationService.updateLocation(
             client,
-            data.userId,
+            userId,
             data.position.latitude,
             data.position.longitude,
             {
@@ -91,26 +104,24 @@ export class GameGateway
                 speed: data.speed,
                 heading: data.heading,
                 type: 'move',
+                clientTimestamp: (data as any).clientTimestamp,
             }
         );
 
-        // 3. gRPC: Verification of Context Service connectivity
-        // We only do this occasionally or for specific triggers to avoid overhead
-        if (Math.random() < 0.1) {
-            this.grpcClient.checkPlayerZone(data.userId, data.position.latitude, data.position.longitude)
-                .then(res => this.logger.debug(`gRPC Zone Check for ${data.userId}: ${res.zones?.length || 0} zones`))
-                .catch(err => this.logger.error(`gRPC Error for ${data.userId}: ${err.message}`));
+        if (Math.random() < 0.2) { 
+             this.playerService.getPlayerState(userId).then(state => {
+                 if (state) this.syncStateWithContext(userId, state);
+             });
         }
 
-        return { event: 'user:moved_ack', data: { timestamp: Date.now() } };
+        return { event: WsEvent.USER_MOVED_ACK, data: { timestamp: Date.now() } };
     }
 
-    @SubscribeMessage('user:state_change')
+    @SubscribeMessage(WsEvent.USER_STATE_CHANGE)
     async handleUserStateChange(
         @ConnectedSocket() client: WebSocket,
         @MessageBody()
         data: {
-            userId: string;
             activityState: UserActivityState;
             mapId?: string;
             eventId?: string;
@@ -118,35 +129,68 @@ export class GameGateway
             position?: { latitude: number; longitude: number };
         },
     ) {
+        const userId = this.sessionService.getUserId(client);
+        if (!userId) {
+            return { event: WsEvent.USER_ERROR, data: { message: 'Unauthorized' } };
+        }
+
         const validStates = Object.values(UserActivityState);
         if (!validStates.includes(data.activityState)) {
             this.logger.warn(`Invalid activity state: ${data.activityState}`);
-            return { event: 'user:state_error', data: { message: 'Invalid activity state' } };
+            return { event: WsEvent.USER_STATE_ERROR, data: { message: 'Invalid activity state' } };
         }
 
-        const result = this.playerService.updateActivityState(
-            data.userId,
+        const result = await this.playerService.updateActivityState(
+            userId,
             data.activityState,
             data.mapId,
             data.eventId,
             data.sessionData,
         );
 
-        if (result.success && data.position) {
-            // Disseminate state change to nearby users
+        let disseminationPosition = data.position;
+        if (result.success && !disseminationPosition) {
+            const playerState = await this.playerService.getPlayerState(userId);
+            if (playerState) {
+                disseminationPosition = playerState.position;
+            }
+        }
+
+        if (result.success && disseminationPosition) {
             await this.disseminationService.updateLocation(
                 client,
-                data.userId,
-                data.position.latitude,
-                data.position.longitude,
+                userId,
+                disseminationPosition.latitude,
+                disseminationPosition.longitude,
                 {
                     activityState: data.activityState,
                     mapId: data.mapId,
                     type: 'state_change',
                 }
             );
+
+            const updatedState = await this.playerService.getPlayerState(userId);
+            if (updatedState) {
+                await this.syncStateWithContext(userId, updatedState);
+            }
         }
 
-        return { event: 'user:state_changed_ack', data: result };
+        return { event: WsEvent.USER_STATE_CHANGED_ACK, data: result };
+    }
+
+    private async syncStateWithContext(userId: string, state: any) {
+        try {
+            await this.grpcClient.updatePlayerState({
+                playerId: userId,
+                position: state.position,
+                activityState: state.activityState || UserActivityState.ROAMING,
+                mapId: state.currentMapId || '',
+                eventId: state.currentEventId || '',
+                timestamp: { millis: Date.now() },
+            });
+            this.logger.debug(`Synced state for user ${userId} to context-service`);
+        } catch (err) {
+            this.logger.error(`Failed to sync state for user ${userId}: ${err.message}`);
+        }
     }
 }

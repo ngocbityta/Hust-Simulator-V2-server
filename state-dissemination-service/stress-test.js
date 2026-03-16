@@ -46,7 +46,6 @@ async function runStressTest() {
       c.ws.send(JSON.stringify({
         event: 'user:move',
         data: {
-          userId: c.userId,
           position: { latitude: c.lat, longitude: c.lng },
           speed: 1,
           heading: Math.random() * 360

@@ -1,12 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
+import { UserActivityState } from '../common/enums/user-activity-state.enum';
+import { RedisKey } from '../common/enums/redis-key.enum';
 
-export enum UserActivityState {
-    ROAMING = 'ROAMING',
-    IN_RECURRING_EVENT = 'IN_RECURRING_EVENT',
-    IN_EVENT = 'IN_EVENT',
-}
-
-interface UserState {
+export interface UserState {
     userId: string;
     username?: string;
     avatar?: string;
@@ -25,103 +22,143 @@ interface UserState {
 export class PlayerService {
     private readonly logger = new Logger(PlayerService.name);
 
-    // In-memory player state (will be backed by Redis later)
-    private players = new Map<string, UserState>();
+    constructor(private readonly redisService: RedisService) {}
 
-    updatePosition(
+    async updatePosition(
         userId: string,
         position: { latitude: number; longitude: number },
         speed: number,
         heading: number,
-    ): void {
-        const existing = this.players.get(userId);
-        this.players.set(userId, {
-            ...existing,
+    ): Promise<void> {
+        const stateKey = `${RedisKey.PLAYER_STATE_PREFIX}${userId}`;
+        
+        // Flattened field-value pairs for HASH
+        const updates = [
+            'userId', userId,
+            'latitude', position.latitude.toString(),
+            'longitude', position.longitude.toString(),
+            'speed', speed.toString(),
+            'heading', heading.toString(),
+            'isOnline', 'true'
+        ];
+
+        await this.redisService.client.updatePlayerState(
+            stateKey,
+            RedisKey.PLAYER_GEO_KEY,
+            updates,
+            Date.now().toString(),
+            'true',
+            position.longitude,
+            position.latitude,
             userId,
-            position,
-            speed,
-            heading,
-            isOnline: true,
-            activityState: existing?.activityState ?? UserActivityState.ROAMING,
-            lastUpdate: Date.now(),
-        });
+        );
     }
 
-    updateActivityState(
+    async getPlayerState(userId: string): Promise<UserState | null> {
+        const hash = await this.redisService.client.hgetall(`${RedisKey.PLAYER_STATE_PREFIX}${userId}`);
+        return this.mapRedisHashToUserState(userId, hash);
+    }
+
+    async updateActivityState(
         userId: string,
         state: UserActivityState,
         mapId?: string,
         eventId?: string,
         sessionData?: Record<string, unknown>,
-    ): { success: boolean; message: string } {
-        const existing = this.players.get(userId);
-        if (!existing) {
+    ): Promise<{ success: boolean; message: string }> {
+        const stateKey = `${RedisKey.PLAYER_STATE_PREFIX}${userId}`;
+        const exists = await this.redisService.client.exists(stateKey);
+        if (!exists) {
             this.logger.warn(`Cannot update activity state: user ${userId} not found`);
             return { success: false, message: 'User not found' };
         }
 
-        existing.activityState = state;
-        existing.currentMapId = mapId;
-        existing.currentEventId = eventId;
-        existing.sessionData = sessionData;
-        existing.lastUpdate = Date.now();
+        const updates: (string | number)[] = [
+            'activityState', state,
+            'currentMapId', mapId || '',
+            'currentEventId', eventId || '',
+        ];
+
+        if (sessionData) {
+            updates.push('sessionData', JSON.stringify(sessionData));
+        }
+
+        await this.redisService.client.updatePlayerState(
+            stateKey,
+            RedisKey.PLAYER_GEO_KEY,
+            updates,
+            Date.now().toString(),
+            'false',
+            0, 0, '',
+        );
 
         this.logger.log(`User ${userId} state changed to ${state}`);
         return { success: true, message: 'OK' };
     }
 
-    getNearbyPlayers(
+    async getNearbyPlayers(
         userId: string,
         position: { latitude: number; longitude: number },
         radius: number,
     ) {
-        // Simple distance-based filtering (Haversine formula)
-        // TODO: Replace with spatial index (QuadTree) for production
-        const nearby: UserState[] = [];
+        const client = this.redisService.client;
+        
+        const nearbyIds = await client.geosearch(
+            RedisKey.PLAYER_GEO_KEY,
+            'FROMLONLAT', position.longitude, position.latitude,
+            'BYRADIUS', radius, 'm'
+        ) as string[];
 
-        this.players.forEach((player) => {
-            if (player.userId === userId || !player.isOnline) return;
+        const otherIds = nearbyIds.filter(id => id !== userId);
+        if (otherIds.length === 0) {
+            return { players: [] };
+        }
 
-            const distance = this.haversineDistance(
-                position.latitude,
-                position.longitude,
-                player.position.latitude,
-                player.position.longitude,
-            );
+        // Use pipeline for efficient HGETALL across multiple keys
+        const pipeline = client.pipeline();
+        otherIds.forEach(id => {
+            pipeline.hgetall(`${RedisKey.PLAYER_STATE_PREFIX}${id}`);
+        });
+        
+        const results = await pipeline.exec();
+        const nearby: any[] = [];
 
-            if (distance <= radius) {
-                nearby.push(player);
+        results?.forEach((res, index) => {
+            const [err, hash] = res;
+            if (!err && hash && Object.keys(hash as object).length > 0) {
+                const uId = otherIds[index];
+                const p = this.mapRedisHashToUserState(uId, hash as Record<string, string>);
+                if (p && p.isOnline) {
+                    nearby.push({
+                        userId: p.userId,
+                        username: p.username || '',
+                        avatar: p.avatar || '',
+                        position: p.position,
+                        isOnline: p.isOnline,
+                        activityState: p.activityState,
+                    });
+                }
             }
         });
 
-        return {
-            players: nearby.map((p) => ({
-                userId: p.userId,
-                username: p.username || '',
-                avatar: p.avatar || '',
-                position: p.position,
-                isOnline: p.isOnline,
-                activityState: p.activityState,
-            })),
-        };
+        return { players: nearby };
     }
 
-    handleConnectionEvent(event: {
+    async handleConnectionEvent(event: {
         userId: string;
         isConnected: boolean;
         timestamp: { millis: number };
     }) {
-        if (event.isConnected) {
-            const existing = this.players.get(event.userId);
-            if (existing) {
-                existing.isOnline = true;
-            }
-        } else {
-            const existing = this.players.get(event.userId);
-            if (existing) {
-                existing.isOnline = false;
-            }
-        }
+        const stateKey = `${RedisKey.PLAYER_STATE_PREFIX}${event.userId}`;
+        
+        await this.redisService.client.updatePlayerState(
+            stateKey,
+            RedisKey.PLAYER_GEO_KEY,
+            ['isOnline', event.isConnected.toString()],
+            Date.now().toString(),
+            'false',
+            0, 0, '',
+        );
 
         this.logger.log(
             `User ${event.userId} is now ${event.isConnected ? 'online' : 'offline'}`,
@@ -130,26 +167,25 @@ export class PlayerService {
         return { success: true, message: 'OK' };
     }
 
-    private haversineDistance(
-        lat1: number,
-        lng1: number,
-        lat2: number,
-        lng2: number,
-    ): number {
-        const R = 6371000; // Earth radius in meters
-        const dLat = this.toRad(lat2 - lat1);
-        const dLng = this.toRad(lng2 - lng1);
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(this.toRad(lat1)) *
-            Math.cos(this.toRad(lat2)) *
-            Math.sin(dLng / 2) *
-            Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
-    private toRad(deg: number): number {
-        return (deg * Math.PI) / 180;
+    private mapRedisHashToUserState(userId: string, hash: Record<string, string>): UserState | null {
+        if (!hash || Object.keys(hash).length === 0) return null;
+        
+        return {
+            userId,
+            username: hash.username,
+            avatar: hash.avatar,
+            position: {
+                latitude: parseFloat(hash.latitude || '0'),
+                longitude: parseFloat(hash.longitude || '0'),
+            },
+            speed: parseFloat(hash.speed || '0'),
+            heading: parseFloat(hash.heading || '0'),
+            isOnline: hash.isOnline === 'true',
+            activityState: hash.activityState as UserActivityState,
+            currentMapId: hash.currentMapId,
+            currentEventId: hash.currentEventId,
+            sessionData: hash.sessionData ? JSON.parse(hash.sessionData) : undefined,
+            lastUpdate: parseInt(hash.lastUpdate || '0', 10),
+        };
     }
 }

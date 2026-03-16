@@ -44,22 +44,32 @@ async function testAOI() {
     }
   });
 
-  // 1. All join
-  p1.send(JSON.stringify({ event: 'user:join', data: { userId: p1Id } }));
-  p2.send(JSON.stringify({ event: 'user:join', data: { userId: p2Id } }));
-  p3.send(JSON.stringify({ event: 'user:join', data: { userId: p3Id } }));
+  // 1. All join and wait for ACK
+  const join = (ws, id) => new Promise(res => {
+    const handler = (msg) => {
+      const data = JSON.parse(msg.toString());
+      if (data.event === 'user:joined' && data.data.userId === id) {
+        ws.off('message', handler);
+        res();
+      }
+    };
+    ws.on('message', handler);
+    ws.send(JSON.stringify({ event: 'user:join', data: { userId: id } }));
+  });
+
+  await Promise.all([join(p1, p1Id), join(p2, p2Id), join(p3, p3Id)]);
+  console.log('All clients joined successfully');
 
   // 2. All initialize positions (so they subscribe to cells)
-  p1.send(JSON.stringify({ event: 'user:move', data: { userId: p1Id, position: p1Pos, speed: 0, heading: 0 } }));
-  p2.send(JSON.stringify({ event: 'user:move', data: { userId: p2Id, position: p2Pos, speed: 0, heading: 0 } }));
-  p3.send(JSON.stringify({ event: 'user:move', data: { userId: p3Id, position: p3Pos, speed: 0, heading: 0 } }));
+  p1.send(JSON.stringify({ event: 'user:move', data: { position: p1Pos, speed: 0, heading: 0 } }));
+  p2.send(JSON.stringify({ event: 'user:move', data: { position: p2Pos, speed: 0, heading: 0 } }));
+  p3.send(JSON.stringify({ event: 'user:move', data: { position: p3Pos, speed: 0, heading: 0 } }));
 
   await new Promise(r => setTimeout(r, 1000));
 
   // 3. Player 1 moves again
   console.log('Player 1 moving...');
   p1.send(JSON.stringify({ event: 'user:move', data: { 
-    userId: p1Id, 
     position: { latitude: 21.00305, longitude: 105.84305 }, 
     speed: 1, 
     heading: 45 

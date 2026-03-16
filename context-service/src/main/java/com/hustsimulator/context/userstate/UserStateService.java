@@ -75,10 +75,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Join a building. If the user is physically at (x,y) inside the building polygon,
-     * they join as IN_BUILDING. Otherwise, they join as SPECTATING_BUILDING.
-     */
     public UserState joinBuilding(UUID userId, UUID buildingId, Double userX, Double userY) {
         UserState state = findByUserId(userId);
 
@@ -104,9 +100,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Leave a building and go back to ROAMING.
-     */
     public UserState leaveBuilding(UUID userId) {
         UserState state = findByUserId(userId);
         state.setBuildingId(null);
@@ -118,9 +111,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Join a room inside a building. Only possible when IN_BUILDING.
-     */
     public UserState joinRoom(UUID userId, UUID roomId) {
         UserState state = findByUserId(userId);
         if (state.getActivityState() != UserActivityState.IN_BUILDING
@@ -135,9 +125,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Leave a room — go back to IN_BUILDING.
-     */
     public UserState leaveRoom(UUID userId) {
         UserState state = findByUserId(userId);
         state.setRoomId(null);
@@ -148,12 +135,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Join an event. If the user provides coordinates and the event is linked to a building,
-     * we verify whether the user is physically inside the building.
-     *   - If inside → IN_EVENT
-     *   - If outside (or no coordinates provided) → SPECTATING_EVENT
-     */
     public UserState joinEvent(UUID userId, UUID eventId, UUID buildingId, Double userX, Double userY) {
         UserState state = findByUserId(userId);
 
@@ -176,9 +157,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Leave an event — revert to previous context (ROAMING or IN_BUILDING depending on state).
-     */
     public UserState leaveEvent(UUID userId) {
         UserState state = findByUserId(userId);
         state.setEventId(null);
@@ -196,12 +174,6 @@ public class UserStateService {
         return userStateRepository.save(state);
     }
 
-    /**
-     * Join a recurring event. If the user provides coordinates and the event is linked to a building,
-     * we verify whether the user is physically inside the building.
-     *   - If inside → IN_RECURRING_EVENT
-     *   - If outside (or no coordinates provided) → SPECTATING_RECURRING_EVENT
-     */
     public UserState joinRecurringEvent(UUID userId, UUID eventId, UUID buildingId, Double userX, Double userY) {
         UserState state = findByUserId(userId);
 

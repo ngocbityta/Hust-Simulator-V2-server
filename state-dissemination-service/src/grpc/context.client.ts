@@ -1,6 +1,7 @@
 import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import type { ClientGrpc } from '@nestjs/microservices';
 import { Observable, firstValueFrom } from 'rxjs';
+import { GrpcService } from '../common/enums/grpc.enum';
 
 // Interfaces matching context.proto ContextEngineService
 interface ZoneCheckRequest {
@@ -31,10 +32,22 @@ interface StatusResponse {
     message: string;
 }
 
+interface UpdatePlayerStateRequest {
+    playerId: string;
+    position: { latitude: number; longitude: number };
+    activityState: string;
+    mapId: string;
+    eventId: string;
+    timestamp: { millis: number };
+}
+
 interface ContextEngineService {
     checkPlayerZone(request: ZoneCheckRequest): Observable<ZoneCheckResponse>;
     reportSpatialTrigger(
         request: SpatialTriggerEvent,
+    ): Observable<StatusResponse>;
+    updatePlayerState(
+        request: UpdatePlayerStateRequest,
     ): Observable<StatusResponse>;
 }
 
@@ -49,7 +62,7 @@ export class GrpcContextClient implements OnModuleInit {
 
     onModuleInit() {
         this.contextService =
-            this.client.getService<ContextEngineService>('ContextEngineService');
+            this.client.getService<ContextEngineService>(GrpcService.CONTEXT_ENGINE_SERVICE);
         this.logger.log('gRPC Context Engine client initialized');
     }
 
@@ -70,5 +83,11 @@ export class GrpcContextClient implements OnModuleInit {
         event: SpatialTriggerEvent,
     ): Promise<StatusResponse> {
         return firstValueFrom(this.contextService.reportSpatialTrigger(event));
+    }
+
+    async updatePlayerState(
+        request: UpdatePlayerStateRequest,
+    ): Promise<StatusResponse> {
+        return firstValueFrom(this.contextService.updatePlayerState(request));
     }
 }
