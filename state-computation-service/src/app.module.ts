@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { GrpcModule } from './grpc/grpc.module';
-import { WebsocketModule } from './websocket/websocket.module';
+import { PlayerModule } from './player/player.module';
 import { RedisModule } from './redis/redis.module';
 import { SpatialModule } from './spatial/spatial.module';
+import { ComputationModule } from './computation/computation.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { SpatialModule } from './spatial/spatial.module';
     RedisModule,
     SpatialModule,
     GrpcModule,
-    WebsocketModule,
+    PlayerModule,
+    ComputationModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -12,7 +12,6 @@ import { WsEvent } from '../common/enums/ws-event.enum';
 export class DisseminationService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DisseminationService.name);
   
-  private pubClient: Redis;
   private subClient: Redis;
 
   private clientCenterCell = new Map<WebSocket, string>();
@@ -25,7 +24,6 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.pubClient = this.redisService.pubClient;
     this.subClient = this.redisService.subClient;
 
     this.subClient.on('message', (channel, message) => {
@@ -35,7 +33,7 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {}
 
-  async updateLocation(client: WebSocket, userId: string, latitude: number, longitude: number, payload: any) {
+  async updateLocation(client: WebSocket, latitude: number, longitude: number) {
     const currentCell = this.spatialService.getGridCell(latitude, longitude);
     const currentCellKey = this.spatialService.getCellKey(currentCell);
     
@@ -46,15 +44,6 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
       this.interestService.updateInterests(client, aoiKeys);
       this.clientCenterCell.set(client, currentCellKey);
     }
-
-    const channel = this.spatialService.getCellChannel(currentCell);
-    const message = JSON.stringify({
-      userId,
-      ...payload,
-      timestamp: Date.now(),
-    });
-
-    await this.pubClient.publish(channel, message);
   }
 
   removeClient(client: WebSocket) {

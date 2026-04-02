@@ -10,11 +10,10 @@ import {
 } from '@nestjs/websockets';
 import { Logger, Inject } from '@nestjs/common';
 import { Server, WebSocket } from 'ws';
-import { PlayerService } from '../player/player.service';
 import { UserActivityState } from '../common/enums/user-activity-state.enum';
 import { DisseminationService } from './dissemination.service';
 import { ISessionService } from './session.interface';
-import { GrpcContextClient } from '../grpc/context.client';
+import { GrpcComputationClient } from '../grpc/computation.client';
 import { WsEvent } from '../common/enums/ws-event.enum';
 
 @WebSocketGateway({
@@ -28,13 +27,10 @@ export class GameGateway
     @WebSocketServer()
     server!: Server;
 
-    // Sessions are now tracked in SessionService
-    
     constructor(
-        private readonly playerService: PlayerService,
+        private readonly grpcComputationClient: GrpcComputationClient,
         private readonly disseminationService: DisseminationService,
         @Inject(ISessionService) private readonly sessionService: ISessionService,
-        private readonly grpcClient: GrpcContextClient,
     ) { }
 
     afterInit() {
@@ -61,12 +57,6 @@ export class GameGateway
     ) {
         this.sessionService.setSession(client, data.userId);
         this.logger.log(`User ${data.userId} joined`);
-
-        const playerState = await this.playerService.getPlayerState(data.userId);
-        if (playerState) {
-            await this.syncStateWithContext(data.userId, playerState);
-        }
-
         return { event: WsEvent.USER_JOINED, data: { userId: data.userId } };
     }
 
@@ -87,32 +77,21 @@ export class GameGateway
         }
         this.logger.debug(`Processing move for user ${userId}`);
 
-        await this.playerService.updatePosition(
+        // Update AOI logically for this WS connection
+        await this.disseminationService.updateLocation(
+            client,
+            data.position.latitude,
+            data.position.longitude
+        );
+
+        // Forward computation request to ComputationService
+        await this.grpcComputationClient.processUserMove(
             userId,
             data.position,
             data.speed,
             data.heading,
+            (data as any).clientTimestamp
         );
-
-        await this.disseminationService.updateLocation(
-            client,
-            userId,
-            data.position.latitude,
-            data.position.longitude,
-            {
-                position: data.position,
-                speed: data.speed,
-                heading: data.heading,
-                type: 'move',
-                clientTimestamp: (data as any).clientTimestamp,
-            }
-        );
-
-        if (Math.random() < 0.2) { 
-             this.playerService.getPlayerState(userId).then(state => {
-                 if (state) this.syncStateWithContext(userId, state);
-             });
-        }
 
         return { event: WsEvent.USER_MOVED_ACK, data: { timestamp: Date.now() } };
     }
@@ -140,57 +119,16 @@ export class GameGateway
             return { event: WsEvent.USER_STATE_ERROR, data: { message: 'Invalid activity state' } };
         }
 
-        const result = await this.playerService.updateActivityState(
+        // Delegate state updates and context-syncing to Computation Service
+        const result = await this.grpcComputationClient.processUserStateChange(
             userId,
             data.activityState,
             data.mapId,
             data.eventId,
             data.sessionData,
+            data.position
         );
 
-        let disseminationPosition = data.position;
-        if (result.success && !disseminationPosition) {
-            const playerState = await this.playerService.getPlayerState(userId);
-            if (playerState) {
-                disseminationPosition = playerState.position;
-            }
-        }
-
-        if (result.success && disseminationPosition) {
-            await this.disseminationService.updateLocation(
-                client,
-                userId,
-                disseminationPosition.latitude,
-                disseminationPosition.longitude,
-                {
-                    activityState: data.activityState,
-                    mapId: data.mapId,
-                    type: 'state_change',
-                }
-            );
-
-            const updatedState = await this.playerService.getPlayerState(userId);
-            if (updatedState) {
-                await this.syncStateWithContext(userId, updatedState);
-            }
-        }
-
         return { event: WsEvent.USER_STATE_CHANGED_ACK, data: result };
-    }
-
-    private async syncStateWithContext(userId: string, state: any) {
-        try {
-            await this.grpcClient.updatePlayerState({
-                playerId: userId,
-                position: state.position,
-                activityState: state.activityState || UserActivityState.ROAMING,
-                mapId: state.currentMapId || '',
-                eventId: state.currentEventId || '',
-                timestamp: { millis: Date.now() },
-            });
-            this.logger.debug(`Synced state for user ${userId} to context-service`);
-        } catch (err) {
-            this.logger.error(`Failed to sync state for user ${userId}: ${err.message}`);
-        }
     }
 }

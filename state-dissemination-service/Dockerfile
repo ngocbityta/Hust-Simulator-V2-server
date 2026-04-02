@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY state-dissemination-service/package*.json ./state-dissemination-service/
 
-# Install dependencies
-RUN cd state-dissemination-service && npm install
+# Install dependencies cleanly
+RUN cd state-dissemination-service && npm ci
 
 # Copy source and proto
 COPY state-dissemination-service ./state-dissemination-service/
@@ -21,9 +21,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy built assets and production deps
-COPY --from=build /app/state-dissemination-service/package*.json ./state-dissemination-service/
-COPY --from=build /app/state-dissemination-service/node_modules ./state-dissemination-service/node_modules
+# Install production dependencies only
+COPY state-dissemination-service/package*.json ./state-dissemination-service/
+RUN cd state-dissemination-service && npm ci --omit=dev
+
+# Copy built assets
 COPY --from=build /app/state-dissemination-service/dist ./state-dissemination-service/dist
 COPY --from=build /app/proto ./proto
 

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { GameGateway } from './game.gateway';
-import { PlayerModule } from '../player/player.module';
 import { SpatialModule } from '../spatial/spatial.module';
 import { DisseminationService } from './dissemination.service';
 import { SessionService } from './session.service';
@@ -9,7 +8,7 @@ import { GrpcModule } from '../grpc/grpc.module';
 import { ISessionService } from './session.interface';
 
 @Module({
-    imports: [PlayerModule, GrpcModule, SpatialModule, InterestModule],
+    imports: [GrpcModule, SpatialModule, InterestModule],
     providers: [
         GameGateway, 
         DisseminationService,

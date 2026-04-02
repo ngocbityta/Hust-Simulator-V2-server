@@ -88,6 +88,8 @@ services:
         condition: service_healthy
       context-service:
         condition: service_started
+      state-computation-service:
+        condition: service_started
     ports:
       - "3002:3002"
       - "50051:50051"
@@ -97,8 +99,32 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       CONTEXT_SERVICE_HOST: context-service
       CONTEXT_SERVICE_GRPC_PORT: 50052
+      COMPUTATION_SERVICE_HOST: state-computation-service
+      COMPUTATION_SERVICE_GRPC_PORT: 50053
       GAME_SERVER_PORT: 3002
       GAME_SERVER_GRPC_PORT: 50051
+
+  state-computation-service:
+    build:
+      context: .
+      dockerfile: state-computation-service/Dockerfile
+    container_name: hustsim-state-computation-service
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      context-service:
+        condition: service_started
+    ports:
+      - "3003:3003"
+      - "50053:50053"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      CONTEXT_SERVICE_HOST: context-service
+      CONTEXT_SERVICE_GRPC_PORT: 50052
+      COMPUTATION_SERVICE_GRPC_PORT: 50053
 
 volumes:
   postgres_data:

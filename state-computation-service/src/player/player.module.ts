@@ -4,9 +4,9 @@ import { GrpcModule } from '../grpc/grpc.module';
 import { UserStateGrpcController } from '../grpc/user-state.controller';
 
 @Module({
-    imports: [GrpcModule],
-    controllers: [UserStateGrpcController],
-    providers: [PlayerService],
-    exports: [PlayerService],
+  imports: [GrpcModule],
+  controllers: [UserStateGrpcController],
+  providers: [PlayerService],
+  exports: [PlayerService],
 })
-export class PlayerModule { }
+export class PlayerModule {}
