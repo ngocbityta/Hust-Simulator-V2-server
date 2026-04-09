@@ -1,5 +1,5 @@
 # Build stage
-FROM gradle:8-jdk21 AS build
+FROM gradle:8-jdk17 AS build
 WORKDIR /app
 
 # Copy gradle files
@@ -15,7 +15,7 @@ COPY proto ./proto
 RUN cd context-service && ./gradlew bootJar --no-daemon
 
 # Run stage
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Copy built jar and proto (if needed for some runtimes, but usually Spring Boot bundles protos)

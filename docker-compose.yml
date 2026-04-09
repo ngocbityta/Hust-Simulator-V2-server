@@ -65,8 +65,8 @@ services:
       rabbitmq:
         condition: service_healthy
     ports:
-      - "8080:8080"
-      - "50052:50052"
+      - "${CONTEXT_SERVICE_PORT:-8080}:8080"
+      - "${CONTEXT_SERVICE_GRPC_PORT:-50052}:50052"
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -75,7 +75,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
       POSTGRES_SSL: ${POSTGRES_SSL:-disable}
       REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
       CONTEXT_SERVICE_PORT: 8080
       CONTEXT_SERVICE_GRPC_PORT: 50052
       GAME_SERVER_HOST: state-dissemination-service
@@ -95,12 +99,15 @@ services:
       state-computation-service:
         condition: service_started
     ports:
-      - "3002:3002"
-      - "50051:50051"
+      - "${GAME_SERVER_PORT:-3002}:3002"
+      - "${GAME_SERVER_GRPC_PORT:-50051}:50051"
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
       CONTEXT_SERVICE_HOST: context-service
       CONTEXT_SERVICE_GRPC_PORT: 50052
       COMPUTATION_SERVICE_HOST: state-computation-service
@@ -120,12 +127,15 @@ services:
       context-service:
         condition: service_started
     ports:
-      - "3003:3003"
-      - "50053:50053"
+      - "${COMPUTATION_SERVICE_PORT:-3003}:3003"
+      - "${COMPUTATION_SERVICE_GRPC_PORT:-50053}:50053"
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
       CONTEXT_SERVICE_HOST: context-service
       CONTEXT_SERVICE_GRPC_PORT: 50052
       COMPUTATION_SERVICE_GRPC_PORT: 50053
