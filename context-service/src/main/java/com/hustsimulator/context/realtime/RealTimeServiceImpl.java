@@ -7,7 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,10 +37,12 @@ public class RealTimeServiceImpl implements RealTimeService {
         );
 
         // Join a class room
-        server.addEventListener("class:join", String.class, (client, classId, ackRequest) -> {
+        server.addEventListener("class:join", Object.class, (client, data, ackRequest) -> {
+            log.info("Received class:join. Data type: {}, Data: {}", data != null ? data.getClass().getName() : "null", data);
+            String classId = data.toString();
             String roomName = "class_" + classId;
             client.joinRoom(roomName);
-            log.info("Client {} joined classroom: {}", client.getSessionId(), classId);
+            log.info("Client {} joined classroom: {}. Room size: {}", client.getSessionId(), classId, server.getRoomOperations(roomName).getClients().size());
 
             try {
                 List<Message> history = messageService.getHistory(UUID.fromString(classId));
@@ -51,14 +54,16 @@ public class RealTimeServiceImpl implements RealTimeService {
             client.sendEvent("class:joined", classId);
         });
 
-        // Unified message handler
-        server.addEventListener("class:message", Map.class, (client, data, ackRequest) -> {
+        server.addEventListener("class:message", Object.class, (client, data, ackRequest) -> {
+            log.info("Received class:message from client {}: {}. Data type: {}", client.getSessionId(), data, data != null ? data.getClass().getName() : "null");
             try {
-                String eventId = (String) data.get("eventId");
-                String senderId = (String) data.get("senderId");
-                String type = (String) data.getOrDefault("type", "text");
-                String content = (String) data.get("content");
-                String fileIdStr = (String) data.get("fileId");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mapData = (Map<String, Object>) data;
+                String eventId = (String) mapData.get("eventId");
+                String senderId = (String) mapData.get("senderId");
+                String type = (String) mapData.getOrDefault("type", "text");
+                String content = (String) mapData.get("content");
+                String fileIdStr = (String) mapData.get("fileId");
                 UUID fileId = fileIdStr != null ? UUID.fromString(fileIdStr) : null;
 
                 Message saved = messageService.save(
@@ -73,15 +78,27 @@ public class RealTimeServiceImpl implements RealTimeService {
 
                 log.debug("Message persisted and broadcast: type={} event={}", type, eventId);
             } catch (Exception e) {
-                log.error("Failed to process message: {}", e.getMessage(), e);
+                log.error("Failed to process message: {}. Data: {}", e.getMessage(), data, e);
             }
         });
 
         // Leave a class room
-        server.addEventListener("class:leave", String.class, (client, classId, ackRequest) -> {
+        server.addEventListener("class:leave", Object.class, (client, data, ackRequest) -> {
+            String classId = data.toString();
             client.leaveRoom("class_" + classId);
             log.info("Client {} left classroom: {}", client.getSessionId(), classId);
         });
+
+        server.start();
+        log.info("SocketIO Server started on port: {}", server.getConfiguration().getPort());
+    }
+
+    @PreDestroy
+    public void stopServer() {
+        if (server != null) {
+            server.stop();
+            log.info("SocketIO Server stopped.");
+        }
     }
 
     @Override

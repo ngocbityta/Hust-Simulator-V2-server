@@ -10,6 +10,7 @@ public interface RecurringEventService {
     List<RecurringEvent> findScheduled();
     RecurringEvent findById(UUID id);
     List<RecurringEvent> findByMapId(UUID mapId);
+    List<RecurringEvent> findParticipatedEventsByUserId(UUID userId);
     void activateClass(UUID classId);
     void completeClass(UUID classId);
     RecurringEvent create(RecurringEvent recurringEvent);

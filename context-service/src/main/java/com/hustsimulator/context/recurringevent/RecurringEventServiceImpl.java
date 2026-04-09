@@ -49,6 +49,11 @@ public class RecurringEventServiceImpl implements RecurringEventService {
     }
 
     @Override
+    public List<RecurringEvent> findParticipatedEventsByUserId(UUID userId) {
+        return recurringEventRepository.findParticipatedEventsByUserId(userId);
+    }
+
+    @Override
     @Transactional
     public void activateClass(UUID classId) {
         RecurringEvent event = findById(classId);

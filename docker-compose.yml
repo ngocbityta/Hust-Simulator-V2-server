@@ -65,6 +65,7 @@ services:
         condition: service_healthy
     ports:
       - "${CONTEXT_SERVICE_PORT:-8080}:8080"
+      - "9092:9092"
       - "${CONTEXT_SERVICE_GRPC_PORT:-50052}:50052"
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}

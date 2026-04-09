@@ -16,6 +16,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final com.hustsimulator.context.recurringevent.RecurringEventService recurringEventService;
 
     @GetMapping
     public List<User> findAll() {
@@ -25,6 +26,11 @@ public class UserController {
     @GetMapping("/{id}")
     public User findById(@PathVariable UUID id) {
         return userService.findById(id);
+    }
+
+    @GetMapping("/{id}/participated-events")
+    public List<com.hustsimulator.context.entity.RecurringEvent> findParticipatedEvents(@PathVariable UUID id) {
+        return recurringEventService.findParticipatedEventsByUserId(id);
     }
 
     @PostMapping
