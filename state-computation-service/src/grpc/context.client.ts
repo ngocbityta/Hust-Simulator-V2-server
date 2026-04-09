@@ -15,7 +15,7 @@ interface ZoneCheckResponse {
     name: string;
     type: string;
     center: { latitude: number; longitude: number };
-    radius: number;
+    coordinates: string;
     metadata: Record<string, string>;
   }>;
 }

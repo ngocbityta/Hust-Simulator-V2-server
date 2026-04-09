@@ -27,15 +27,18 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/microservices": "^11.1.14",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.18",
     "@nestjs/platform-ws": "^11.1.14",
     "@nestjs/swagger": "^11.2.6",
     "@nestjs/websockets": "^11.1.14",
+    "@types/socket.io": "^3.0.1",
     "amqplib": "^0.10.9",
     "axios": "^1.14.0",
     "ioredis": "^5.10.0",
     "osmtogeojson": "^3.0.0-beta.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {

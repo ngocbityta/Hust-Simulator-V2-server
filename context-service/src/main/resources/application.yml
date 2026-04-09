@@ -4,7 +4,7 @@ spring:
 
   # PostgreSQL + PostGIS
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
     username: ${POSTGRES_USER:hustsim}
     password: ${POSTGRES_PASSWORD:hustsim_secret}
     driver-class-name: org.postgresql.Driver
@@ -17,13 +17,16 @@ spring:
     properties:
       hibernate:
         format_sql: true
-    # Defer datasource initialization so app can start without DB
-    defer-datasource-initialization: true
-
-  # Allow startup without DB connection
   sql:
     init:
       mode: never
+
+  # Flyway Database Migration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    repair-on-migrate: true
 
   # Redis
   data:
@@ -38,12 +41,6 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:hustsim}
     password: ${RABBITMQ_PASSWORD:hustsim_rabbit}
-
-  # Auto-configure: skip datasource auto-config if not available
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
 
 # Server
 server:

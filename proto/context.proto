@@ -13,7 +13,7 @@ message Zone {
   string name = 2;
   string type = 3;          // BUILDING, CLASSROOM, LIBRARY, PARKING, EVENT_AREA, etc.
   hustsimulator.common.Coordinates center = 4;
-  double radius = 5;        // in meters
+  string coordinates = 5;       // Polygon points string
   map<string, string> metadata = 6;
 }
 

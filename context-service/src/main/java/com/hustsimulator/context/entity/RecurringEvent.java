@@ -1,9 +1,8 @@
 package com.hustsimulator.context.entity;
 
 import com.hustsimulator.context.common.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import com.hustsimulator.context.enums.RecurringEventStatus;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
@@ -31,6 +30,15 @@ public class RecurringEvent extends BaseEntity {
 
     @Column(name = "cron_expression", nullable = false)
     private String cronExpression;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private RecurringEventStatus status = RecurringEventStatus.SCHEDULED;
+
+    @Column(name = "duration_minutes", nullable = false)
+    @Builder.Default
+    private Integer durationMinutes = 60;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

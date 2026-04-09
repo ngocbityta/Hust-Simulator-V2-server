@@ -2,9 +2,11 @@ package com.hustsimulator.context.grpc;
 
 import com.hustsimulator.context.building.BuildingService;
 import com.hustsimulator.context.entity.Building;
+import com.hustsimulator.context.entity.RecurringEvent;
 import com.hustsimulator.context.enums.UserActivityState;
 import com.hustsimulator.context.grpc.proto.CommonProto;
 import com.hustsimulator.context.grpc.proto.ContextProto;
+import com.hustsimulator.context.recurringevent.RecurringEventService;
 import com.hustsimulator.context.userstate.UserStateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ public class ContextFacadeImpl implements IContextFacade {
 
     private final UserStateService userStateService;
     private final BuildingService buildingService;
+    private final RecurringEventService recurringEventService;
 
     @Override
     public ContextProto.ZoneCheckResponse checkPlayerZone(ContextProto.ZoneCheckRequest request) {
@@ -28,9 +31,7 @@ public class ContextFacadeImpl implements IContextFacade {
         double lat = request.getPosition().getLatitude();
         double lon = request.getPosition().getLongitude();
 
-        // In a real implementation, we would use a spatial query (PostGIS)
-        // For now, we iterate over active buildings on the map if we knew the mapId, 
-        // or just all buildings as a fallback for the stub.
+        // Check against active buildings (using lon/lat from proto)
         List<Building> buildings = buildingService.findActive();
         
         List<ContextProto.Zone> zones = buildings.stream()
@@ -38,6 +39,7 @@ public class ContextFacadeImpl implements IContextFacade {
                 .map(this::mapToZoneProto)
                 .collect(Collectors.toList());
 
+        log.debug("Zone check for player {}: found {} zones", playerId, zones.size());
         return ContextProto.ZoneCheckResponse.newBuilder()
                 .addAllZones(zones)
                 .build();
@@ -45,14 +47,12 @@ public class ContextFacadeImpl implements IContextFacade {
 
     @Override
     public CommonProto.StatusResponse reportSpatialTrigger(ContextProto.SpatialTriggerEvent request) {
-        log.info("Processing spatial trigger for player {}: {} on zone {}", 
+        log.info("Spatial trigger for player {}: {} on {}", 
                 request.getPlayerId(), request.getTriggerType(), request.getZoneId());
-        
-        // Logic to transition player state based on entry/exit could go here
         
         return CommonProto.StatusResponse.newBuilder()
                 .setSuccess(true)
-                .setMessage("Trigger processed")
+                .setMessage("Trigger logged")
                 .build();
     }
 
@@ -62,31 +62,40 @@ public class ContextFacadeImpl implements IContextFacade {
             UUID userId = UUID.fromString(request.getPlayerId());
             UserActivityState activityState = UserActivityState.valueOf(request.getActivityState());
             
-            UUID mapId = request.getMapId().isEmpty() ? null : UUID.fromString(request.getMapId());
-            UUID eventId = request.getEventId().isEmpty() ? null : UUID.fromString(request.getEventId());
-
+            // Sync activity and position
             userStateService.updateActivity(userId, activityState, null);
-            
-            // If mapId or eventId changed, we could call specific service methods here
-            // e.g. userStateService.changeMap(userId, mapId) if it differs from current
+            userStateService.syncPositionState(userId, request.getPosition().getLongitude(), request.getPosition().getLatitude());
 
             return CommonProto.StatusResponse.newBuilder()
                     .setSuccess(true)
-                    .setMessage("Player state synchronized")
+                    .setMessage("Player state updated")
                     .build();
         } catch (Exception e) {
-            log.error("Failed to update player state: {}", e.getMessage());
+            log.error("UpdatePlayerState error: {}", e.getMessage());
             return CommonProto.StatusResponse.newBuilder()
                     .setSuccess(false)
-                    .setMessage("Update failed: " + e.getMessage())
+                    .setMessage(e.getMessage())
                     .build();
         }
     }
 
     @Override
     public ContextProto.ActiveEventsResponse getActiveEvents(ContextProto.ActiveEventsRequest request) {
-        // Placeholder for event active events query
-        return ContextProto.ActiveEventsResponse.newBuilder().build();
+        List<RecurringEvent> activeEvents = recurringEventService.findActive();
+        
+        List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
+                .map(e -> ContextProto.ContextEvent.newBuilder()
+                        .setEventId(e.getId().toString())
+                        .setPlayerId(request.getPlayerId())
+                        .setEventType("VIRTUAL_CLASS")
+                        .setTitle(e.getName())
+                        .setDescription(e.getDescription() != null ? e.getDescription() : "")
+                        .build())
+                .collect(Collectors.toList());
+
+        return ContextProto.ActiveEventsResponse.newBuilder()
+                .addAllEvents(eventProtos)
+                .build();
     }
 
     private ContextProto.Zone mapToZoneProto(Building building) {

@@ -20,11 +20,11 @@ import static org.mockito.Mockito.*;
 class MapServiceTest {
 
     @Mock private MapRepository mapRepository;
-    @InjectMocks private MapService mapService;
+    @InjectMocks private MapServiceImpl mapService;
 
     @Test
     void findAllMaps_shouldReturnAll() {
-        Map map = Map.builder().name("Map1").type("TYPE1").build();
+        Map map = Map.builder().name("Map1").build();
         when(mapRepository.findAll()).thenReturn(List.of(map));
 
         List<Map> result = mapService.findAllMaps();

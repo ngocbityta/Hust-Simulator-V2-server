@@ -2,8 +2,6 @@ package com.hustsimulator.context.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -27,15 +25,8 @@ public class Map {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private String type;
-
-    private Float radius;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    @Builder.Default
-    private String metadata = "{}";
+    @Column(columnDefinition = "TEXT", name = "coordinates", nullable = false)
+    private String coordinates;
 
     @Column(name = "is_active")
     @Builder.Default

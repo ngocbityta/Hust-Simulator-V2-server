@@ -1,70 +1,50 @@
 package com.hustsimulator.context.config;
 
 import org.springframework.amqp.core.*;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Configuration
-@ConditionalOnBean(ConnectionFactory.class)
 public class RabbitMQConfig {
 
-    // Exchange names
-    public static final String SPATIAL_EVENTS_EXCHANGE = "hustsim.spatial.events";
-    public static final String TEMPORAL_EVENTS_EXCHANGE = "hustsim.temporal.events";
+    public static final String DLX_EXCHANGE = "hust.job.active.exchange";
+    public static final String DELAY_EXCHANGE = "hust.job.delay.exchange";
+    
+    public static final String ACTIVE_JOB_QUEUE = "hust.job.active.queue";
+    public static final String DELAY_JOB_QUEUE = "hust.job.delay.queue";
 
-    // Queue names
-    public static final String SPATIAL_TRIGGER_QUEUE = "hustsim.spatial.triggers";
-    public static final String TEMPORAL_TRIGGER_QUEUE = "hustsim.temporal.triggers";
-
-    // --- Exchanges ---
     @Bean
-    public TopicExchange spatialEventsExchange() {
-        return new TopicExchange(SPATIAL_EVENTS_EXCHANGE);
+    public FanoutExchange activeJobExchange() {
+        return new FanoutExchange(DLX_EXCHANGE);
     }
 
     @Bean
-    public TopicExchange temporalEventsExchange() {
-        return new TopicExchange(TEMPORAL_EVENTS_EXCHANGE);
-    }
-
-    // --- Queues ---
-    @Bean
-    public Queue spatialTriggerQueue() {
-        return QueueBuilder.durable(SPATIAL_TRIGGER_QUEUE).build();
+    public Queue activeJobQueue() {
+        return new Queue(ACTIVE_JOB_QUEUE);
     }
 
     @Bean
-    public Queue temporalTriggerQueue() {
-        return QueueBuilder.durable(TEMPORAL_TRIGGER_QUEUE).build();
-    }
-
-    // --- Bindings ---
-    @Bean
-    public Binding spatialTriggerBinding(Queue spatialTriggerQueue, TopicExchange spatialEventsExchange) {
-        return BindingBuilder.bind(spatialTriggerQueue).to(spatialEventsExchange).with("trigger.*");
+    public Binding activeJobBinding(Queue activeJobQueue, FanoutExchange activeJobExchange) {
+        return BindingBuilder.bind(activeJobQueue).to(activeJobExchange);
     }
 
     @Bean
-    public Binding temporalTriggerBinding(Queue temporalTriggerQueue, TopicExchange temporalEventsExchange) {
-        return BindingBuilder.bind(temporalTriggerQueue).to(temporalEventsExchange).with("trigger.*");
-    }
-
-    // --- Message Converter ---
-    @Bean
-    public MessageConverter jsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+    public FanoutExchange delayJobExchange() {
+        return new FanoutExchange(DELAY_EXCHANGE);
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
-        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-        rabbitTemplate.setMessageConverter(jsonMessageConverter());
-        return rabbitTemplate;
+    public Queue delayJobQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", DLX_EXCHANGE);
+        return new Queue(DELAY_JOB_QUEUE, true, false, false, args);
+    }
+
+    @Bean
+    public Binding delayJobBinding(Queue delayJobQueue, FanoutExchange delayJobExchange) {
+        return BindingBuilder.bind(delayJobQueue).to(delayJobExchange);
     }
 }
-

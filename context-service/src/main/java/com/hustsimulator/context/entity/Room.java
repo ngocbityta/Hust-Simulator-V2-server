@@ -1,9 +1,8 @@
 package com.hustsimulator.context.entity;
 
 import com.hustsimulator.context.common.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import com.hustsimulator.context.enums.RoomStatus;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
@@ -22,6 +21,11 @@ public class Room extends BaseEntity {
 
     @Column(name = "building_id", nullable = false)
     private UUID buildingId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private RoomStatus status = RoomStatus.EMPTY;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

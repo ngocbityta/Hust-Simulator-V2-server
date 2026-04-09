@@ -1,38 +1,41 @@
 package com.hustsimulator.context.common;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.triangulate.polygon.PolygonTriangulator;
 
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility class for spatial operations using JTS Topology Suite.
+ */
 public class GeometryUtils {
 
     private static final GeometryFactory geometryFactory = new GeometryFactory();
 
     /**
      * Converts a list of coordinates (x, y) into a JTS Polygon.
-     * Ensure the start and end coordinates are the same to close the linear ring.
+     * Ensures the polygon is closed as required by JTS.
      */
     public static Polygon createPolygon(List<double[]> points) {
         if (points == null || points.size() < 3) {
             throw new IllegalArgumentException("A polygon requires at least 3 points");
         }
-        
-        // JTS requires the linear ring to be closed (first and last point are identical)
-        boolean isClosed = false;
-        if (points.get(0)[0] == points.get(points.size() - 1)[0] &&
-            points.get(0)[1] == points.get(points.size() - 1)[1]) {
-            isClosed = true;
-        }
+
+        // Check if the polygon is closed (first and last point are the same)
+        boolean isClosed = points.get(0).length == 2 && 
+                          points.get(points.size() - 1).length == 2 &&
+                          points.get(0)[0] == points.get(points.size() - 1)[0] && 
+                          points.get(0)[1] == points.get(points.size() - 1)[1];
 
         Coordinate[] coordinates = new Coordinate[isClosed ? points.size() : points.size() + 1];
         for (int i = 0; i < points.size(); i++) {
             coordinates[i] = new Coordinate(points.get(i)[0], points.get(i)[1]);
         }
+
         if (!isClosed) {
             coordinates[coordinates.length - 1] = new Coordinate(points.get(0)[0], points.get(0)[1]);
         }
@@ -41,33 +44,38 @@ public class GeometryUtils {
     }
 
     /**
-     * Splits a Polygon into multiple Convex Polygons (Triangles) using Ear-Clipping.
-     * Triangles are inherently convex.
+     * Checks if a point (x, y) is inside a polygon defined by a list of points.
      */
-    public static List<Polygon> splitIntoConvexPolygons(Polygon polygon) {
-        List<Polygon> result = new ArrayList<>();
-        // PolygonTriangulator triangulates the interior of a polygon
-        org.locationtech.jts.geom.Geometry geom = PolygonTriangulator.triangulate(polygon);
-        
-        for (int i = 0; i < geom.getNumGeometries(); i++) {
-            org.locationtech.jts.geom.Geometry childGeom = geom.getGeometryN(i);
-            if (childGeom instanceof Polygon) {
-                result.add((Polygon) childGeom);
-            }
+    public static boolean isPointInPolygon(double x, double y, List<double[]> polygonPoints) {
+        if (polygonPoints == null || polygonPoints.isEmpty()) {
+            return false;
         }
-        return result;
+        
+        Polygon polygon = createPolygon(polygonPoints);
+        Point point = geometryFactory.createPoint(new Coordinate(x, y));
+        
+        return polygon.covers(point);
+    }
+    
+    /**
+     * Checks if a point (x, y) is inside a pre-built JTS Polygon.
+     */
+    public static boolean isPointInPolygon(double x, double y, Polygon polygon) {
+        if (polygon == null) {
+            return false;
+        }
+        Point point = geometryFactory.createPoint(new Coordinate(x, y));
+        return polygon.covers(point);
     }
 
     /**
-     * Checks if a point (x,y) resides inside any of the given polygons.
+     * Centralized JSON coordinate deserialization.
      */
-    public static boolean isPointInsideAnyPolygon(double x, double y, List<Polygon> polygons) {
-        Point pt = geometryFactory.createPoint(new Coordinate(x, y));
-        for (Polygon poly : polygons) {
-            if (poly.covers(pt)) {
-                return true;
-            }
+    public static List<double[]> deserializePoints(String json, ObjectMapper objectMapper) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<double[]>>() {});
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize coordinates: " + e.getMessage(), e);
         }
-        return false;
     }
 }
