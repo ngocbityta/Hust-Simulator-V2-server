@@ -191,8 +191,7 @@ CREATE TABLE buildings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,
     map_id UUID NOT NULL REFERENCES virtual_maps(id) ON DELETE CASCADE,
-    original_coordinates TEXT NOT NULL,
-    convex_polygons TEXT NOT NULL,
+    coordinates TEXT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

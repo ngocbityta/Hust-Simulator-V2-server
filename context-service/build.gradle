@@ -13,7 +13,7 @@ description = 'Context and Domain API Service for HustSimulator V2'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 

@@ -23,11 +23,8 @@ public class Building extends BaseEntity {
     @Column(name = "map_id", nullable = false)
     private UUID mapId;
 
-    @Column(columnDefinition = "TEXT", name = "original_coordinates", nullable = false)
-    private String originalCoordinates;
-
-    @Column(columnDefinition = "TEXT", name = "convex_polygons", nullable = false)
-    private String convexPolygons;
+    @Column(columnDefinition = "TEXT", name = "coordinates", nullable = false)
+    private String coordinates;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

@@ -43,22 +43,12 @@ public class BuildingService {
     public Building create(CreateBuildingRequest request) {
         log.info("Creating building '{}' on map {}", request.name(), request.mapId());
 
-        List<double[]> points = request.points().stream()
-                .map(p -> new double[]{p.x(), p.y()})
-                .collect(Collectors.toList());
-
-        Polygon polygon = GeometryUtils.createPolygon(points);
-
-        List<Polygon> convexPolygons = GeometryUtils.splitIntoConvexPolygons(polygon);
-
-        String originalJson = serializePoints(request.points());
-        String convexJson = serializeConvexPolygons(convexPolygons);
+        String coordinatesJson = serializePoints(request.points());
 
         Building building = Building.builder()
                 .name(request.name())
                 .mapId(request.mapId())
-                .originalCoordinates(originalJson)
-                .convexPolygons(convexJson)
+                .coordinates(coordinatesJson)
                 .build();
 
         return buildingRepository.save(building);
@@ -84,8 +74,8 @@ public class BuildingService {
 
     public boolean isPointInsideBuilding(UUID buildingId, double x, double y) {
         Building building = findById(buildingId);
-        List<Polygon> polygons = deserializeConvexPolygons(building.getConvexPolygons());
-        return GeometryUtils.isPointInsideAnyPolygon(x, y, polygons);
+        Polygon polygon = deserializePointsToPolygon(building.getCoordinates());
+        return GeometryUtils.isPointInsideAnyPolygon(x, y, List.of(polygon));
     }
 
     // --- JSON serialization helpers ---
@@ -98,38 +88,16 @@ public class BuildingService {
         }
     }
 
-    private String serializeConvexPolygons(List<Polygon> polygons) {
+    public Polygon deserializePointsToPolygon(String json) {
         try {
-            List<List<PointDto>> result = polygons.stream()
-                    .map(poly -> {
-                        var coords = poly.getCoordinates();
-                        List<PointDto> pts = new java.util.ArrayList<>();
-                        for (var coord : coords) {
-                            pts.add(new PointDto(coord.getX(), coord.getY()));
-                        }
-                        return pts;
-                    })
+            List<PointDto> pts = objectMapper.readValue(json,
+                    new TypeReference<List<PointDto>>() {});
+            List<double[]> coords = pts.stream()
+                    .map(p -> new double[]{p.x(), p.y()})
                     .collect(Collectors.toList());
-            return objectMapper.writeValueAsString(result);
+            return GeometryUtils.createPolygon(coords);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize convex polygons", e);
-        }
-    }
-
-    public List<Polygon> deserializeConvexPolygons(String json) {
-        try {
-            List<List<PointDto>> raw = objectMapper.readValue(json,
-                    new TypeReference<List<List<PointDto>>>() {});
-            return raw.stream()
-                    .map(pts -> {
-                        List<double[]> coords = pts.stream()
-                                .map(p -> new double[]{p.x(), p.y()})
-                                .collect(Collectors.toList());
-                        return GeometryUtils.createPolygon(coords);
-                    })
-                    .collect(Collectors.toList());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to deserialize convex polygons", e);
+            throw new RuntimeException("Failed to deserialize coordinates", e);
         }
     }
 
