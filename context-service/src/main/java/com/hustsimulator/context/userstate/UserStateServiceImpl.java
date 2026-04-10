@@ -12,9 +12,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class UserStateServiceImpl implements UserStateService {
 
     private final UserStateRepository userStateRepository;

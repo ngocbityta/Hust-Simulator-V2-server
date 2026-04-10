@@ -7,7 +7,7 @@ public interface SchedulerService {
     /**
      * Schedules a job for future execution.
      */
-    boolean scheduleJob(String jobId, String jobType, LocalDateTime targetTime, Map<String, String> metadata);
+    boolean scheduleJob(String jobId, String jobType, LocalDateTime targetTime);
 
     /**
      * Marks a job as completed.

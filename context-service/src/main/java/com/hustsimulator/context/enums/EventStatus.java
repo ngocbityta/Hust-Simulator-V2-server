@@ -1,6 +1,6 @@
 package com.hustsimulator.context.enums;
 
-public enum RecurringEventStatus {
+public enum EventStatus {
     SCHEDULED,
     ONGOING,
     COMPLETED,

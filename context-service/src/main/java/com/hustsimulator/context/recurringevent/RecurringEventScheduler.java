@@ -39,8 +39,7 @@ public class RecurringEventScheduler {
                     schedulerService.scheduleJob(
                         event.getId().toString(),
                         JOB_TYPE_START,
-                        nextFireTime,
-                        null
+                        nextFireTime
                     );
 
                     // Schedule END
@@ -48,8 +47,7 @@ public class RecurringEventScheduler {
                     schedulerService.scheduleJob(
                         event.getId().toString(),
                         JOB_TYPE_END,
-                        endTime,
-                        null
+                        endTime
                     );
                 }
             } catch (Exception e) {

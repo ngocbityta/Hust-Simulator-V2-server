@@ -1,28 +1,23 @@
 package com.hustsimulator.context.entity;
 
+import com.hustsimulator.context.common.BaseEntity;
+import com.hustsimulator.context.enums.UserActivityState;
 import jakarta.persistence.*;
 import lombok.*;
-import com.hustsimulator.context.enums.UserActivityState;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "user_states")
-@EntityListeners(AuditingEntityListener.class)
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserState {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+public class UserState extends BaseEntity {
 
     @Column(name = "user_id", unique = true, nullable = false)
     private UUID userId;
@@ -51,8 +46,4 @@ public class UserState {
 
     @Column(name = "entered_at")
     private LocalDateTime enteredAt;
-
-    @LastModifiedDate
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 }

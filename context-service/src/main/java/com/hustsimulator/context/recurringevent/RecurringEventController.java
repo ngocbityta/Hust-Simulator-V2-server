@@ -36,6 +36,11 @@ public class RecurringEventController {
         return recurringEventService.findByMapId(mapId);
     }
 
+    @GetMapping("/user/{userId}")
+    public List<RecurringEvent> findParticipatedEventsByUserId(@PathVariable UUID userId) {
+        return recurringEventService.findParticipatedEventsByUserId(userId);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RecurringEvent create(@Valid @RequestBody RecurringEvent recurringEvent) {

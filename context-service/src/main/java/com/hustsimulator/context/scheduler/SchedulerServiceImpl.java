@@ -26,7 +26,7 @@ public class SchedulerServiceImpl implements SchedulerService {
 
     @Override
     @Transactional
-    public boolean scheduleJob(String jobId, String jobType, LocalDateTime targetTime, Map<String, String> metadata) {
+    public boolean scheduleJob(String jobId, String jobType, LocalDateTime targetTime) {
         if (schedulerRepository.findByJobIdAndJobTypeAndTargetTime(jobId, jobType, targetTime).isPresent()) {
             log.debug("SchedulerService: Job already scheduled: {} / {} @ {}", jobId, jobType, targetTime);
             return false;
@@ -40,7 +40,7 @@ public class SchedulerServiceImpl implements SchedulerService {
                 .build();
         schedulerRepository.save(record);
 
-        publishToDelayQueue(jobId, jobType, targetTime, metadata);
+        publishToDelayQueue(jobId, jobType, targetTime);
 
         log.info("SchedulerService: Scheduled job '{}' of type '{}' for {}", jobId, jobType, targetTime);
         return true;
@@ -66,7 +66,7 @@ public class SchedulerServiceImpl implements SchedulerService {
         if (!missedJobs.isEmpty()) {
             log.warn("SchedulerService: Recovering {} missed jobs from downtime", missedJobs.size());
             for (ScheduledJob job : missedJobs) {
-                publishToDelayQueue(job.getJobId(), job.getJobType(), now, null);
+                publishToDelayQueue(job.getJobId(), job.getJobType(), now);
                 log.info("SchedulerService: Re-dispatched missed job: {} / {}", job.getJobId(), job.getJobType());
             }
         }
@@ -75,13 +75,13 @@ public class SchedulerServiceImpl implements SchedulerService {
         List<ScheduledJob> futureJobs = schedulerRepository.findByStatusAndTargetTimeBefore("PENDING", now.plusHours(1));
         for (ScheduledJob job : futureJobs) {
             if (job.getTargetTime().isAfter(now)) {
-                publishToDelayQueue(job.getJobId(), job.getJobType(), job.getTargetTime(), null);
+                publishToDelayQueue(job.getJobId(), job.getJobType(), job.getTargetTime());
                 log.info("SchedulerService: Re-enqueued future job: {} / {} @ {}", job.getJobId(), job.getJobType(), job.getTargetTime());
             }
         }
     }
 
-    private void publishToDelayQueue(String jobId, String jobType, LocalDateTime targetTime, Map<String, String> metadata) {
+    private void publishToDelayQueue(String jobId, String jobType, LocalDateTime targetTime) {
         LocalDateTime now = LocalDateTime.now();
         long delayMs = Duration.between(now, targetTime).toMillis();
         if (delayMs < 0) delayMs = 0;
@@ -91,9 +91,7 @@ public class SchedulerServiceImpl implements SchedulerService {
         payload.put("jobId", jobId);
         payload.put("type", jobType);
         payload.put("targetTime", targetTime.toString());
-        if (metadata != null) {
-            payload.putAll(metadata);
-        }
+
 
         rabbitTemplate.convertAndSend(
             RabbitMQConfig.DELAY_EXCHANGE,

@@ -62,7 +62,6 @@ public class MapServiceImpl implements MapService {
     @Override
     public boolean isPointInsideMap(UUID mapId, double x, double y) {
         Map map = findMapById(mapId);
-        List<double[]> points = GeometryUtils.deserializePoints(map.getCoordinates(), objectMapper);
-        return GeometryUtils.isPointInPolygon(x, y, points);
+        return GeometryUtils.isPointInPolygonJson(map.getCoordinates(), x, y, objectMapper);
     }
 }

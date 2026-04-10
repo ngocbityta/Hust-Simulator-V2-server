@@ -6,8 +6,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hustsimulator.context.building.BuildingRepository;
+import com.hustsimulator.context.common.GeometryUtils;
+import com.hustsimulator.context.entity.Building;
+import com.hustsimulator.context.entity.IndoorEvent;
+import com.hustsimulator.context.entity.OutdoorEvent;
+import com.hustsimulator.context.enums.EventStatus;
+import org.locationtech.jts.geom.Polygon;
+
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +25,8 @@ import java.util.UUID;
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
+    private final BuildingRepository buildingRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     public List<Event> findAll() {
@@ -23,7 +35,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<Event> findActiveEvents() {
-        return eventRepository.findByIsActiveTrue();
+        return eventRepository.findByStatusIn(List.of(EventStatus.SCHEDULED, EventStatus.ONGOING));
     }
 
     @Override
@@ -40,22 +52,68 @@ public class EventServiceImpl implements EventService {
     @Override
     public Event create(Event event) {
         log.info("Creating new event: {}", event.getName());
+        validateEvent(event);
         return eventRepository.save(event);
     }
 
     @Override
     public Event update(UUID id, Event eventDetails) {
         Event event = findById(id);
+        
+        if (event.getClass() != eventDetails.getClass()) {
+            throw new IllegalArgumentException("Cannot change event type");
+        }
+        
         event.setName(eventDetails.getName());
         event.setDescription(eventDetails.getDescription());
         event.setMapId(eventDetails.getMapId());
-        event.setRoomId(eventDetails.getRoomId());
+        event.setStatus(eventDetails.getStatus());
         event.setStartTime(eventDetails.getStartTime());
         event.setEndTime(eventDetails.getEndTime());
-        event.setIsActive(eventDetails.getIsActive());
+
+        if (event instanceof IndoorEvent indoorEvent && eventDetails instanceof IndoorEvent indoorDetails) {
+            indoorEvent.setBuildingId(indoorDetails.getBuildingId());
+            indoorEvent.setRoomIds(indoorDetails.getRoomIds());
+        } else if (event instanceof OutdoorEvent outdoorEvent && eventDetails instanceof OutdoorEvent outdoorDetails) {
+            outdoorEvent.setMinX(outdoorDetails.getMinX());
+            outdoorEvent.setMinY(outdoorDetails.getMinY());
+            outdoorEvent.setMaxX(outdoorDetails.getMaxX());
+            outdoorEvent.setMaxY(outdoorDetails.getMaxY());
+        }
+
+        validateEvent(event);
 
         log.info("Updating event: {}", id);
         return eventRepository.save(event);
+    }
+
+    private void validateEvent(Event event) {
+        if (event instanceof OutdoorEvent outdoor) {
+            if (outdoor.getMinX() == null || outdoor.getMinY() == null || outdoor.getMaxX() == null || outdoor.getMaxY() == null) {
+                throw new IllegalArgumentException("Outdoor event must have bounding box coordinates");
+            }
+            if (outdoor.getMinX() >= outdoor.getMaxX() || outdoor.getMinY() >= outdoor.getMaxY()) {
+                throw new IllegalArgumentException("Outdoor event bounding box is invalid: min coordinates must be strictly less than max coordinates");
+            }
+            List<Building> buildings = buildingRepository.findByMapId(event.getMapId());
+            
+            // Create event polygon from bounding box
+            List<double[]> eventPoints = new ArrayList<>();
+            eventPoints.add(new double[]{outdoor.getMinX(), outdoor.getMinY()});
+            eventPoints.add(new double[]{outdoor.getMaxX(), outdoor.getMinY()});
+            eventPoints.add(new double[]{outdoor.getMaxX(), outdoor.getMaxY()});
+            eventPoints.add(new double[]{outdoor.getMinX(), outdoor.getMaxY()});
+            eventPoints.add(new double[]{outdoor.getMinX(), outdoor.getMinY()});
+            
+            Polygon eventPolygon = GeometryUtils.createPolygon(eventPoints);
+            
+            for (Building building : buildings) {
+                Polygon buildingPolygon = GeometryUtils.createPolygonFromJson(building.getCoordinates(), objectMapper);
+                if (eventPolygon.intersects(buildingPolygon)) {
+                    throw new IllegalArgumentException("Outdoor event overlaps with building: " + building.getName());
+                }
+            }
+        }
     }
 
     @Override

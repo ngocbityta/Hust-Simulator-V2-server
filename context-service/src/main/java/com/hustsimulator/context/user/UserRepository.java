@@ -1,6 +1,6 @@
 package com.hustsimulator.context.user;
 
-import com.hustsimulator.context.entity.*;
+import com.hustsimulator.context.entity.User;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

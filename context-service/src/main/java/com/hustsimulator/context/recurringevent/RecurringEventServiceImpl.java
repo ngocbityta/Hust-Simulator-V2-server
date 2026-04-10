@@ -34,7 +34,7 @@ public class RecurringEventServiceImpl implements RecurringEventService {
 
     @Override
     public List<RecurringEvent> findScheduled() {
-        return recurringEventRepository.findByIsActiveTrue();
+        return recurringEventRepository.findByStatus(RecurringEventStatus.SCHEDULED);
     }
 
     @Override

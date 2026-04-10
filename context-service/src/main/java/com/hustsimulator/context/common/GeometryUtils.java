@@ -78,4 +78,20 @@ public class GeometryUtils {
             throw new RuntimeException("Failed to deserialize coordinates: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Helper to deserialize and create a polygon directly from JSON.
+     */
+    public static Polygon createPolygonFromJson(String json, ObjectMapper objectMapper) {
+        List<double[]> points = deserializePoints(json, objectMapper);
+        return createPolygon(points);
+    }
+
+    /**
+     * Helper to check if point is in a JSON-defined polygon.
+     */
+    public static boolean isPointInPolygonJson(String json, double x, double y, ObjectMapper objectMapper) {
+        Polygon polygon = createPolygonFromJson(json, objectMapper);
+        return isPointInPolygon(x, y, polygon);
+    }
 }

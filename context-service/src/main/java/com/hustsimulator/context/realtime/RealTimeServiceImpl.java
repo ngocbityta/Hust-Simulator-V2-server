@@ -3,8 +3,8 @@ package com.hustsimulator.context.realtime;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.hustsimulator.context.entity.Message;
 import com.hustsimulator.context.message.MessageService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -14,17 +14,12 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class RealTimeServiceImpl implements RealTimeService {
 
     private final SocketIOServer server;
     private final MessageService messageService;
-
-    @Autowired
-    public RealTimeServiceImpl(SocketIOServer server, MessageService messageService) {
-        this.server = server;
-        this.messageService = messageService;
-    }
 
     @PostConstruct
     public void initListeners() {

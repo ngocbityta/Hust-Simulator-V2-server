@@ -44,7 +44,7 @@ class SchedulerServiceTest {
         when(schedulerRepository.save(any(ScheduledJob.class)))
                 .thenAnswer(i -> i.getArgument(0));
 
-        boolean result = schedulerService.scheduleJob(jobId, type, targetTime, Collections.emptyMap());
+        boolean result = schedulerService.scheduleJob(jobId, type, targetTime);
 
         assertThat(result).isTrue();
         verify(schedulerRepository).save(any(ScheduledJob.class));
@@ -60,7 +60,7 @@ class SchedulerServiceTest {
         when(schedulerRepository.findByJobIdAndJobTypeAndTargetTime(jobId, type, targetTime))
                 .thenReturn(Optional.of(new ScheduledJob()));
 
-        boolean result = schedulerService.scheduleJob(jobId, type, targetTime, null);
+        boolean result = schedulerService.scheduleJob(jobId, type, targetTime);
 
         assertThat(result).isFalse();
         verify(schedulerRepository, never()).save(any());

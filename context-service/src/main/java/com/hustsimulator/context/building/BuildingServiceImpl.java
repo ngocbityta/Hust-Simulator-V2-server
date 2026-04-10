@@ -79,8 +79,7 @@ public class BuildingServiceImpl implements BuildingService {
     @Override
     public boolean isPointInsideBuilding(UUID buildingId, double x, double y) {
         Building building = findById(buildingId);
-        List<double[]> points = GeometryUtils.deserializePoints(building.getCoordinates(), objectMapper);
-        return GeometryUtils.isPointInPolygon(x, y, points);
+        return GeometryUtils.isPointInPolygonJson(building.getCoordinates(), x, y, objectMapper);
     }
 
     private String serializePoints(List<double[]> points) {
