@@ -9,11 +9,8 @@ public interface BuildingService {
     List<Building> findByMapId(UUID mapId);
     List<Building> findActive();
     Building findById(UUID id);
-    Building create(CreateBuildingRequest request);
-    Building update(UUID id, UpdateBuildingRequest request);
+    Building create(BuildingDTO.CreateBuildingRequest request);
+    Building update(UUID id, BuildingDTO.UpdateBuildingRequest request);
     void delete(UUID id);
     boolean isPointInsideBuilding(UUID buildingId, double x, double y);
-
-    record CreateBuildingRequest(String name, UUID mapId, List<double[]> points) {}
-    record UpdateBuildingRequest(String name, Boolean isActive) {}
 }

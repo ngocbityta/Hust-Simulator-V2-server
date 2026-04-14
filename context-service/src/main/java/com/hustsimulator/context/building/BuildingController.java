@@ -46,14 +46,14 @@ public class BuildingController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a new building", description = "Create a physical building defined by a polygon of coordinates")
-    public Building create(@Valid @RequestBody BuildingService.CreateBuildingRequest request) {
+    public Building create(@Valid @RequestBody BuildingDTO.CreateBuildingRequest request) {
         return buildingService.create(request);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update building", description = "Update metadata or status of an existing building")
     public Building update(@PathVariable UUID id,
-                           @Valid @RequestBody BuildingService.UpdateBuildingRequest request) {
+                           @Valid @RequestBody BuildingDTO.UpdateBuildingRequest request) {
         return buildingService.update(id, request);
     }
 

@@ -1,5 +1,7 @@
 package com.hustsimulator.context.room;
 
+import com.hustsimulator.context.enums.RoomStatus;
+
 import com.hustsimulator.context.common.ResourceNotFoundException;
 import com.hustsimulator.context.entity.Room;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +30,7 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<Room> findActive() {
-        return roomRepository.findByIsActiveTrue();
+        return roomRepository.findByStatusNot(RoomStatus.CLOSED);
     }
 
     @Override
@@ -38,7 +40,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public Room create(CreateRoomRequest request) {
+    public Room create(RoomDTO.CreateRoomRequest request) {
         log.info("Creating room '{}' in building {}", request.name(), request.buildingId());
         Room room = Room.builder()
                 .name(request.name())
@@ -48,13 +50,10 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public Room update(UUID id, UpdateRoomRequest request) {
+    public Room update(UUID id, RoomDTO.UpdateRoomRequest request) {
         Room room = findById(id);
         if (request.name() != null) {
             room.setName(request.name());
-        }
-        if (request.isActive() != null) {
-            room.setIsActive(request.isActive());
         }
         log.info("Updating room: {}", id);
         return roomRepository.save(room);

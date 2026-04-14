@@ -27,7 +27,4 @@ public class Room extends BaseEntity {
     @Builder.Default
     private RoomStatus status = RoomStatus.EMPTY;
 
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
 }

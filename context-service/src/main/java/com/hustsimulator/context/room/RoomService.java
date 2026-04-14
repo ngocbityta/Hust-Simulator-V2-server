@@ -9,10 +9,7 @@ public interface RoomService {
     List<Room> findByBuildingId(UUID buildingId);
     List<Room> findActive();
     Room findById(UUID id);
-    Room create(CreateRoomRequest request);
-    Room update(UUID id, UpdateRoomRequest request);
+    Room create(RoomDTO.CreateRoomRequest request);
+    Room update(UUID id, RoomDTO.UpdateRoomRequest request);
     void delete(UUID id);
-
-    record CreateRoomRequest(String name, UUID buildingId) {}
-    record UpdateRoomRequest(String name, Boolean isActive) {}
 }

@@ -10,7 +10,7 @@ import com.hustsimulator.context.enums.RecurringEventStatus;
 
 public interface RecurringEventRepository extends JpaRepository<RecurringEvent, UUID> {
     List<RecurringEvent> findByMapId(UUID mapId);
-    List<RecurringEvent> findByIsActiveTrue();
+    List<RecurringEvent> findByStatusIn(java.util.Collection<RecurringEventStatus> statuses);
     List<RecurringEvent> findByStatus(RecurringEventStatus status);
 
     @org.springframework.data.jpa.repository.Query("SELECT r FROM RecurringEvent r WHERE r.id IN (SELECT DISTINCT m.eventId FROM Message m WHERE m.senderId = :userId)")

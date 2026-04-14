@@ -29,7 +29,7 @@ public class RecurringEventServiceImpl implements RecurringEventService {
 
     @Override
     public List<RecurringEvent> findActive() {
-        return recurringEventRepository.findByIsActiveTrue();
+        return recurringEventRepository.findByStatusIn(List.of(RecurringEventStatus.SCHEDULED, RecurringEventStatus.ONGOING));
     }
 
     @Override
@@ -100,7 +100,6 @@ public class RecurringEventServiceImpl implements RecurringEventService {
         recurringEvent.setDescription(recurringEventDetails.getDescription());
         recurringEvent.setMapId(recurringEventDetails.getMapId());
         recurringEvent.setCronExpression(recurringEventDetails.getCronExpression());
-        recurringEvent.setIsActive(recurringEventDetails.getIsActive());
         recurringEvent.setDurationMinutes(recurringEventDetails.getDurationMinutes());
 
         log.info("Updating recurring event: {}", id);

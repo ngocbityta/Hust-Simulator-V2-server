@@ -38,13 +38,13 @@ public class RoomController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Room create(@Valid @RequestBody RoomService.CreateRoomRequest request) {
+    public Room create(@Valid @RequestBody RoomDTO.CreateRoomRequest request) {
         return roomService.create(request);
     }
 
     @PutMapping("/{id}")
     public Room update(@PathVariable UUID id,
-                       @Valid @RequestBody RoomService.UpdateRoomRequest request) {
+                       @Valid @RequestBody RoomDTO.UpdateRoomRequest request) {
         return roomService.update(id, request);
     }
 

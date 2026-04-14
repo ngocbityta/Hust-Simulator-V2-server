@@ -1,5 +1,6 @@
 package com.hustsimulator.context.building;
 
+import com.hustsimulator.context.building.BuildingDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hustsimulator.context.common.ResourceNotFoundException;
 import com.hustsimulator.context.entity.Building;
@@ -58,7 +59,7 @@ class BuildingServiceTest {
     void create_shouldSaveAndReturn() {
         UUID mapId = UUID.randomUUID();
         List<double[]> points = List.of(new double[]{0, 0}, new double[]{10, 0}, new double[]{10, 10}, new double[]{0, 10});
-        BuildingService.CreateBuildingRequest request = new BuildingService.CreateBuildingRequest("D6", mapId, points);
+        BuildingDTO.CreateBuildingRequest request = new BuildingDTO.CreateBuildingRequest("D6", mapId, points);
 
         when(buildingRepository.save(any(Building.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

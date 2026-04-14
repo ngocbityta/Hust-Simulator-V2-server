@@ -42,6 +42,10 @@ spring:
     username: ${RABBITMQ_USER:hustsim}
     password: ${RABBITMQ_PASSWORD:hustsim_rabbit}
 
+hustsimulator:
+  jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  jwtExpirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+
 # Server
 server:
   port: ${CONTEXT_SERVICE_PORT:8080}
@@ -50,6 +54,8 @@ server:
 grpc:
   server:
     port: ${CONTEXT_SERVICE_GRPC_PORT:50052}
+    security:
+      enabled: false
   client:
     game-server:
       address: static://${GAME_SERVER_HOST:localhost}:${GAME_SERVER_GRPC_PORT:50051}

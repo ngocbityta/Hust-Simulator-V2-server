@@ -43,7 +43,7 @@ public class UserStateController {
 
     @PutMapping("/{userId}/map")
     @Operation(summary = "Change map", description = "Transfer a player to a different virtual map")
-    public UserState changeMap(@PathVariable UUID userId, @RequestBody ChangeMapRequest request) {
+    public UserState changeMap(@PathVariable UUID userId, @RequestBody UserStateDTO.ChangeMapRequest request) {
         return userStateService.changeMap(userId, request.mapId());
     }
 
@@ -56,7 +56,7 @@ public class UserStateController {
 
     @PutMapping("/{userId}/building")
     @Operation(summary = "Join building", description = "Update player state when entering a physical building area")
-    public UserState joinBuilding(@PathVariable UUID userId, @RequestBody JoinBuildingRequest request) {
+    public UserState joinBuilding(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinBuildingRequest request) {
         return userStateService.joinBuilding(userId, request.buildingId(), request.userX(), request.userY());
     }
 
@@ -68,7 +68,7 @@ public class UserStateController {
     // --- Room ---
 
     @PutMapping("/{userId}/room")
-    public UserState joinRoom(@PathVariable UUID userId, @RequestBody JoinRoomRequest request) {
+    public UserState joinRoom(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinRoomRequest request) {
         return userStateService.joinRoom(userId, request.roomId());
     }
 
@@ -80,7 +80,7 @@ public class UserStateController {
     // --- Event ---
 
     @PutMapping("/{userId}/event")
-    public UserState joinEvent(@PathVariable UUID userId, @RequestBody JoinEventRequest request) {
+    public UserState joinEvent(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinEventRequest request) {
         return userStateService.joinEvent(userId, request.eventId(), request.buildingId(), request.userX(), request.userY());
     }
 
@@ -92,7 +92,7 @@ public class UserStateController {
     // --- Recurring Event ---
 
     @PutMapping("/{userId}/recurring-event")
-    public UserState joinRecurringEvent(@PathVariable UUID userId, @RequestBody JoinRecurringEventRequest request) {
+    public UserState joinRecurringEvent(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinRecurringEventRequest request) {
         return userStateService.joinRecurringEvent(userId, request.eventId(), request.buildingId(), request.userX(), request.userY());
     }
 
@@ -100,16 +100,7 @@ public class UserStateController {
 
     @PutMapping("/{userId}/activity")
     @Operation(summary = "Update activity state", description = "Directly modify a user's activity state (ROAMING, SPECTATING, etc.)")
-    public UserState updateActivity(@PathVariable UUID userId, @RequestBody UpdateActivityRequest request) {
+    public UserState updateActivity(@PathVariable UUID userId, @RequestBody UserStateDTO.UpdateActivityRequest request) {
         return userStateService.updateActivity(userId, request.activityState(), request.sessionData());
     }
-
-    // --- DTOs ---
-
-    public record ChangeMapRequest(UUID mapId) {}
-    public record JoinBuildingRequest(UUID buildingId, Double userX, Double userY) {}
-    public record JoinRoomRequest(UUID roomId) {}
-    public record JoinEventRequest(UUID eventId, UUID buildingId, Double userX, Double userY) {}
-    public record JoinRecurringEventRequest(UUID eventId, UUID buildingId, Double userX, Double userY) {}
-    public record UpdateActivityRequest(UserActivityState activityState, String sessionData) {}
 }

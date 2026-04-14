@@ -42,7 +42,7 @@ public class BuildingServiceImpl implements BuildingService {
     }
 
     @Override
-    public Building create(CreateBuildingRequest request) {
+    public Building create(BuildingDTO.CreateBuildingRequest request) {
         log.info("Creating building '{}' on map {}", request.name(), request.mapId());
 
         String coordinatesJson = serializePoints(request.points());
@@ -57,7 +57,7 @@ public class BuildingServiceImpl implements BuildingService {
     }
 
     @Override
-    public Building update(UUID id, UpdateBuildingRequest request) {
+    public Building update(UUID id, BuildingDTO.UpdateBuildingRequest request) {
         Building building = findById(id);
         if (request.name() != null) {
             building.setName(request.name());
