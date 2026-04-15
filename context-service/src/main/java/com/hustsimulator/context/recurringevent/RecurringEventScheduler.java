@@ -22,7 +22,7 @@ public class RecurringEventScheduler {
     public static final String JOB_TYPE_START = "START_CLASS";
     public static final String JOB_TYPE_END = "END_CLASS";
 
-    @Scheduled(fixedRate = 600000) // 10 minutes
+    @Scheduled(fixedRate = 30000) // 30 seconds
     public void scanAndSchedule() {
         log.info("Modular Scheduler: Scanning for upcoming classes...");
         List<RecurringEvent> activeEvents = recurringEventService.findScheduled();

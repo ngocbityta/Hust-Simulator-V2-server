@@ -61,6 +61,9 @@ dependencies {
 	// DevTools
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+	// Firebase Admin
+	implementation 'com.google.firebase:firebase-admin:9.2.0'
+
 	// JTS Topology Suite for geometry and convex polygons
 	implementation 'org.locationtech.jts:jts-core:1.19.0'
 

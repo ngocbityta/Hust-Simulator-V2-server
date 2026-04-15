@@ -23,6 +23,7 @@ public class User extends BaseEntity {
 
     @NotBlank
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String password;
 
     private String username;
@@ -38,6 +39,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 2)
     private UserRole role;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String token;
 
     @Enumerated(EnumType.STRING)

@@ -91,9 +91,8 @@ class UserServiceTest {
     @Test
     void update_shouldModifyAndSaveUser() {
         User updated = User.builder()
-                .username("updated")
-                .role(UserRole.GV)
-                .status(UserStatus.LOCKED)
+                .username("updated_username")
+                .description("Updated description")
                 .build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(userRepository.save(any(User.class))).thenReturn(testUser);
@@ -101,7 +100,8 @@ class UserServiceTest {
         userService.update(userId, updated);
 
         verify(userRepository).save(testUser);
-        assertThat(testUser.getUsername()).isEqualTo("updated");
+        assertThat(testUser.getUsername()).isEqualTo("updated_username");
+        assertThat(testUser.getDescription()).isEqualTo("Updated description");
     }
 
     @Test
