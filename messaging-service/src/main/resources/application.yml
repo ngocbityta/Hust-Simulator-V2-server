@@ -21,13 +21,6 @@ spring:
     init:
       mode: never
 
-  # Flyway Database Migration
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    table: flyway_schema_history_messaging
-
   # RabbitMQ
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}

@@ -1,69 +1,50 @@
--- Enable PostGIS extension
-CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ============================================
--- HustSimulator V2 - Database Schema
--- ============================================
+CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    phonenumber VARCHAR UNIQUE NOT NULL,
-    password VARCHAR NOT NULL,
-    username VARCHAR,
-    avatar VARCHAR,
-    cover_image VARCHAR,
-    description TEXT,
-    role VARCHAR(2) NOT NULL CHECK (role IN ('HV', 'GV')),
-    token VARCHAR,
-    status VARCHAR(10) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'LOCKED')),
-    online BOOLEAN DEFAULT FALSE,
-    last_position GEOMETRY(POINT, 4326),
+    username VARCHAR UNIQUE NOT NULL,
+    email VARCHAR UNIQUE NOT NULL,
+    password_hash VARCHAR NOT NULL,
+    full_name VARCHAR,
+    avatar_url VARCHAR,
+    status VARCHAR DEFAULT 'ACTIVE',
+    last_position GEOMETRY(Point, 4326),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Blocks table
 CREATE TABLE blocks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     blocker_id UUID REFERENCES users(id) ON DELETE CASCADE,
     blocked_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    PRIMARY KEY (blocker_id, blocked_id)
-);
-
--- Enrollments table
-CREATE TABLE enrollments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(10) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (blocker_id, blocked_id)
 );
 
 -- Posts table
 CREATE TABLE posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    author_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    described TEXT,
-    course_id UUID,
-    exercise_id UUID,
-    time_series_poses JSONB,
-    can_comment BOOLEAN DEFAULT TRUE,
-    can_edit BOOLEAN DEFAULT TRUE,
-    is_banned BOOLEAN DEFAULT FALSE,
-    location GEOMETRY(POINT, 4326),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT,
+    video_url VARCHAR,
+    status VARCHAR DEFAULT 'ACTIVE',
+    location GEOMETRY(Point, 4326),
+    can_edit VARCHAR DEFAULT '1',
+    can_comment VARCHAR DEFAULT '1',
+    banned VARCHAR DEFAULT '0',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Reports table
-CREATE TABLE reports (
+-- Post images table
+CREATE TABLE post_images (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
-    subject VARCHAR,
-    details TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    url VARCHAR,
+    description TEXT
 );
 
 -- Post videos table
@@ -113,7 +94,8 @@ CREATE TABLE messages (
     content TEXT,
     is_read BOOLEAN DEFAULT FALSE,
     is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Devices table
@@ -189,7 +171,6 @@ CREATE TABLE rooms (
     name VARCHAR NOT NULL,
     building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
     status VARCHAR(30) DEFAULT 'EMPTY', -- From V2
-    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -206,6 +187,8 @@ CREATE TABLE events (
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    type VARCHAR(31), -- Added manually based on DiscriminatorColumn in entity
+    status VARCHAR(30) DEFAULT 'SCHEDULED', -- Added based on entity event status
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -221,7 +204,6 @@ CREATE TABLE recurring_events (
     cron_expression VARCHAR NOT NULL,
     status VARCHAR(30) DEFAULT 'SCHEDULED', -- From V2
     duration_minutes INTEGER DEFAULT 60, -- From V2
-    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -239,7 +221,8 @@ CREATE TABLE user_states (
     event_id UUID,
     session_data JSONB DEFAULT '{}',
     entered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- From V4
 );
 CREATE INDEX idx_user_states_activity ON user_states (activity_state);
 CREATE INDEX idx_user_states_map ON user_states (map_id);
@@ -254,7 +237,8 @@ CREATE TABLE messages_chat (
     type VARCHAR(20) NOT NULL DEFAULT 'text' CHECK (type IN ('text', 'file', 'image')),
     content TEXT,
     file_id UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- from messaging service v2
 );
 CREATE INDEX idx_messages_chat_event ON messages_chat (event_id);
 CREATE INDEX idx_messages_chat_sender ON messages_chat (sender_id);

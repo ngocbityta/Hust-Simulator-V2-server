@@ -1,3 +1,0 @@
--- Messaging-service owns messages_chat and stored_files tables.
--- These tables are already created by the original context-service migration.
--- This migration is intentionally empty as a baseline marker.

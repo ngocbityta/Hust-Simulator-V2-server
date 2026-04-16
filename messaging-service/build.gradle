@@ -39,8 +39,6 @@ dependencies {
 
 	// Database
 	runtimeOnly 'org.postgresql:postgresql'
-	implementation 'org.flywaydb:flyway-core'
-	implementation 'org.flywaydb:flyway-database-postgresql'
 
 	// Socket.IO for Java (Netty based)
 	implementation 'com.corundumstudio.socketio:netty-socketio:2.0.12'

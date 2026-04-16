@@ -21,13 +21,6 @@ spring:
     init:
       mode: never
 
-  # Flyway Database Migration
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    table: flyway_schema_history_auth
-
 hustsimulator:
   jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   jwtExpirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 hours
