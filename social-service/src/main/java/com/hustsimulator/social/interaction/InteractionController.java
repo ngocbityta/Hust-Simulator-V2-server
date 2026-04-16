@@ -16,7 +16,7 @@ public class InteractionController {
 
     @PostMapping("/like")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void like(@RequestBody LikeDTO.LikeRequest request,
+    public void like(@RequestBody InteractionDTO.LikeRequest request,
                      @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
         UUID userId = userIdHeader != null ? UUID.fromString(userIdHeader) : UUID.randomUUID();
         interactionService.likePost(request.postId(), userId);
@@ -24,7 +24,7 @@ public class InteractionController {
 
     @PostMapping("/unlike")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unlike(@RequestBody LikeDTO.LikeRequest request,
+    public void unlike(@RequestBody InteractionDTO.LikeRequest request,
                        @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
         UUID userId = userIdHeader != null ? UUID.fromString(userIdHeader) : UUID.randomUUID();
         interactionService.unlikePost(request.postId(), userId);

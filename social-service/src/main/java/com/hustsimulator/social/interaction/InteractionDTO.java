@@ -5,7 +5,7 @@ import java.util.UUID;
 /**
  * Data Transfer Objects for Like operations.
  */
-public class LikeDTO {
+public class InteractionDTO {
 
     public record LikeRequest(UUID postId) {}
 }

@@ -20,8 +20,6 @@ public class MessageController {
 
     @Data
     public static class MessageRequest {
-        @NotNull
-        private UUID senderId;
         @NotBlank
         private String type;
         private String content;
@@ -39,23 +37,19 @@ public class MessageController {
     @ResponseStatus(HttpStatus.CREATED)
     public Message sendMessage(
             @PathVariable UUID eventId,
-            @Valid @RequestBody MessageRequest request) {
+            @Valid @RequestBody MessageRequest request,
+            @RequestHeader("X-User-Id") String userIdHeader) {
+
+        UUID senderId = UUID.fromString(userIdHeader);
+
         return messageService.save(
                 eventId,
-                request.getSenderId(),
+                senderId,
                 request.getType(),
                 request.getContent(),
-                request.getFileId()
-        );
+                request.getFileId());
     }
 
-    // ─── Cross-service API: context-service gọi endpoint này thay vì query
-    //     trực tiếp vào bảng messages_chat của messaging-service ─────────────
-
-    /**
-     * Trả về danh sách event ID mà user đã từng tham gia (đã gửi ít nhất 1 tin nhắn).
-     * Endpoint này dành cho context-service gọi qua HTTP — không query cross-DB.
-     */
     @GetMapping("/api/messages/participated-events")
     public List<UUID> getParticipatedEventIds(@RequestParam UUID userId) {
         return messageService.getParticipatedEventIds(userId);

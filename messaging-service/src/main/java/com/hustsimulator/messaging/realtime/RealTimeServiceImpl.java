@@ -23,9 +23,13 @@ public class RealTimeServiceImpl implements RealTimeService {
 
     @PostConstruct
     public void initListeners() {
-        server.addConnectListener(client ->
-            log.info("SocketIO Client connected: {}", client.getSessionId())
-        );
+        server.addConnectListener(client -> {
+            String userIdStr = client.getHandshakeData().getHttpHeaders().get("X-User-Id");
+            if (userIdStr != null) {
+                client.set("userId", userIdStr);
+            }
+            log.info("SocketIO Client connected: {} with userId: {}", client.getSessionId(), userIdStr);
+        });
 
         server.addDisconnectListener(client ->
             log.info("SocketIO Client disconnected: {}", client.getSessionId())
@@ -55,7 +59,11 @@ public class RealTimeServiceImpl implements RealTimeService {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> mapData = (Map<String, Object>) data;
                 String eventId = (String) mapData.get("eventId");
-                String senderId = (String) mapData.get("senderId");
+                
+                // Get senderId directly from secure client attributes first
+                String secureUserId = client.get("userId");
+                String senderId = secureUserId != null ? secureUserId : (String) mapData.get("senderId");
+                
                 String type = (String) mapData.getOrDefault("type", "text");
                 String content = (String) mapData.get("content");
                 String fileIdStr = (String) mapData.get("fileId");

@@ -7,7 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,7 +78,7 @@ public class PostServiceImpl implements PostService {
         Post post = findById(id);
         
         if (!post.getUserId().equals(userId)) {
-            throw new AccessDeniedException("You are not allowed to update this post");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to update this post");
         }
 
         if (request.content() != null) post.setContent(request.content());
@@ -96,7 +97,7 @@ public class PostServiceImpl implements PostService {
         Post post = findById(id);
         
         if (!post.getUserId().equals(userId)) {
-            throw new AccessDeniedException("You are not allowed to delete this post");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to delete this post");
         }
 
         postRepository.delete(post);

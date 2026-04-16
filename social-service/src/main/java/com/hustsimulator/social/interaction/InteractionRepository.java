@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface LikeRepository extends JpaRepository<Like, UUID> {
+public interface InteractionRepository extends JpaRepository<Like, UUID> {
     Optional<Like> findByUserIdAndPostId(UUID userId, UUID postId);
     long countByPostId(UUID postId);
     boolean existsByUserIdAndPostId(UUID userId, UUID postId);
