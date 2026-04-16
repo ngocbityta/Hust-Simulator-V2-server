@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package hustsimulator.computation;
+
+import "common.proto";
+import "player.proto";
+
+option java_package = "com.hustsimulator.context.grpc.proto";
+option java_outer_classname = "ComputationProto";
+
+message UserMoveEvent {
+  string user_id = 1;
+  hustsimulator.common.Coordinates position = 2;
+  float speed = 3;
+  float heading = 4;
+}
+
+message UserStateChangeEvent {
+  string user_id = 1;
+  hustsimulator.player.UserActivityState activity_state = 2;
+  string map_id = 3;
+  string event_id = 4;
+  string session_data = 5; // JSON string
+  hustsimulator.common.Coordinates position = 6;
+}
+
+service ComputationService {
+  rpc ProcessUserMove(UserMoveEvent) returns (hustsimulator.common.StatusResponse);
+  rpc ProcessUserStateChange(UserStateChangeEvent) returns (hustsimulator.common.StatusResponse);
+}

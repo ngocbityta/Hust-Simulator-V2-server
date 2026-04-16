@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: social-service
+
+  # PostgreSQL + PostGIS
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
+    username: ${POSTGRES_USER:hustsim}
+    password: ${POSTGRES_PASSWORD:hustsim_secret}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: never
+
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:hustsim_redis}
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:hustsim}
+    password: ${RABBITMQ_PASSWORD:hustsim_rabbit}
+
+hustsimulator:
+  jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+
+# Server
+server:
+  port: ${SOCIAL_SERVICE_PORT:8083}
+
+# gRPC Server
+grpc:
+  server:
+    port: ${SOCIAL_SERVICE_GRPC_PORT:50054}
+    security:
+      enabled: false
+  client:
+    game-server:
+      address: static://${GAME_SERVER_HOST:localhost}:${GAME_SERVER_GRPC_PORT:50051}
+      negotiation-type: plaintext
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

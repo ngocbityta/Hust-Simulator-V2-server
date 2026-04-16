@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package hustsimulator.context;
+
+import "common.proto";
+
+option java_package = "com.hustsimulator.context.grpc.proto";
+option java_outer_classname = "ContextProto";
+
+// Zone/Area of Interest definition
+message Zone {
+  string zone_id = 1;
+  string name = 2;
+  string type = 3;          // BUILDING, CLASSROOM, LIBRARY, PARKING, EVENT_AREA, etc.
+  hustsimulator.common.Coordinates center = 4;
+  string coordinates = 5;       // Polygon points string
+  map<string, string> metadata = 6;
+}
+
+// Spatial trigger event
+message SpatialTriggerEvent {
+  string player_id = 1;
+  string zone_id = 2;
+  TriggerType trigger_type = 3;
+  hustsimulator.common.Timestamp timestamp = 4;
+}
+
+enum TriggerType {
+  TRIGGER_TYPE_UNSPECIFIED = 0;
+  ENTER = 1;
+  EXIT = 2;
+  DWELL = 3;   // Player stayed in zone for a threshold duration
+}
+
+// Context event pushed to game-server
+message ContextEvent {
+  string event_id = 1;
+  string player_id = 2;
+  string event_type = 3;      // NOTIFICATION, QUEST, STUDY_ROOM, CHECK_IN, etc.
+  string title = 4;
+  string description = 5;
+  map<string, string> payload = 6;
+  hustsimulator.common.Timestamp timestamp = 7;
+}
+
+// Request to check if a player is in any zone
+message ZoneCheckRequest {
+  string player_id = 1;
+  hustsimulator.common.Coordinates position = 2;
+}
+
+message ZoneCheckResponse {
+  repeated Zone zones = 1;    // All zones the player is currently in
+}
+
+// Request to get active events for a player
+message ActiveEventsRequest {
+  string player_id = 1;
+}
+
+message ActiveEventsResponse {
+  repeated ContextEvent events = 1;
+}
+
+// Request to update player comprehensive state
+message UpdatePlayerStateRequest {
+  string player_id = 1;
+  hustsimulator.common.Coordinates position = 2;
+  string activity_state = 3;
+  string map_id = 4;
+  string event_id = 5;
+  hustsimulator.common.Timestamp timestamp = 6;
+}
+
+// Service: Context Service exposes domain logic to Game Server
+service ContextEngineService {
+  // Check which zones a player is currently in
+  rpc CheckPlayerZone(ZoneCheckRequest) returns (ZoneCheckResponse);
+
+  // Report a spatial trigger (player entered/exited a zone)
+  rpc ReportSpatialTrigger(SpatialTriggerEvent) returns (hustsimulator.common.StatusResponse);
+
+  // Update full player state (position + activity + context)
+  rpc UpdatePlayerState(UpdatePlayerStateRequest) returns (hustsimulator.common.StatusResponse);
+
+  // Get active context events for a player
+  rpc GetActiveEvents(ActiveEventsRequest) returns (ActiveEventsResponse);
+
+  // Stream context events to game-server (server push)
+  rpc StreamContextEvents(ActiveEventsRequest) returns (stream ContextEvent);
+}

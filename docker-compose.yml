@@ -163,6 +163,39 @@ services:
       # URL của messaging-service — dùng cho MessagingServiceClient (HTTP)
       MESSAGING_SERVICE_URL: http://messaging-service:8082
 
+  # ─── Social Service ────────────────────────────────────────────────
+  social-service:
+    build:
+      context: .
+      dockerfile: social-service/Dockerfile
+    container_name: hustsim-social-service
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${SOCIAL_SERVICE_PORT:-8083}:8083"
+      - "${SOCIAL_SERVICE_GRPC_PORT:-50054}:50054"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
+      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
+      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      SOCIAL_SERVICE_PORT: 8083
+      SOCIAL_SERVICE_GRPC_PORT: 50054
+
   state-dissemination-service:
     build:
       context: .
