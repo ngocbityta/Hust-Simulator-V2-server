@@ -8,26 +8,17 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 
+/**
+ * JWT utilities for context-service.
+ * Validate only — token generation is handled by auth-service.
+ */
 @Component
 @Slf4j
 public class JwtUtils {
 
     @Value("${hustsimulator.jwtSecret}")
     private String jwtSecret;
-
-    @Value("${hustsimulator.jwtExpirationMs}")
-    private int jwtExpirationMs;
-
-    public String generateToken(String phonenumber) {
-        return Jwts.builder()
-                .subject(phonenumber)
-                .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey())
-                .compact();
-    }
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
@@ -41,6 +32,15 @@ public class JwtUtils {
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
+    }
+
+    public String getUserIdFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("userId", String.class);
     }
 
     public boolean validateToken(String authToken) {

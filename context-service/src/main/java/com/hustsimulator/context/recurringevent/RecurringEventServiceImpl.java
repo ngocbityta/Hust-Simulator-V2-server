@@ -5,12 +5,14 @@ import com.hustsimulator.context.entity.Room;
 import com.hustsimulator.context.common.ResourceNotFoundException;
 import com.hustsimulator.context.enums.RecurringEventStatus;
 import com.hustsimulator.context.enums.RoomStatus;
+import com.hustsimulator.context.messaging.MessagingServiceClient;
 import com.hustsimulator.context.room.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +23,7 @@ public class RecurringEventServiceImpl implements RecurringEventService {
 
     private final RecurringEventRepository recurringEventRepository;
     private final RoomRepository roomRepository;
+    private final MessagingServiceClient messagingServiceClient;
 
     @Override
     public List<RecurringEvent> findAll() {
@@ -50,7 +53,12 @@ public class RecurringEventServiceImpl implements RecurringEventService {
 
     @Override
     public List<RecurringEvent> findParticipatedEventsByUserId(UUID userId) {
-        return recurringEventRepository.findParticipatedEventsByUserId(userId);
+        // Gọi messaging-service qua HTTP thay vì query cross-service DB trực tiếp
+        List<UUID> participatedEventIds = messagingServiceClient.getParticipatedEventIds(userId);
+        if (participatedEventIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return recurringEventRepository.findByIdIn(participatedEventIds);
     }
 
     @Override

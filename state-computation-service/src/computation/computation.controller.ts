@@ -54,8 +54,17 @@ export class ComputationController {
       clientTimestamp: data.clientTimestamp,
     });
 
-    // 20% random context sync
-    if (Math.random() < 0.2) {
+    // Time-based throttle instead of 20% random sync: sync max once every 5 seconds per user
+    const throttleKey = `throttle:sync:${data.userId}`;
+    const canSync = await this.redisService.client.set(
+      throttleKey,
+      '1',
+      'EX',
+      5,
+      'NX',
+    );
+
+    if (canSync) {
       const state = await this.playerService.getPlayerState(data.userId);
       if (state) {
         await this.syncStateWithContext(data.userId, state);

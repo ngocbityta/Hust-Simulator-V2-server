@@ -12,6 +12,7 @@ public class RabbitMQConfig {
 
     public static final String DLX_EXCHANGE = "hust.job.active.exchange";
     public static final String DELAY_EXCHANGE = "hust.job.delay.exchange";
+    public static final String REALTIME_EXCHANGE = "hust.realtime.exchange";
     
     public static final String ACTIVE_JOB_QUEUE = "hust.job.active.queue";
     public static final String DELAY_JOB_QUEUE = "hust.job.delay.queue";
@@ -46,5 +47,10 @@ public class RabbitMQConfig {
     @Bean
     public Binding delayJobBinding(Queue delayJobQueue, FanoutExchange delayJobExchange) {
         return BindingBuilder.bind(delayJobQueue).to(delayJobExchange);
+    }
+
+    @Bean
+    public FanoutExchange realtimeExchange() {
+        return new FanoutExchange(REALTIME_EXCHANGE);
     }
 }

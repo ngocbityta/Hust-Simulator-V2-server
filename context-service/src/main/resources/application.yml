@@ -44,14 +44,6 @@ spring:
 
 hustsimulator:
   jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-  jwtExpirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 hours
-  storage:
-    provider: ${STORAGE_PROVIDER:local} # "local" or "firebase"
-    local:
-      upload-dir: ${STORAGE_LOCAL_DIR:./uploads}
-      base-url: ${STORAGE_LOCAL_URL:http://localhost:8080/uploads/} # Adjust to dynamic host if needed
-    firebase:
-      bucket: ${FIREBASE_STORAGE_BUCKET:}
 
 # Server
 server:

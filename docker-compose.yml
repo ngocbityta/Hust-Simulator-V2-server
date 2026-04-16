@@ -1,21 +1,21 @@
 services:
-#  postgres:
-#    image: postgis/postgis:16-3.4
-#    container_name: hustsim-postgres
-#    restart: unless-stopped
-#    ports:
-#      - "${POSTGRES_PORT:-5432}:5432"
-#    environment:
-#      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-#      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hustsim} -d ${POSTGRES_DB:-hustsimulator}"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
+  #  postgres:
+  #    image: postgis/postgis:16-3.4
+  #    container_name: hustsim-postgres
+  #    restart: unless-stopped
+  #    ports:
+  #      - "${POSTGRES_PORT:-5432}:5432"
+  #    environment:
+  #      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
+  #      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
+  #      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+  #    volumes:
+  #      - postgres_data:/var/lib/postgresql/data
+  #    healthcheck:
+  #      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hustsim} -d ${POSTGRES_DB:-hustsimulator}"]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -27,7 +27,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hustsim_redis}", "ping"]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hustsim_redis}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,11 +45,80 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
       interval: 15s
       timeout: 10s
       retries: 5
 
+  # ─── API Gateway ────────────────────────────────────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: hustsim-api-gateway
+    restart: unless-stopped
+    depends_on:
+      auth-service:
+        condition: service_started
+      messaging-service:
+        condition: service_started
+      context-service:
+        condition: service_started
+      state-dissemination-service:
+        condition: service_started
+    ports:
+      - "80:80"
+
+  # ─── Auth Service ──────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: hustsim-auth-service
+    restart: unless-stopped
+    ports:
+      - "${AUTH_SERVICE_PORT:-8081}:8081"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
+      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
+      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      AUTH_SERVICE_PORT: 8081
+
+  # ─── Messaging Service ─────────────────────────────────────────────
+  messaging-service:
+    build:
+      context: .
+      dockerfile: messaging-service/Dockerfile
+    container_name: hustsim-messaging-service
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${MESSAGING_SERVICE_PORT:-8082}:8082"
+      - "9092:9092"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
+      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
+      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      MESSAGING_SERVICE_PORT: 8082
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-./uploads}
+      STORAGE_LOCAL_URL: ${STORAGE_LOCAL_URL:-http://localhost/uploads/}
+
+  # ─── Context Service (refactored) ──────────────────────────────────
   context-service:
     build:
       context: .
@@ -57,15 +126,12 @@ services:
     container_name: hustsim-context-service
     restart: unless-stopped
     depends_on:
-#      postgres:
-#        condition: service_healthy
       redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     ports:
       - "${CONTEXT_SERVICE_PORT:-8080}:8080"
-      - "9092:9092"
       - "${CONTEXT_SERVICE_GRPC_PORT:-50052}:50052"
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
@@ -74,16 +140,20 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-hustsim}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
       POSTGRES_SSL: ${POSTGRES_SSL:-disable}
+      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       CONTEXT_SERVICE_PORT: 8080
       CONTEXT_SERVICE_GRPC_PORT: 50052
       GAME_SERVER_HOST: state-dissemination-service
       GAME_SERVER_GRPC_PORT: 50051
+      # URL của messaging-service — dùng cho MessagingServiceClient (HTTP)
+      MESSAGING_SERVICE_URL: http://messaging-service:8082
 
   state-dissemination-service:
     build:

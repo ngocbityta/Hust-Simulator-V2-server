@@ -1,1 +1,8 @@
-ALTER TABLE messages_chat ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- [MIGRATION OWNERSHIP NOTE]
+-- ALTER TABLE messages_chat ADD COLUMN updated_at ...
+-- was moved from here to messaging-service/V2__add_updated_at_to_messages_chat.sql
+--
+-- The 'messages_chat' table belongs to the messaging-service domain.
+-- All DDL for that table should live in messaging-service migrations.
+-- This migration is intentionally a no-op (column already applied in earlier deployment).
+-- DO NOT add DDL for messaging-service tables here.

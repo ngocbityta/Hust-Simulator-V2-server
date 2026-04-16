@@ -12,7 +12,7 @@ COPY context-service/src ./context-service/src
 COPY proto ./proto
 
 # Build
-RUN cd context-service && ./gradlew bootJar --no-daemon
+RUN cd context-service && gradle bootJar --no-daemon
 
 # Run stage
 FROM eclipse-temurin:17-jre-alpine

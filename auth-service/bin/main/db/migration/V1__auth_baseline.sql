@@ -1,0 +1,4 @@
+-- Auth-service owns the users and blocks tables.
+-- These tables are already created by the original context-service migration.
+-- This migration is intentionally empty as a baseline marker.
+-- Future auth-specific schema changes should be added as V2, V3, etc.

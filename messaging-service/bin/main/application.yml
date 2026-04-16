@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: messaging-service
+
+  # PostgreSQL (shared Neon Cloud)
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
+    username: ${POSTGRES_USER:hustsim}
+    password: ${POSTGRES_PASSWORD:hustsim_secret}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: never
+
+  # Flyway Database Migration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    table: flyway_schema_history_messaging
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:hustsim}
+    password: ${RABBITMQ_PASSWORD:hustsim_rabbit}
+
+hustsimulator:
+  jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  storage:
+    provider: ${STORAGE_PROVIDER:local}
+    local:
+      upload-dir: ${STORAGE_LOCAL_DIR:./uploads}
+      base-url: ${STORAGE_LOCAL_URL:http://localhost:8082/uploads/}
+    firebase:
+      bucket: ${FIREBASE_STORAGE_BUCKET:}
+
+# Server
+server:
+  port: ${MESSAGING_SERVICE_PORT:8082}
+
+# Socket.IO
+socketio:
+  host: 0.0.0.0
+  port: 9092
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
