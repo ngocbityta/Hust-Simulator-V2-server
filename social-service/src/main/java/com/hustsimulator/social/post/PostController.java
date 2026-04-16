@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -50,25 +51,35 @@ public class PostController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Post create(@Valid @RequestBody PostDTO.CreatePostRequest request, 
-                        @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
-        // In a real app, this should come from SecurityContext or a trusted header from API Gateway
-        UUID userId = userIdHeader != null ? UUID.fromString(userIdHeader) : UUID.randomUUID(); 
+                        @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         return postService.create(request, userId);
     }
 
     @PutMapping("/{id}")
     public Post update(@PathVariable UUID id, 
                         @Valid @RequestBody PostDTO.UpdatePostRequest request,
-                        @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
-        UUID userId = userIdHeader != null ? UUID.fromString(userIdHeader) : UUID.randomUUID();
+                        @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         return postService.update(id, request, userId);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id,
-                       @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
-        UUID userId = userIdHeader != null ? UUID.fromString(userIdHeader) : UUID.randomUUID();
+                       @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         postService.delete(id, userId);
+    }
+
+    private UUID resolveUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing X-User-Id header");
+        }
+        try {
+            return UUID.fromString(userIdHeader);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid X-User-Id format");
+        }
     }
 }

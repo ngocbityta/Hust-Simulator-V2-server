@@ -1,5 +1,5 @@
 import { Controller, Logger } from '@nestjs/common';
-import { GrpcMethod } from '@nestjs/microservices';
+import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { PlayerService } from '../player/player.service';
 import { GrpcService, GrpcMethodName } from '../common/enums/grpc.enum';
 
@@ -35,6 +35,10 @@ export class UserStateGrpcController {
     this.logger.debug(
       `UserConnection: ${request.userId} - ${request.isConnected ? 'connected' : 'disconnected'}`,
     );
-    return await this.playerService.handleConnectionEvent(request);
+    const result = await this.playerService.handleConnectionEvent(request);
+    if (!result.success) {
+      throw new RpcException(result.message);
+    }
+    return {};
   }
 }

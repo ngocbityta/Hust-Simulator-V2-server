@@ -1,22 +1,4 @@
 services:
-  #  postgres:
-  #    image: postgis/postgis:16-3.4
-  #    container_name: hustsim-postgres
-  #    restart: unless-stopped
-  #    ports:
-  #      - "${POSTGRES_PORT:-5432}:5432"
-  #    environment:
-  #      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-  #      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-  #      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-  #    volumes:
-  #      - postgres_data:/var/lib/postgresql/data
-  #    healthcheck:
-  #      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hustsim} -d ${POSTGRES_DB:-hustsimulator}"]
-  #      interval: 10s
-  #      timeout: 5s
-  #      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: hustsim-redis
@@ -177,7 +159,6 @@ services:
         condition: service_healthy
     ports:
       - "${SOCIAL_SERVICE_PORT:-8083}:8083"
-      - "${SOCIAL_SERVICE_GRPC_PORT:-50054}:50054"
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -192,9 +173,7 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       SOCIAL_SERVICE_PORT: 8083
-      SOCIAL_SERVICE_GRPC_PORT: 50054
 
   state-dissemination-service:
     build:

@@ -4,7 +4,6 @@ import com.hustsimulator.context.building.BuildingService;
 import com.hustsimulator.context.entity.Building;
 import com.hustsimulator.context.entity.RecurringEvent;
 import com.hustsimulator.context.enums.UserActivityState;
-import com.hustsimulator.context.grpc.proto.CommonProto;
 import com.hustsimulator.context.grpc.proto.ContextProto;
 import com.hustsimulator.context.recurringevent.RecurringEventService;
 import com.hustsimulator.context.userstate.UserStateService;
@@ -21,88 +20,75 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ContextFacadeImpl implements IContextFacade {
 
-    private final UserStateService userStateService;
-    private final BuildingService buildingService;
-    private final RecurringEventService recurringEventService;
+        private final UserStateService userStateService;
+        private final BuildingService buildingService;
+        private final RecurringEventService recurringEventService;
 
-    @Override
-    public ContextProto.ZoneCheckResponse checkPlayerZone(ContextProto.ZoneCheckRequest request) {
-        String playerId = request.getPlayerId();
-        double lat = request.getPosition().getLatitude();
-        double lon = request.getPosition().getLongitude();
+        @Override
+        public ContextProto.ZoneCheckResponse checkPlayerZone(ContextProto.ZoneCheckRequest request) {
+                String playerId = request.getPlayerId();
+                double lat = request.getPosition().getLatitude();
+                double lon = request.getPosition().getLongitude();
 
-        // Check against active buildings (using lon/lat from proto)
-        List<Building> buildings = buildingService.findActive();
-        
-        List<ContextProto.Zone> zones = buildings.stream()
-                .filter(b -> buildingService.isPointInsideBuilding(b.getId(), lon, lat))
-                .map(this::mapToZoneProto)
-                .collect(Collectors.toList());
+                // Check against active buildings (using lon/lat from proto)
+                List<Building> buildings = buildingService.findActive();
 
-        log.debug("Zone check for player {}: found {} zones", playerId, zones.size());
-        return ContextProto.ZoneCheckResponse.newBuilder()
-                .addAllZones(zones)
-                .build();
-    }
+                List<ContextProto.Zone> zones = buildings.stream()
+                                .filter(b -> buildingService.isPointInsideBuilding(b.getId(), lon, lat))
+                                .map(this::mapToZoneProto)
+                                .collect(Collectors.toList());
 
-    @Override
-    public CommonProto.StatusResponse reportSpatialTrigger(ContextProto.SpatialTriggerEvent request) {
-        log.info("Spatial trigger for player {}: {} on {}", 
-                request.getPlayerId(), request.getTriggerType(), request.getZoneId());
-        
-        return CommonProto.StatusResponse.newBuilder()
-                .setSuccess(true)
-                .setMessage("Trigger logged")
-                .build();
-    }
-
-    @Override
-    public CommonProto.StatusResponse updatePlayerState(ContextProto.UpdatePlayerStateRequest request) {
-        try {
-            UUID userId = UUID.fromString(request.getPlayerId());
-            UserActivityState activityState = UserActivityState.valueOf(request.getActivityState());
-            
-            // Sync activity and position
-            userStateService.updateActivity(userId, activityState, null);
-            userStateService.syncPositionState(userId, request.getPosition().getLongitude(), request.getPosition().getLatitude());
-
-            return CommonProto.StatusResponse.newBuilder()
-                    .setSuccess(true)
-                    .setMessage("Player state updated")
-                    .build();
-        } catch (Exception e) {
-            log.error("UpdatePlayerState error: {}", e.getMessage());
-            return CommonProto.StatusResponse.newBuilder()
-                    .setSuccess(false)
-                    .setMessage(e.getMessage())
-                    .build();
+                log.debug("Zone check for player {}: found {} zones", playerId, zones.size());
+                return ContextProto.ZoneCheckResponse.newBuilder()
+                                .addAllZones(zones)
+                                .build();
         }
-    }
 
-    @Override
-    public ContextProto.ActiveEventsResponse getActiveEvents(ContextProto.ActiveEventsRequest request) {
-        List<RecurringEvent> activeEvents = recurringEventService.findActive();
-        
-        List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
-                .map(e -> ContextProto.ContextEvent.newBuilder()
-                        .setEventId(e.getId().toString())
-                        .setPlayerId(request.getPlayerId())
-                        .setEventType("VIRTUAL_CLASS")
-                        .setTitle(e.getName())
-                        .setDescription(e.getDescription() != null ? e.getDescription() : "")
-                        .build())
-                .collect(Collectors.toList());
+        @Override
+        public com.google.protobuf.Empty reportSpatialTrigger(ContextProto.SpatialTriggerEvent request) {
+                log.info("Spatial trigger for player {}: {} on {}",
+                                request.getPlayerId(), request.getTriggerType(), request.getZoneId());
 
-        return ContextProto.ActiveEventsResponse.newBuilder()
-                .addAllEvents(eventProtos)
-                .build();
-    }
+                return com.google.protobuf.Empty.getDefaultInstance();
+        }
 
-    private ContextProto.Zone mapToZoneProto(Building building) {
-        return ContextProto.Zone.newBuilder()
-                .setZoneId(building.getId().toString())
-                .setName(building.getName())
-                .setType("BUILDING")
-                .build();
-    }
+        @Override
+        public com.google.protobuf.Empty updatePlayerState(ContextProto.UpdatePlayerStateRequest request) {
+                UUID userId = UUID.fromString(request.getPlayerId());
+                UserActivityState activityState = UserActivityState.valueOf(request.getActivityState().name());
+
+                // Sync activity and position
+                userStateService.updateActivity(userId, activityState, null);
+                userStateService.syncPositionState(userId, request.getPosition().getLongitude(),
+                                request.getPosition().getLatitude());
+
+                return com.google.protobuf.Empty.getDefaultInstance();
+        }
+
+        @Override
+        public ContextProto.ActiveEventsResponse getActiveEvents(ContextProto.ActiveEventsRequest request) {
+                List<RecurringEvent> activeEvents = recurringEventService.findActive();
+
+                List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
+                                .map(e -> ContextProto.ContextEvent.newBuilder()
+                                                .setEventId(e.getId().toString())
+                                                .setPlayerId(request.getPlayerId())
+                                                .setEventType("VIRTUAL_CLASS")
+                                                .setTitle(e.getName())
+                                                .setDescription(e.getDescription() != null ? e.getDescription() : "")
+                                                .build())
+                                .collect(Collectors.toList());
+
+                return ContextProto.ActiveEventsResponse.newBuilder()
+                                .addAllEvents(eventProtos)
+                                .build();
+        }
+
+        private ContextProto.Zone mapToZoneProto(Building building) {
+                return ContextProto.Zone.newBuilder()
+                                .setZoneId(building.getId().toString())
+                                .setName(building.getName())
+                                .setType("BUILDING")
+                                .build();
+        }
 }

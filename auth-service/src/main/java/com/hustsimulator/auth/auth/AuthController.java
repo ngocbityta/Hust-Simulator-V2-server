@@ -1,12 +1,18 @@
 package com.hustsimulator.auth.auth;
 
 import com.hustsimulator.auth.entity.User;
+import com.hustsimulator.auth.user.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -15,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final com.hustsimulator.auth.user.UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @PostMapping("/login")
     @Operation(summary = "Login to get JWT token")
@@ -32,20 +38,26 @@ public class AuthController {
 
     @GetMapping("/validate")
     @Operation(summary = "Validate JWT token", description = "Used by API Gateway auth_request to validate requests")
-    public org.springframework.http.ResponseEntity<?> validateToken() {
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            String phonenumber = auth.getName();
-            java.util.Optional<User> optionalUser = userRepository.findByPhonenumber(phonenumber);
-            if (optionalUser.isPresent()) {
-                User user = optionalUser.get();
-                return org.springframework.http.ResponseEntity.ok()
-                        .header("X-User-Id", user.getId().toString())
-                        .header("X-User-Phonenumber", user.getPhonenumber())
-                        .header("X-User-Role", user.getRole().name())
-                        .build();
-            }
+    public ResponseEntity<?> validateToken() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return org.springframework.http.ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        String phonenumber = auth.getName();
+        Optional<User> optionalUser = userRepository.findByPhonenumber(phonenumber);
+
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = optionalUser.get();
+        return ResponseEntity.ok()
+                .header("X-User-Id", user.getId().toString())
+                .header("X-User-Phonenumber", user.getPhonenumber())
+                .header("X-User-Role", user.getRole().name())
+                .build();
     }
 }
+

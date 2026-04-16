@@ -3,6 +3,8 @@ syntax = "proto3";
 package hustsimulator.context;
 
 import "common.proto";
+import "player.proto";
+import "google/protobuf/empty.proto";
 
 option java_package = "com.hustsimulator.context.grpc.proto";
 option java_outer_classname = "ContextProto";
@@ -66,7 +68,7 @@ message ActiveEventsResponse {
 message UpdatePlayerStateRequest {
   string player_id = 1;
   hustsimulator.common.Coordinates position = 2;
-  string activity_state = 3;
+  hustsimulator.player.UserActivityState activity_state = 3;
   string map_id = 4;
   string event_id = 5;
   hustsimulator.common.Timestamp timestamp = 6;
@@ -78,10 +80,10 @@ service ContextEngineService {
   rpc CheckPlayerZone(ZoneCheckRequest) returns (ZoneCheckResponse);
 
   // Report a spatial trigger (player entered/exited a zone)
-  rpc ReportSpatialTrigger(SpatialTriggerEvent) returns (hustsimulator.common.StatusResponse);
+  rpc ReportSpatialTrigger(SpatialTriggerEvent) returns (google.protobuf.Empty);
 
   // Update full player state (position + activity + context)
-  rpc UpdatePlayerState(UpdatePlayerStateRequest) returns (hustsimulator.common.StatusResponse);
+  rpc UpdatePlayerState(UpdatePlayerStateRequest) returns (google.protobuf.Empty);
 
   // Get active context events for a player
   rpc GetActiveEvents(ActiveEventsRequest) returns (ActiveEventsResponse);

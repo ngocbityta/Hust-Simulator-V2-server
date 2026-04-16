@@ -1,6 +1,5 @@
 package com.hustsimulator.context.grpc;
 
-import com.hustsimulator.context.grpc.proto.CommonProto;
 import com.hustsimulator.context.grpc.proto.ContextEngineServiceGrpc;
 import com.hustsimulator.context.grpc.proto.ContextProto;
 import io.grpc.stub.StreamObserver;
@@ -19,35 +18,35 @@ public class ContextGrpcService extends ContextEngineServiceGrpc.ContextEngineSe
 
     @Override
     public void checkPlayerZone(ContextProto.ZoneCheckRequest request,
-                                 StreamObserver<ContextProto.ZoneCheckResponse> responseObserver) {
+            StreamObserver<ContextProto.ZoneCheckResponse> responseObserver) {
         responseObserver.onNext(contextFacade.checkPlayerZone(request));
         responseObserver.onCompleted();
     }
 
     @Override
     public void reportSpatialTrigger(ContextProto.SpatialTriggerEvent request,
-                                      StreamObserver<CommonProto.StatusResponse> responseObserver) {
+            StreamObserver<com.google.protobuf.Empty> responseObserver) {
         responseObserver.onNext(contextFacade.reportSpatialTrigger(request));
         responseObserver.onCompleted();
     }
 
     @Override
     public void updatePlayerState(ContextProto.UpdatePlayerStateRequest request,
-                                   StreamObserver<CommonProto.StatusResponse> responseObserver) {
+            StreamObserver<com.google.protobuf.Empty> responseObserver) {
         responseObserver.onNext(contextFacade.updatePlayerState(request));
         responseObserver.onCompleted();
     }
 
     @Override
     public void getActiveEvents(ContextProto.ActiveEventsRequest request,
-                                 StreamObserver<ContextProto.ActiveEventsResponse> responseObserver) {
+            StreamObserver<ContextProto.ActiveEventsResponse> responseObserver) {
         responseObserver.onNext(contextFacade.getActiveEvents(request));
         responseObserver.onCompleted();
     }
 
     @Override
     public void streamContextEvents(ContextProto.ActiveEventsRequest request,
-                                     StreamObserver<ContextProto.ContextEvent> responseObserver) {
+            StreamObserver<ContextProto.ContextEvent> responseObserver) {
         // Still a stub as streaming requires more complex logic (e.g. state tracking)
         responseObserver.onCompleted();
     }

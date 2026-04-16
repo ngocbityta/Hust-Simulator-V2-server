@@ -86,4 +86,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.quit();
     await this.pubClient.quit();
   }
+
+  /**
+   * Simple distributed throttle/lock using Redis SET EX NX
+   * @param key The throttle key
+   * @param ttlSeconds Time to live in seconds
+   * @returns true if the lock was acquired, false otherwise
+   */
+  async throttle(key: string, ttlSeconds: number): Promise<boolean> {
+    const result = await this.client.set(key, '1', 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  }
 }

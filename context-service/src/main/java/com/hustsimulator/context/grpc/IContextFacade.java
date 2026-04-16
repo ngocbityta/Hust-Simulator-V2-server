@@ -20,12 +20,12 @@ public interface IContextFacade {
     /**
      * Processes a spatial trigger event (entry/exit).
      */
-    CommonProto.StatusResponse reportSpatialTrigger(ContextProto.SpatialTriggerEvent request);
+    com.google.protobuf.Empty reportSpatialTrigger(ContextProto.SpatialTriggerEvent request);
 
     /**
      * Updates comprehensive player state (position, activity, map, event).
      */
-    CommonProto.StatusResponse updatePlayerState(ContextProto.UpdatePlayerStateRequest request);
+    com.google.protobuf.Empty updatePlayerState(ContextProto.UpdatePlayerStateRequest request);
 
     /**
      * Gets active events for a player.

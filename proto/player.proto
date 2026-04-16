@@ -3,6 +3,7 @@ syntax = "proto3";
 package hustsimulator.player;
 
 import "common.proto";
+import "google/protobuf/empty.proto";
 
 option java_package = "com.hustsimulator.context.grpc.proto";
 option java_outer_classname = "PlayerProto";
@@ -11,8 +12,14 @@ option java_outer_classname = "PlayerProto";
 enum UserActivityState {
   USER_ACTIVITY_STATE_UNSPECIFIED = 0;
   ROAMING = 1;            // Moving on map via GPS
-  IN_RECURRING_EVENT = 2;   // Inside a recurring event
+  IN_RECURRING_EVENT = 2; // Inside a recurring event
   IN_EVENT = 3;           // Participating in an event
+  OUTSIDE_MAP = 4;
+  IN_BUILDING = 5;
+  SPECTATING_BUILDING = 6;
+  IN_ROOM = 7;
+  SPECTATING_EVENT = 8;
+  SPECTATING_RECURRING_EVENT = 9;
 }
 
 // User position update sent from game-server to context-service
@@ -63,8 +70,8 @@ service UserStateService {
   rpc GetNearbyUsers(NearbyUsersRequest) returns (NearbyUsersResponse);
 
   // Stream of position updates from game-server to context-service
-  rpc StreamPositionUpdates(stream UserPositionUpdate) returns (hustsimulator.common.StatusResponse);
+  rpc StreamPositionUpdates(stream UserPositionUpdate) returns (google.protobuf.Empty);
 
   // Notify context-service about user connection/disconnection
-  rpc NotifyUserConnection(UserConnectionEvent) returns (hustsimulator.common.StatusResponse);
+  rpc NotifyUserConnection(UserConnectionEvent) returns (google.protobuf.Empty);
 }

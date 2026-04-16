@@ -1,5 +1,5 @@
 import { Controller, Logger, Inject } from '@nestjs/common';
-import { GrpcMethod } from '@nestjs/microservices';
+import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { PlayerService } from '../player/player.service';
 import { ISpatialService } from '../spatial/spatial.interface';
 import { RedisService } from '../redis/redis.service';
@@ -57,13 +57,7 @@ export class ComputationController {
 
     // Time-based throttle instead of 20% random sync: sync max once every 5 seconds per user
     const throttleKey = `throttle:sync:${data.userId}`;
-    const canSync = await this.redisService.client.set(
-      throttleKey,
-      '1',
-      'EX',
-      5,
-      'NX',
-    );
+    const canSync = await this.redisService.throttle(throttleKey, 5);
 
     if (canSync) {
       const state = await this.playerService.getPlayerState(data.userId);
@@ -72,7 +66,7 @@ export class ComputationController {
       }
     }
 
-    return { success: true, message: 'OK' };
+    return {};
   }
 
   @GrpcMethod('ComputationService', 'ProcessUserStateChange')
@@ -91,29 +85,31 @@ export class ComputationController {
       sessionDataObj,
     );
 
-    if (result.success) {
-      let disseminationPosition = data.position;
-      const updatedState = await this.playerService.getPlayerState(data.userId);
-
-      if (!disseminationPosition && updatedState) {
-        disseminationPosition = updatedState.position;
-      }
-
-      if (disseminationPosition) {
-        await this.disseminate(data.userId, disseminationPosition, {
-          activityState: data.activityState,
-          mapId: data.mapId,
-          eventId: data.eventId,
-          type: 'state_change',
-        });
-      }
-
-      if (updatedState) {
-        await this.syncStateWithContext(data.userId, updatedState);
-      }
+    if (!result.success) {
+      throw new RpcException(result.message);
     }
 
-    return { success: result.success, message: result.message };
+    let disseminationPosition = data.position;
+    const updatedState = await this.playerService.getPlayerState(data.userId);
+
+    if (!disseminationPosition && updatedState) {
+      disseminationPosition = updatedState.position;
+    }
+
+    if (disseminationPosition) {
+      await this.disseminate(data.userId, disseminationPosition, {
+        activityState: data.activityState,
+        mapId: data.mapId,
+        eventId: data.eventId,
+        type: 'state_change',
+      });
+    }
+
+    if (updatedState) {
+      await this.syncStateWithContext(data.userId, updatedState);
+    }
+
+    return {};
   }
 
   private async disseminate(

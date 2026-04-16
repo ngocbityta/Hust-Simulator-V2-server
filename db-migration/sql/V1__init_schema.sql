@@ -1,16 +1,19 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- Users table
+-- Users table (matches auth-service User entity)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username VARCHAR UNIQUE NOT NULL,
-    email VARCHAR UNIQUE NOT NULL,
-    password_hash VARCHAR NOT NULL,
-    full_name VARCHAR,
-    avatar_url VARCHAR,
-    status VARCHAR DEFAULT 'ACTIVE',
-    last_position GEOMETRY(Point, 4326),
+    phonenumber VARCHAR UNIQUE NOT NULL,
+    password VARCHAR NOT NULL,
+    username VARCHAR,
+    avatar VARCHAR,
+    cover_image VARCHAR,
+    description TEXT,
+    role VARCHAR(2) NOT NULL DEFAULT 'HV',
+    token VARCHAR,
+    status VARCHAR(10) DEFAULT 'ACTIVE',
+    online BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,7 +75,8 @@ CREATE TABLE comments (
     content TEXT,
     score FLOAT,
     detail_mistake TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Conversations table
@@ -270,5 +274,4 @@ CREATE INDEX idx_scheduled_jobs_status ON scheduled_jobs (status);
 CREATE INDEX idx_scheduled_jobs_target ON scheduled_jobs (target_time);
 
 -- Spatial Indexes for PostGIS
-CREATE INDEX idx_users_last_position ON users USING GIST (last_position);
 CREATE INDEX idx_posts_location ON posts USING GIST (location);

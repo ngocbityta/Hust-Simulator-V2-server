@@ -4,6 +4,7 @@ package hustsimulator.computation;
 
 import "common.proto";
 import "player.proto";
+import "google/protobuf/empty.proto";
 
 option java_package = "com.hustsimulator.context.grpc.proto";
 option java_outer_classname = "ComputationProto";
@@ -25,6 +26,6 @@ message UserStateChangeEvent {
 }
 
 service ComputationService {
-  rpc ProcessUserMove(UserMoveEvent) returns (hustsimulator.common.StatusResponse);
-  rpc ProcessUserStateChange(UserStateChangeEvent) returns (hustsimulator.common.StatusResponse);
+  rpc ProcessUserMove(UserMoveEvent) returns (google.protobuf.Empty);
+  rpc ProcessUserStateChange(UserStateChangeEvent) returns (google.protobuf.Empty);
 }
