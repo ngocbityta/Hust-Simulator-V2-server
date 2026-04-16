@@ -8,15 +8,15 @@ import { GrpcModule } from '../grpc/grpc.module';
 import { ISessionService } from './session.interface';
 
 @Module({
-    imports: [GrpcModule, SpatialModule, InterestModule],
-    providers: [
-        GameGateway, 
-        DisseminationService,
-        {
-            provide: ISessionService,
-            useClass: SessionService,
-        },
-    ],
-    exports: [GameGateway, DisseminationService, ISessionService],
+  imports: [GrpcModule, SpatialModule, InterestModule],
+  providers: [
+    GameGateway,
+    DisseminationService,
+    {
+      provide: ISessionService,
+      useClass: SessionService,
+    },
+  ],
+  exports: [GameGateway, DisseminationService, ISessionService],
 })
-export class WebsocketModule { }
+export class WebsocketModule {}

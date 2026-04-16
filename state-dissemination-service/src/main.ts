@@ -23,7 +23,8 @@ async function bootstrap() {
   // Swagger Documentation
   const config = new DocumentBuilder()
     .setTitle('HUST Simulator - State Dissemination Service')
-    .setDescription(`
+    .setDescription(
+      `
 <h2 style="color: #FF5733;">🎮 HUST Simulator - WebSocket Client Integration Guide</h2>
 
 Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Unity/React/Godot) để kết nối vào game server.
@@ -120,7 +121,8 @@ Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Un
 - **Frontend Action:** Lập trình viên Client khi nhận được bản dữ liệu này cần dò tìm đúng ID nhân vật trong Scene, và chạy script \`Lerp(currentTransform, payload.position)\` để nhân vật trượt trên màn hình cực kỳ mượt mà.
 
 ---
-`)
+`,
+    )
     .setVersion('1.0')
     .addTag('dissemination')
     .build();
@@ -152,4 +154,7 @@ Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Un
   logger.log(`WebSocket server available on the same port`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Error during bootstrap:', err);
+  process.exit(1);
+});

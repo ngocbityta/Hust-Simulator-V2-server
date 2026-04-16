@@ -51,4 +51,7 @@ async function bootstrap() {
   logger.log(`HTTP server running on port ${httpPort}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Error during bootstrap:', err);
+  process.exit(1);
+});

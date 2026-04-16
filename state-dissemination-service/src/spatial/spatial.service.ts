@@ -15,10 +15,12 @@ export class SpatialService implements ISpatialService {
 
   constructor(private configService: ConfigService) {
     this.cellSize = this.configService.get<number>('GRID_CELL_SIZE', 50);
-    const avgLat = 21.003; 
+    const avgLat = 21.003;
     this.METERS_PER_LNG = METERS_PER_LAT * Math.cos((avgLat * Math.PI) / 180);
-    
-    this.logger.log(`SpatialService initialized with cell size ${this.cellSize}m`);
+
+    this.logger.log(
+      `SpatialService initialized with cell size ${this.cellSize}m`,
+    );
   }
 
   getGridCell(latitude: number, longitude: number): GridCell {

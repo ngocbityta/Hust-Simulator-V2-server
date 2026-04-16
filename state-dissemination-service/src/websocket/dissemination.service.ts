@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+  Inject,
+} from '@nestjs/common';
 import { WebSocket } from 'ws';
 import Redis from 'ioredis';
 import { ISpatialService } from '../spatial/spatial.interface';
@@ -11,7 +17,7 @@ import { WsEvent } from '../common/enums/ws-event.enum';
 @Injectable()
 export class DisseminationService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DisseminationService.name);
-  
+
   private subClient: Redis;
 
   private clientCenterCell = new Map<WebSocket, string>();
@@ -20,7 +26,8 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
     private readonly redisService: RedisService,
     @Inject(ISpatialService) private readonly spatialService: ISpatialService,
     @Inject(ISessionService) private readonly sessionService: ISessionService,
-    @Inject(IInterestService) private readonly interestService: IInterestService,
+    @Inject(IInterestService)
+    private readonly interestService: IInterestService,
   ) {}
 
   onModuleInit() {
@@ -33,14 +40,16 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {}
 
-  async updateLocation(client: WebSocket, latitude: number, longitude: number) {
+  updateLocation(client: WebSocket, latitude: number, longitude: number) {
     const currentCell = this.spatialService.getGridCell(latitude, longitude);
     const currentCellKey = this.spatialService.getCellKey(currentCell);
-    
+
     const lastCellKey = this.clientCenterCell.get(client);
     if (lastCellKey !== currentCellKey) {
       const aoiCells = this.spatialService.getAoiCells(currentCell);
-      const aoiKeys = new Set(aoiCells.map(c => this.spatialService.getCellKey(c)));
+      const aoiKeys = new Set(
+        aoiCells.map((c) => this.spatialService.getCellKey(c)),
+      );
       this.interestService.updateInterests(client, aoiKeys);
       this.clientCenterCell.set(client, currentCellKey);
     }
@@ -57,13 +66,16 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
 
     if (clients && clients.size > 0) {
       try {
-        const payload = JSON.parse(message);
+        const payload = JSON.parse(message) as {
+          userId: string;
+          [key: string]: unknown;
+        };
         const wsMessage = JSON.stringify({
           event: WsEvent.USER_STATE_UPDATE,
           data: payload,
         });
 
-        clients.forEach(client => {
+        clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
             const clientUserId = this.sessionService.getUserId(client);
             if (clientUserId !== payload.userId) {

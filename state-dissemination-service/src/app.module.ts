@@ -20,4 +20,4 @@ import { SpatialModule } from './spatial/spatial.module';
     WebsocketModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

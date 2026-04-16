@@ -5,6 +5,7 @@ import { ISpatialService } from '../spatial/spatial.interface';
 import { RedisService } from '../redis/redis.service';
 import { GrpcContextClient } from '../grpc/context.client';
 import { UserActivityState } from '../common/enums/user-activity-state.enum';
+import { UserState } from '../player/player.service';
 
 interface UserMoveEvent {
   userId: string;
@@ -79,7 +80,7 @@ export class ComputationController {
     this.logger.debug(`Processing state change for user ${data.userId}`);
 
     const sessionDataObj = data.sessionData
-      ? JSON.parse(data.sessionData)
+      ? (JSON.parse(data.sessionData) as Record<string, unknown>)
       : undefined;
 
     const result = await this.playerService.updateActivityState(
@@ -133,7 +134,7 @@ export class ComputationController {
     await this.redisService.pubClient.publish(channel, message);
   }
 
-  private async syncStateWithContext(userId: string, state: any) {
+  private async syncStateWithContext(userId: string, state: UserState) {
     try {
       await this.grpcClient.updatePlayerState({
         playerId: userId,
@@ -144,10 +145,12 @@ export class ComputationController {
         timestamp: { millis: Date.now() },
       });
       this.logger.debug(`Synced state for user ${userId} to context-service`);
-    } catch (err) {
-      this.logger.error(
-        `Failed to sync state for user ${userId}: ${err.message}`,
-      );
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        this.logger.error(
+          `Failed to sync state for user ${userId}: ${err.message}`,
+        );
+      }
     }
   }
 }

@@ -21,7 +21,7 @@ export class InterestService implements IInterestService {
     }
     let currentInterests = this.clientInterests.get(client);
     if (!currentInterests) {
-        currentInterests = new Set<string>();
+      currentInterests = new Set<string>();
     }
 
     for (const key of newAoiKeys) {
@@ -31,7 +31,7 @@ export class InterestService implements IInterestService {
 
         if (refCount === 1) {
           const channel = `${RedisKey.CELL_CHANNEL_PREFIX}${key}`;
-          this.redisService.subClient.subscribe(channel).catch(err => {
+          this.redisService.subClient.subscribe(channel).catch((err) => {
             this.logger.error(`Failed to subscribe to ${channel}`, err);
           });
         }
@@ -41,7 +41,7 @@ export class InterestService implements IInterestService {
         }
         const cellSubs = this.cellSubscriptions.get(key);
         if (cellSubs) {
-            cellSubs.add(client);
+          cellSubs.add(client);
         }
       }
     }
@@ -62,7 +62,7 @@ export class InterestService implements IInterestService {
   removeClient(client: WebSocket) {
     const interests = this.clientInterests.get(client);
     if (interests) {
-      interests.forEach(key => {
+      interests.forEach((key) => {
         this.removeClientInterestInCell(client, key);
       });
       this.clientInterests.delete(client);
@@ -82,7 +82,7 @@ export class InterestService implements IInterestService {
     if (refCount <= 0) {
       this.nodeInterests.delete(key);
       const channel = `${RedisKey.CELL_CHANNEL_PREFIX}${key}`;
-      this.redisService.subClient.unsubscribe(channel).catch(err => {
+      this.redisService.subClient.unsubscribe(channel).catch((err) => {
         this.logger.error(`Failed to unsubscribe from ${channel}`, err);
       });
     } else {

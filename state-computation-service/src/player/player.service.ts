@@ -210,7 +210,9 @@ export class PlayerService {
       activityState: hash.activityState as UserActivityState,
       currentMapId: hash.currentMapId,
       currentEventId: hash.currentEventId,
-      sessionData: hash.sessionData ? JSON.parse(hash.sessionData) : undefined,
+      sessionData: hash.sessionData
+        ? (JSON.parse(hash.sessionData) as Record<string, unknown>)
+        : undefined,
       lastUpdate: parseInt(hash.lastUpdate || '0', 10),
     };
   }

@@ -5,6 +5,7 @@ import com.hustsimulator.context.entity.RecurringEvent;
 import com.hustsimulator.context.entity.Room;
 import com.hustsimulator.context.enums.RecurringEventStatus;
 import com.hustsimulator.context.enums.RoomStatus;
+import com.hustsimulator.context.messaging.MessagingServiceClient;
 import com.hustsimulator.context.room.RoomRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,27 +18,31 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RecurringEventServiceTest {
 
-    @Mock private RecurringEventRepository recurringEventRepository;
-    @Mock private RoomRepository roomRepository;
+    @Mock
+    private RecurringEventRepository recurringEventRepository;
+    @Mock
+    private RoomRepository roomRepository;
+    @Mock
+    private MessagingServiceClient messagingServiceClient;
 
     private RecurringEventServiceImpl recurringEventService;
 
     @BeforeEach
     void setUp() {
-        recurringEventService = new RecurringEventServiceImpl(recurringEventRepository, roomRepository);
+        recurringEventService = new RecurringEventServiceImpl(recurringEventRepository, roomRepository,
+                messagingServiceClient);
     }
 
     @Test
     void activateClass_shouldSetOngoingAndBusyRoom() {
         UUID classId = UUID.randomUUID();
         UUID roomId = UUID.randomUUID();
-        
+
         RecurringEvent event = RecurringEvent.builder()
                 .name("Calculus 1")
                 .roomId(roomId)
@@ -55,7 +60,7 @@ class RecurringEventServiceTest {
 
         assertThat(event.getStatus()).isEqualTo(RecurringEventStatus.ONGOING);
         assertThat(room.getStatus()).isEqualTo(RoomStatus.BUSY);
-        
+
         verify(recurringEventRepository).save(event);
         verify(roomRepository).save(room);
     }

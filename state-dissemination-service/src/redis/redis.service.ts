@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -19,11 +24,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     this.subClient = new Redis(redisConfig);
 
-    this.subClient.on('connect', () => this.logger.log('Redis subClient connected'));
-    this.subClient.on('error', (err) => this.logger.error('Redis subClient error', err));
+    this.subClient.on('connect', () =>
+      this.logger.log('Redis subClient connected'),
+    );
+    this.subClient.on('error', (err) =>
+      this.logger.error('Redis subClient error', err),
+    );
   }
 
-  onModuleDestroy() {
-    this.subClient.quit();
+  async onModuleDestroy() {
+    await this.subClient.quit();
   }
 }
