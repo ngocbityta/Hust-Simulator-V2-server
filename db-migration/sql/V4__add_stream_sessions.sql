@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS stream_sessions (
+    id UUID PRIMARY KEY,
+    room_name VARCHAR(255) NOT NULL UNIQUE,
+    entity_type VARCHAR(50) NOT NULL, -- 'EVENT' or 'POST'
+    entity_id UUID NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'ENDED'
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_stream_entity ON stream_sessions(entity_type, entity_id);

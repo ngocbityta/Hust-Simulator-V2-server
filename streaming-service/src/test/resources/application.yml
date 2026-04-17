@@ -1,0 +1,5 @@
+# Test configuration - uses in-memory H2 if available, otherwise mocks
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop

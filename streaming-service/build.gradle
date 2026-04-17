@@ -1,0 +1,74 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.hustsimulator'
+version = '0.0.1-SNAPSHOT'
+description = 'Streaming API Service for HustSimulator V2'
+
+java {
+	sourceCompatibility = '17'
+	targetCompatibility = '17'
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Spring Boot Starters
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// DevTools
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// Database
+	runtimeOnly 'org.postgresql:postgresql'
+
+	// Swagger UI / OpenAPI
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.3'
+
+	// LiveKit Server API
+	implementation 'io.livekit:livekit-server:0.12.1'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+// Automatically load environment variables from root .env for local development
+tasks.named('bootRun') {
+	systemProperties = System.properties
+	def envFile = file("../.env")
+	if (envFile.exists()) {
+		envFile.eachLine { line ->
+			def trimLine = line.trim()
+			if (trimLine && !trimLine.startsWith("#")) {
+				def parts = trimLine.split("=", 2)
+				if (parts.length == 2) {
+					environment parts[0].trim(), parts[1].trim()
+				}
+			}
+		}
+	}
+}

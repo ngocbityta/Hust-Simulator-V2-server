@@ -32,6 +32,22 @@ services:
       timeout: 10s
       retries: 5
 
+  # ─── LiveKit Server ────────────────────────────────────────────────
+  livekit:
+    image: livekit/livekit-server:v1.5
+    container_name: hustsim-livekit
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+      - "8320:8320"
+    environment:
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+
   # ─── DB Migration Service ──────────────────────────────────────────
   db-migration:
     image: flyway/flyway:10-alpine
@@ -53,6 +69,8 @@ services:
       context-service:
         condition: service_started
       state-dissemination-service:
+        condition: service_started
+      streaming-service:
         condition: service_started
     ports:
       - "80:80"
@@ -174,6 +192,36 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
       SOCIAL_SERVICE_PORT: 8083
+
+  # ─── Streaming Service ─────────────────────────────────────────────
+  streaming-service:
+    build:
+      context: .
+      dockerfile: streaming-service/Dockerfile
+    container_name: hustsim-streaming-service
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    ports:
+      - "${STREAMING_SERVICE_PORT:-8084}:8084"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
+      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
+      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      STREAMING_SERVICE_PORT: 8084
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+      LIVEKIT_URL: ${LIVEKIT_URL:-http://livekit:7880}
 
   state-dissemination-service:
     build:
