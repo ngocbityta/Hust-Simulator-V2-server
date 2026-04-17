@@ -53,4 +53,39 @@ public class RabbitMQConfig {
     public FanoutExchange realtimeExchange() {
         return new FanoutExchange(REALTIME_EXCHANGE);
     }
+
+    // User Sync Config for Initializing Player State
+    public static final String USER_EXCHANGE = "hustsimulator.user.exchange";
+    public static final String USER_QUEUE = "context.user.queue";
+    public static final String USER_ROUTING_KEY = "user.#";
+
+    @Bean
+    public TopicExchange userExchange() {
+        return new TopicExchange(USER_EXCHANGE);
+    }
+
+    @Bean
+    public Queue userQueue() {
+        return QueueBuilder.durable(USER_QUEUE).build();
+    }
+
+    @Bean
+    public Binding userBinding(Queue userQueue, TopicExchange userExchange) {
+        return BindingBuilder.bind(userQueue).to(userExchange).with(USER_ROUTING_KEY);
+    }
+
+    @Bean
+    public org.springframework.amqp.support.converter.MessageConverter jsonMessageConverter() {
+        return new org.springframework.amqp.support.converter.Jackson2JsonMessageConverter();
+    }
+
+    // Event Publisher Config
+    public static final String EVENT_EXCHANGE = "hustsimulator.event.exchange";
+
+    @Bean
+    public TopicExchange eventExchange() {
+        return new TopicExchange(EVENT_EXCHANGE);
+    }
 }
+
+

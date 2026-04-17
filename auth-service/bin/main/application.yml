@@ -13,13 +13,20 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
   sql:
     init:
       mode: never
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:hustsim}
+    password: ${RABBITMQ_PASSWORD:hustsim_rabbit}
 
 hustsimulator:
   jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
@@ -29,9 +36,9 @@ hustsimulator:
 server:
   port: ${AUTH_SERVICE_PORT:8081}
 
-# Actuator
+# Actuator & Metrics
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus

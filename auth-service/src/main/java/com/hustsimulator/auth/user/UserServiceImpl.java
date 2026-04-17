@@ -16,6 +16,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserEventPublisher userEventPublisher;
 
     @Override
     public List<User> findAll() {
@@ -34,7 +35,9 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Error: Phonenumber is already taken!");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        userEventPublisher.publish(saved, UserEvent.EventType.CREATED);
+        return saved;
     }
 
     @Override
@@ -44,15 +47,16 @@ public class UserServiceImpl implements UserService {
         user.setAvatar(updated.getAvatar());
         user.setCoverImage(updated.getCoverImage());
         user.setDescription(updated.getDescription());
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        userEventPublisher.publish(saved, UserEvent.EventType.UPDATED);
+        return saved;
     }
 
     @Override
     public void delete(UUID id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User", id);
-        }
+        User user = findById(id);
         userRepository.deleteById(id);
+        userEventPublisher.publish(user, UserEvent.EventType.DELETED);
     }
 
     @Override

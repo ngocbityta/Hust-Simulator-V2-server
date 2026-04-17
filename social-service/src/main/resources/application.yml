@@ -13,7 +13,7 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -39,9 +39,9 @@ spring:
 server:
   port: ${SOCIAL_SERVICE_PORT:8083}
 
-# Actuator
+# Actuator, Tracing, Metrics
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus

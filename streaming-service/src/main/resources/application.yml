@@ -13,7 +13,7 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -27,17 +27,19 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:hustsim_redis}
+      repositories:
+        enabled: false
 
 # Server
 server:
   port: ${STREAMING_SERVICE_PORT:8084}
 
-# Actuator
+# Actuator, Tracing, Metrics
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
 
 # LiveKit Configuration
 livekit:

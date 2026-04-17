@@ -82,6 +82,9 @@ services:
       dockerfile: auth-service/Dockerfile
     container_name: hustsim-auth-service
     restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "${AUTH_SERVICE_PORT:-8081}:8081"
     environment:
@@ -95,6 +98,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
       AUTH_SERVICE_PORT: 8081
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
 
   # ─── Messaging Service ─────────────────────────────────────────────
   messaging-service:
@@ -277,6 +283,7 @@ services:
       CONTEXT_SERVICE_HOST: context-service
       CONTEXT_SERVICE_GRPC_PORT: 50052
       COMPUTATION_SERVICE_GRPC_PORT: 50053
+
 
 volumes:
   postgres_data:

@@ -30,6 +30,7 @@ class EventServiceTest {
 
     @Mock private EventRepository eventRepository;
     @Mock private BuildingRepository buildingRepository;
+    @Mock private EventEventPublisher eventEventPublisher;
 
     private EventServiceImpl eventService;
     private ObjectMapper objectMapper;
@@ -37,7 +38,7 @@ class EventServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        eventService = new EventServiceImpl(eventRepository, buildingRepository, objectMapper);
+        eventService = new EventServiceImpl(eventRepository, buildingRepository, objectMapper, eventEventPublisher);
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────────

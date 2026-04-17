@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+
 /**
  * HTTP client để gọi messaging-service API.
  * Thay thế việc query trực tiếp cross-service vào bảng messages_chat.
@@ -35,6 +37,7 @@ public class MessagingServiceClient {
      * Lấy danh sách event ID mà user đã từng tham gia (qua tin nhắn).
      * Gọi: GET {messaging-service}/api/messages/participated-events?userId={userId}
      */
+    @CircuitBreaker(name = "messagingService", fallbackMethod = "fallbackParticipatedEvents")
     public List<UUID> getParticipatedEventIds(UUID userId) {
         String url = UriComponentsBuilder
                 .fromHttpUrl(messagingServiceUrl + "/api/messages/participated-events")
@@ -53,5 +56,13 @@ public class MessagingServiceClient {
             log.error("Failed to call messaging-service for participated events of user {}: {}", userId, e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * Fallback method cho Circuit Breaker khi messaging-service gặp sự cố hoặc timeout
+     */
+    public List<UUID> fallbackParticipatedEvents(UUID userId, Throwable t) {
+        log.warn("CircuitBreaker fallback triggered for getParticipatedEventIds. User: {}, Reason: {}", userId, t.getMessage());
+        return Collections.emptyList();
     }
 }

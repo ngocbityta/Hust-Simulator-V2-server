@@ -13,7 +13,7 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -27,6 +27,8 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:hustsim_redis}
+      repositories:
+        enabled: false
 
   # RabbitMQ
   rabbitmq:
@@ -50,9 +52,18 @@ grpc:
       address: static://${GAME_SERVER_HOST:localhost}:${GAME_SERVER_GRPC_PORT:50051}
       negotiation-type: plaintext
 
-# Actuator
+# Actuator, Tracing, Metrics
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+
+# Circuit Breaker Config
+resilience4j.circuitbreaker:
+  instances:
+    messagingService:
+      slidingWindowSize: 5
+      failureRateThreshold: 50
+      waitDurationInOpenState: 10000
+      permittedNumberOfCallsInHalfOpenState: 3

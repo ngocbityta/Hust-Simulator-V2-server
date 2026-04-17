@@ -27,6 +27,7 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final BuildingRepository buildingRepository;
     private final ObjectMapper objectMapper;
+    private final EventEventPublisher eventEventPublisher;
 
     @Override
     public List<Event> findAll() {
@@ -53,7 +54,9 @@ public class EventServiceImpl implements EventService {
     public Event create(Event event) {
         log.info("Creating new event: {}", event.getName());
         validateEvent(event);
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        eventEventPublisher.publish(saved, EventEvent.EventType.CREATED);
+        return saved;
     }
 
     @Override
@@ -84,7 +87,9 @@ public class EventServiceImpl implements EventService {
         validateEvent(event);
 
         log.info("Updating event: {}", id);
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        eventEventPublisher.publish(saved, EventEvent.EventType.UPDATED);
+        return saved;
     }
 
     private void validateEvent(Event event) {
@@ -120,6 +125,7 @@ public class EventServiceImpl implements EventService {
     public void delete(UUID id) {
         Event event = findById(id);
         eventRepository.delete(event);
+        eventEventPublisher.publish(event, EventEvent.EventType.DELETED);
         log.info("Deleted event: {}", id);
     }
 }

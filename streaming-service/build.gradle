@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.5.0'
+	id 'org.springframework.boot' version '3.3.6'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -32,8 +32,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 	// Lombok
-	compileOnly 'org.projectlombok:lombok'
-	annotationProcessor 'org.projectlombok:lombok'
+	compileOnly 'org.projectlombok:lombok:1.18.36'
+	annotationProcessor 'org.projectlombok:lombok:1.18.36'
 
 	// DevTools
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -42,7 +42,10 @@ dependencies {
 	runtimeOnly 'org.postgresql:postgresql'
 
 	// Swagger UI / OpenAPI
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.3'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+
+	// Observability & Tracing
+	implementation 'io.micrometer:micrometer-registry-prometheus'
 
 	// LiveKit Server API
 	implementation 'io.livekit:livekit-server:0.12.1'
