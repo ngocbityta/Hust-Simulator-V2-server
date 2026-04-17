@@ -12,13 +12,12 @@ docker-compose up -d --build
 ```
 ---
 
-## 2. Xem Tài Liệu Đặc Tả API
+## 📖 Tài Liệu Đặc Tả API (Documentation)
 
+Hệ thống cung cấp giao diện Swagger UI để dễ dàng thử nghiệm các API:
 
-### A. Gateway Giao tiếp Thời Gian Thực
-- **Truy cập:** [http://localhost:3002/api](http://localhost:3002/api)
-
-### B. Context Service
-- **Truy cập:** [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- **Context Service:** [http://localhost/swagger-ui/index.html](http://localhost/swagger-ui/index.html)
+- **Auth Service:** [http://localhost/auth/swagger-ui/index.html](http://localhost/auth/swagger-ui/index.html)
+- **Messaging Service:** [http://localhost/messaging/swagger-ui/index.html](http://localhost/messaging/swagger-ui/index.html)
 
 ---
