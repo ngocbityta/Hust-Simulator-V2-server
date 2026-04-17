@@ -4,7 +4,7 @@ rtc:
   udp_port: 7882
   use_external_ip: false
 keys:
-  devkey: secret
+  devkey: hust_simulator_livekit_secret_32_chars_long_key
 logging:
   json: false
   level: info
