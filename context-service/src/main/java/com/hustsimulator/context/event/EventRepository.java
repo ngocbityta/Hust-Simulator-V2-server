@@ -10,5 +10,6 @@ import com.hustsimulator.context.enums.EventStatus;
 
 public interface EventRepository extends JpaRepository<Event, UUID> {
     List<Event> findByStatusIn(List<EventStatus> statuses);
+    List<Event> findByStatus(EventStatus status);
     List<Event> findByMapId(UUID mapId);
 }

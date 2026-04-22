@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import jakarta.persistence.FetchType;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,7 +26,7 @@ public class IndoorEvent extends Event {
     @Column(name = "building_id")
     private UUID buildingId;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "event_rooms", joinColumns = @JoinColumn(name = "event_id"))
     @Column(name = "room_id")
     private List<UUID> roomIds;

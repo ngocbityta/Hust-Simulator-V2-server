@@ -80,15 +80,17 @@ class EventServiceTest {
     // ─── findActiveEvents ─────────────────────────────────────────────────────────
 
     @Test
-    void findActiveEvents_shouldReturnScheduledAndOngoing() {
+    void findActiveEvents_shouldReturnOngoingOnly() {
         IndoorEvent e = buildIndoorEvent();
-        when(eventRepository.findByStatusIn(List.of(EventStatus.SCHEDULED, EventStatus.ONGOING)))
+        e.setStatus(EventStatus.ONGOING);
+        when(eventRepository.findByStatus(EventStatus.ONGOING))
                 .thenReturn(List.of(e));
 
         List<Event> result = eventService.findActiveEvents();
 
         assertThat(result).hasSize(1);
-        verify(eventRepository).findByStatusIn(List.of(EventStatus.SCHEDULED, EventStatus.ONGOING));
+        assertThat(result.get(0).getStatus()).isEqualTo(EventStatus.ONGOING);
+        verify(eventRepository).findByStatus(EventStatus.ONGOING);
     }
 
     // ─── findById ─────────────────────────────────────────────────────────────────

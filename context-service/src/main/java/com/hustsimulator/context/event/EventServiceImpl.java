@@ -5,6 +5,7 @@ import com.hustsimulator.context.common.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hustsimulator.context.building.BuildingRepository;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
@@ -36,7 +38,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<Event> findActiveEvents() {
-        return eventRepository.findByStatusIn(List.of(EventStatus.SCHEDULED, EventStatus.ONGOING));
+        return eventRepository.findByStatus(EventStatus.ONGOING);
     }
 
     @Override
