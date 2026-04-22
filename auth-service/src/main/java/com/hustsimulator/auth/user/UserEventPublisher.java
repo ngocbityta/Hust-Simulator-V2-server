@@ -32,7 +32,6 @@ public class UserEventPublisher {
                 .avatar(user.getAvatar())
                 .coverImage(user.getCoverImage())
                 .description(user.getDescription())
-                .role(user.getRole() != null ? user.getRole().name() : null)
                 .build();
 
         String routingKey = "user." + eventType.name().toLowerCase();

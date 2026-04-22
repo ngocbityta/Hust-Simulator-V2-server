@@ -29,5 +29,4 @@ public class UserEvent implements Serializable {
     private String avatar;
     private String coverImage;
     private String description;
-    private String role;
 }

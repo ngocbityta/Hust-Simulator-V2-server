@@ -56,7 +56,6 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header("X-User-Id", user.getId().toString())
                 .header("X-User-Phonenumber", user.getPhonenumber())
-                .header("X-User-Role", user.getRole().name())
                 .build();
     }
 }

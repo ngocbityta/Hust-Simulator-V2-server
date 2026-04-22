@@ -3,8 +3,6 @@ package com.hustsimulator.auth.entity;
 import com.hustsimulator.auth.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import com.hustsimulator.auth.enums.UserRole;
 import com.hustsimulator.auth.enums.UserStatus;
 import lombok.*;
 
@@ -33,11 +31,6 @@ public class User extends BaseEntity {
     private String coverImage;
 
     private String description;
-
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 2)
-    private UserRole role;
 
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String token;

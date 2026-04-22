@@ -1,7 +1,6 @@
 package com.hustsimulator.auth.user;
 
 import com.hustsimulator.auth.entity.User;
-import com.hustsimulator.auth.enums.UserRole;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -32,19 +31,18 @@ class UserEventPublisherTest {
         // Given
         UUID userId = UUID.randomUUID();
         User user = User.builder()
-                .id(userId)
                 .username("testuser")
                 .phonenumber("0123456789")
-                .role(UserRole.HV)
                 .build();
-        
+        user.setId(userId);
+
         // When
         userEventPublisher.publish(user, UserEvent.EventType.CREATED);
 
         // Then
         ArgumentCaptor<UserEvent> eventCaptor = ArgumentCaptor.forClass(UserEvent.class);
         verify(rabbitTemplate).convertAndSend(eq(EXCHANGE), eq("user.created"), eventCaptor.capture());
-        
+
         UserEvent capturedEvent = eventCaptor.getValue();
         assertEquals(UserEvent.EventType.CREATED, capturedEvent.getEventType());
         assertEquals(userId, capturedEvent.getUserId());
@@ -55,10 +53,9 @@ class UserEventPublisherTest {
     void publish_UpdatedEvent_SendsCorrectMessage() {
         // Given
         User user = User.builder()
-                .id(UUID.randomUUID())
                 .username("updateduser")
-                .role(UserRole.GV)
                 .build();
+        user.setId(UUID.randomUUID());
 
         // When
         userEventPublisher.publish(user, UserEvent.EventType.UPDATED);
@@ -70,9 +67,8 @@ class UserEventPublisherTest {
     @Test
     void publish_DeletedEvent_SendsCorrectMessage() {
         // Given
-        User user = User.builder()
-                .id(UUID.randomUUID())
-                .build();
+        User user = User.builder().build();
+        user.setId(UUID.randomUUID());
 
         // When
         userEventPublisher.publish(user, UserEvent.EventType.DELETED);

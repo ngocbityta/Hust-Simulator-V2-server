@@ -1,7 +1,6 @@
 package com.hustsimulator.auth.auth;
 
 import com.hustsimulator.auth.entity.User;
-import com.hustsimulator.auth.enums.UserRole;
 import com.hustsimulator.auth.common.JwtUtils;
 import com.hustsimulator.auth.user.UserEvent;
 import com.hustsimulator.auth.user.UserEventPublisher;
@@ -36,7 +35,7 @@ public class AuthServiceImpl implements AuthService {
         // Generate JWT with userId embedded as claim
         String jwt = jwtUtils.generateToken(loginRequest.phonenumber(), user.getId());
 
-        return new AuthDTO.AuthResponse(jwt, user.getId(), user.getPhonenumber(), user.getUsername(), user.getRole());
+        return new AuthDTO.AuthResponse(jwt, user.getId(), user.getPhonenumber(), user.getUsername());
     }
 
     public User register(AuthDTO.RegisterRequest registerRequest) {
@@ -48,7 +47,6 @@ public class AuthServiceImpl implements AuthService {
                 .phonenumber(registerRequest.phonenumber())
                 .password(passwordEncoder.encode(registerRequest.password()))
                 .username(registerRequest.username())
-                .role(registerRequest.role() != null ? registerRequest.role() : UserRole.HV)
                 .build();
 
         User saved = userRepository.save(user);

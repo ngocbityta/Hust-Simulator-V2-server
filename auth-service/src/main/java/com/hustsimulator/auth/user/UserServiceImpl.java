@@ -72,6 +72,6 @@ public class UserServiceImpl implements UserService {
                 user.getPassword(),
                 java.util.Collections.singletonList(
                         new org.springframework.security.core.authority.SimpleGrantedAuthority(
-                                "ROLE_" + user.getRole().name())));
+                                "ROLE_USER")));
     }
 }
