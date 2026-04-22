@@ -38,6 +38,7 @@ spring:
 # Server
 server:
   port: ${SOCIAL_SERVICE_PORT:8083}
+  forward-headers-strategy: framework
 
 # Actuator, Tracing, Metrics
 management:
@@ -45,3 +46,11 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    operations-sorter: method

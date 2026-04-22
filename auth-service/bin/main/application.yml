@@ -35,6 +35,7 @@ hustsimulator:
 # Server
 server:
   port: ${AUTH_SERVICE_PORT:8081}
+  forward-headers-strategy: framework
 
 # Actuator & Metrics
 management:

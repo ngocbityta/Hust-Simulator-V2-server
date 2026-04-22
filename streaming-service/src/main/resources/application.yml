@@ -33,6 +33,7 @@ spring:
 # Server
 server:
   port: ${STREAMING_SERVICE_PORT:8084}
+  forward-headers-strategy: framework
 
 # Actuator, Tracing, Metrics
 management:
@@ -46,3 +47,11 @@ livekit:
   api-key: ${LIVEKIT_API_KEY:devkey}
   api-secret: ${LIVEKIT_API_SECRET:secret}
   url: ${LIVEKIT_URL:http://localhost:7880}
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    operations-sorter: method

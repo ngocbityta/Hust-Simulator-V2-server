@@ -40,6 +40,7 @@ spring:
 # Server
 server:
   port: ${CONTEXT_SERVICE_PORT:8080}
+  forward-headers-strategy: framework
 
 # gRPC Server
 grpc:
@@ -67,3 +68,11 @@ resilience4j.circuitbreaker:
       failureRateThreshold: 50
       waitDurationInOpenState: 10000
       permittedNumberOfCallsInHalfOpenState: 3
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    operations-sorter: method
