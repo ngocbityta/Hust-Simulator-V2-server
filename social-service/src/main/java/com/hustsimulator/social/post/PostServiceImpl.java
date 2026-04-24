@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import com.hustsimulator.social.enums.PostStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -64,7 +65,7 @@ public class PostServiceImpl implements PostService {
                 .eventId(request.eventId())
                 .buildingId(request.buildingId())
                 .roomId(request.roomId())
-                .status("ACTIVE")
+                .status(PostStatus.ACTIVE)
                 .canEdit("1")
                 .canComment("1")
                 .banned("0")

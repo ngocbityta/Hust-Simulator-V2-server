@@ -1,4 +1,4 @@
-package com.hustsimulator.streaming.service;
+package com.hustsimulator.streaming.livekit;
 
 import io.livekit.server.AccessToken;
 import io.livekit.server.CanPublish;
@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-public class LiveKitService {
+public class LiveKitServiceImpl implements LiveKitService {
 
     @Value("${livekit.api-key}")
     private String apiKey;

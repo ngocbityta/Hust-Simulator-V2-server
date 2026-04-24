@@ -64,7 +64,14 @@ public class RealTimeServiceImpl implements RealTimeService {
                 String secureUserId = client.get("userId");
                 String senderId = secureUserId != null ? secureUserId : (String) mapData.get("senderId");
                 
-                String type = (String) mapData.getOrDefault("type", "text");
+                String typeStr = (String) mapData.getOrDefault("type", "TEXT");
+                com.hustsimulator.messaging.enums.MessageType type = com.hustsimulator.messaging.enums.MessageType.TEXT;
+                try {
+                    type = com.hustsimulator.messaging.enums.MessageType.valueOf(typeStr.toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                    log.warn("Invalid message type {}, falling back to TEXT", typeStr);
+                }
+                
                 String content = (String) mapData.get("content");
                 String fileIdStr = (String) mapData.get("fileId");
                 UUID fileId = fileIdStr != null ? UUID.fromString(fileIdStr) : null;

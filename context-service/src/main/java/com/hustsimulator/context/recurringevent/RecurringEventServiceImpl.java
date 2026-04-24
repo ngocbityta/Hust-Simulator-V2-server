@@ -84,7 +84,7 @@ public class RecurringEventServiceImpl implements RecurringEventService {
         RecurringEvent event = findById(classId);
         log.info("Completing class: {}", event.getName());
         
-        event.setStatus(RecurringEventStatus.COMPLETED);
+        event.setStatus(RecurringEventStatus.SCHEDULED);
         recurringEventRepository.save(event);
 
         if (event.getRoomId() != null) {

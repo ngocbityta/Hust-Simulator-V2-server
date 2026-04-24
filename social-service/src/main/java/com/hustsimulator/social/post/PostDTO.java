@@ -1,6 +1,7 @@
 package com.hustsimulator.social.post;
 
 import java.util.UUID;
+import com.hustsimulator.social.enums.PostStatus;
 
 /**
  * Data Transfer Objects for Post operations.
@@ -20,7 +21,7 @@ public class PostDTO {
     public record UpdatePostRequest(
             String content,
             String videoUrl,
-            String status,
+            PostStatus status,
             String canEdit,
             String canComment
     ) {}

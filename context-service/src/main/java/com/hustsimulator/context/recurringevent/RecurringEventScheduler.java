@@ -4,6 +4,7 @@ import com.hustsimulator.context.entity.RecurringEvent;
 import com.hustsimulator.context.scheduler.SchedulerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.hustsimulator.context.enums.JobType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,6 @@ public class RecurringEventScheduler {
 
     private final RecurringEventService recurringEventService;
     private final SchedulerService schedulerService;
-
-    public static final String JOB_TYPE_START = "START_CLASS";
-    public static final String JOB_TYPE_END = "END_CLASS";
 
     @Scheduled(fixedRate = 30000) // 30 seconds
     public void scanAndSchedule() {
@@ -38,7 +36,7 @@ public class RecurringEventScheduler {
                     // Schedule START
                     schedulerService.scheduleJob(
                         event.getId().toString(),
-                        JOB_TYPE_START,
+                        JobType.START_CLASS,
                         nextFireTime
                     );
 
@@ -46,7 +44,7 @@ public class RecurringEventScheduler {
                     LocalDateTime endTime = nextFireTime.plusMinutes(event.getDurationMinutes());
                     schedulerService.scheduleJob(
                         event.getId().toString(),
-                        JOB_TYPE_END,
+                        JobType.END_CLASS,
                         endTime
                     );
                 }

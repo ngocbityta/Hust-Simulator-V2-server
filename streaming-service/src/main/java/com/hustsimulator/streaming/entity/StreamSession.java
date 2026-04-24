@@ -11,6 +11,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import com.hustsimulator.streaming.enums.StreamStatus;
+import com.hustsimulator.streaming.enums.StreamEntityType;
 
 @Entity
 @Table(name = "stream_sessions")
@@ -28,15 +30,17 @@ public class StreamSession {
     @Column(name = "room_name", nullable = false, unique = true)
     private String roomName;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "entity_type", nullable = false)
-    private String entityType; // 'EVENT' or 'POST'
+    private StreamEntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
     private UUID entityId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
-    private String status = "ACTIVE";
+    private StreamStatus status = StreamStatus.ACTIVE;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

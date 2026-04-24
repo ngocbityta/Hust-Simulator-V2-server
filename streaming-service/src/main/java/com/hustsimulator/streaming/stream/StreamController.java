@@ -1,7 +1,4 @@
-package com.hustsimulator.streaming.controller;
-
-import com.hustsimulator.streaming.dto.StreamDTO;
-import com.hustsimulator.streaming.service.StreamService;
+package com.hustsimulator.streaming.stream;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -11,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
+import com.hustsimulator.streaming.enums.StreamEntityType;
 
 @RestController
 @RequestMapping("/api/streams")
@@ -57,7 +55,7 @@ public class StreamController {
     @GetMapping("/entity/{entityType}/{entityId}")
     @Operation(summary = "Get stream for entity", description = "Find active stream for a specific event or post")
     public StreamDTO.StreamSessionInfo getStreamByEntity(
-            @PathVariable String entityType,
+            @PathVariable StreamEntityType entityType,
             @PathVariable UUID entityId) {
         return streamService.getStreamByEntity(entityType, entityId);
     }

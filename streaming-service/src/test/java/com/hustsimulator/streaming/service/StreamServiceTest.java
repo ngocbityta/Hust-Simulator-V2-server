@@ -2,6 +2,8 @@ package com.hustsimulator.streaming.service;
 
 import com.hustsimulator.streaming.dto.StreamDTO;
 import com.hustsimulator.streaming.entity.StreamSession;
+import com.hustsimulator.streaming.enums.StreamEntityType;
+import com.hustsimulator.streaming.enums.StreamStatus;
 import com.hustsimulator.streaming.repository.StreamSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,7 +43,7 @@ class StreamServiceTest {
 
     // ─── Helpers ────────────────────────────────────────────────────────────
 
-    private StreamDTO.StartStreamRequest buildStartRequest(UUID entityId, String entityType) {
+    private StreamDTO.StartStreamRequest buildStartRequest(UUID entityId, StreamEntityType entityType) {
         StreamDTO.StartStreamRequest req = new StreamDTO.StartStreamRequest();
         req.setEntityId(entityId);
         req.setEntityType(entityType);
@@ -49,10 +51,10 @@ class StreamServiceTest {
         return req;
     }
 
-    private StreamSession buildSession(UUID entityId, String entityType, String status) {
+    private StreamSession buildSession(UUID entityId, StreamEntityType entityType, StreamStatus status) {
         return StreamSession.builder()
                 .id(UUID.randomUUID())
-                .roomName(entityType.toLowerCase() + "_stream_" + entityId)
+                .roomName(entityType.name().toLowerCase() + "_stream_" + entityId)
                 .entityType(entityType)
                 .entityId(entityId)
                 .status(status)
@@ -68,9 +70,9 @@ class StreamServiceTest {
         void shouldCreateNewSession_whenNoActiveExists() {
             UUID eventId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            StreamDTO.StartStreamRequest request = buildStartRequest(eventId, "EVENT");
+            StreamDTO.StartStreamRequest request = buildStartRequest(eventId, StreamEntityType.EVENT);
 
-            when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus("EVENT", eventId, "ACTIVE"))
+            when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus(StreamEntityType.EVENT, eventId, StreamStatus.ACTIVE))
                     .thenReturn(Optional.empty());
             when(streamSessionRepository.save(any(StreamSession.class)))
                     .thenAnswer(i -> i.getArgument(0));
@@ -87,23 +89,23 @@ class StreamServiceTest {
             ArgumentCaptor<StreamSession> captor = ArgumentCaptor.forClass(StreamSession.class);
             verify(streamSessionRepository).save(captor.capture());
             StreamSession saved = captor.getValue();
-            assertThat(saved.getEntityType()).isEqualTo("EVENT");
+            assertThat(saved.getEntityType()).isEqualTo(StreamEntityType.EVENT);
             assertThat(saved.getEntityId()).isEqualTo(eventId);
-            assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+            assertThat(saved.getStatus()).isEqualTo(StreamStatus.ACTIVE);
         }
 
         @Test
         void shouldReuseExistingSession_whenActiveExists() {
             UUID eventId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            StreamSession existing = buildSession(eventId, "EVENT", "ACTIVE");
+            StreamSession existing = buildSession(eventId, StreamEntityType.EVENT, StreamStatus.ACTIVE);
 
-            when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus("EVENT", eventId, "ACTIVE"))
+            when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus(StreamEntityType.EVENT, eventId, StreamStatus.ACTIVE))
                     .thenReturn(Optional.of(existing));
             when(liveKitService.createToken(eq(existing.getRoomName()), eq(userId.toString()), any(), eq(true)))
                     .thenReturn("reuse-token");
 
-            StreamDTO.StartStreamRequest request = buildStartRequest(eventId, "EVENT");
+            StreamDTO.StartStreamRequest request = buildStartRequest(eventId, StreamEntityType.EVENT);
             StreamDTO.StreamTokenResponse response = streamService.startStream(request, userId);
 
             assertThat(response.getToken()).isEqualTo("reuse-token");
@@ -122,7 +124,7 @@ class StreamServiceTest {
         void shouldReturnSubscriberToken_whenStreamIsActive() {
             UUID entityId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            StreamSession session = buildSession(entityId, "EVENT", "ACTIVE");
+            StreamSession session = buildSession(entityId, StreamEntityType.EVENT, StreamStatus.ACTIVE);
 
             when(streamSessionRepository.findByRoomName(session.getRoomName()))
                     .thenReturn(Optional.of(session));
@@ -154,7 +156,7 @@ class StreamServiceTest {
         void shouldThrow400_whenStreamIsEnded() {
             UUID entityId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            StreamSession ended = buildSession(entityId, "EVENT", "ENDED");
+            StreamSession ended = buildSession(entityId, StreamEntityType.EVENT, StreamStatus.ENDED);
 
             when(streamSessionRepository.findByRoomName(ended.getRoomName()))
                     .thenReturn(Optional.of(ended));
@@ -177,7 +179,7 @@ class StreamServiceTest {
         void shouldMarkSessionAsEnded() {
             UUID entityId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            StreamSession session = buildSession(entityId, "EVENT", "ACTIVE");
+            StreamSession session = buildSession(entityId, StreamEntityType.EVENT, StreamStatus.ACTIVE);
 
             when(streamSessionRepository.findByRoomName(session.getRoomName()))
                     .thenReturn(Optional.of(session));
@@ -187,14 +189,14 @@ class StreamServiceTest {
 
             ArgumentCaptor<StreamSession> captor = ArgumentCaptor.forClass(StreamSession.class);
             verify(streamSessionRepository).save(captor.capture());
-            assertThat(captor.getValue().getStatus()).isEqualTo("ENDED");
+            assertThat(captor.getValue().getStatus()).isEqualTo(StreamStatus.ENDED);
         }
 
         @Test
         void shouldThrow_whenAlreadyEnded() {
             UUID entityId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            StreamSession session = buildSession(entityId, "EVENT", "ENDED");
+            StreamSession session = buildSession(entityId, StreamEntityType.EVENT, StreamStatus.ENDED);
 
             when(streamSessionRepository.findByRoomName(session.getRoomName()))
                     .thenReturn(Optional.of(session));
@@ -212,14 +214,16 @@ class StreamServiceTest {
         UUID id1 = UUID.randomUUID();
         UUID id2 = UUID.randomUUID();
 
-        when(streamSessionRepository.findAllByStatus("ACTIVE"))
-                .thenReturn(List.of(buildSession(id1, "EVENT", "ACTIVE"), buildSession(id2, "POST", "ACTIVE")));
+        when(streamSessionRepository.findAllByStatus(StreamStatus.ACTIVE))
+                .thenReturn(List.of(
+                        buildSession(id1, StreamEntityType.EVENT, StreamStatus.ACTIVE),
+                        buildSession(id2, StreamEntityType.POST, StreamStatus.ACTIVE)));
 
         List<StreamDTO.StreamSessionInfo> result = streamService.getActiveStreams();
 
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).getEntityType()).isEqualTo("EVENT");
-        assertThat(result.get(1).getEntityType()).isEqualTo("POST");
+        assertThat(result.get(0).getEntityType()).isEqualTo(StreamEntityType.EVENT);
+        assertThat(result.get(1).getEntityType()).isEqualTo(StreamEntityType.POST);
     }
 
     // ─── getStreamByEntity ──────────────────────────────────────────────────
@@ -227,12 +231,12 @@ class StreamServiceTest {
     @Test
     void getStreamByEntity_shouldReturn_whenFound() {
         UUID eventId = UUID.randomUUID();
-        StreamSession session = buildSession(eventId, "EVENT", "ACTIVE");
+        StreamSession session = buildSession(eventId, StreamEntityType.EVENT, StreamStatus.ACTIVE);
 
-        when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus("EVENT", eventId, "ACTIVE"))
+        when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus(StreamEntityType.EVENT, eventId, StreamStatus.ACTIVE))
                 .thenReturn(Optional.of(session));
 
-        StreamDTO.StreamSessionInfo info = streamService.getStreamByEntity("EVENT", eventId);
+        StreamDTO.StreamSessionInfo info = streamService.getStreamByEntity(StreamEntityType.EVENT, eventId);
 
         assertThat(info.getEntityId()).isEqualTo(eventId);
         assertThat(info.getRoomName()).isEqualTo(session.getRoomName());
@@ -241,10 +245,10 @@ class StreamServiceTest {
     @Test
     void getStreamByEntity_shouldThrow404_whenNotFound() {
         UUID eventId = UUID.randomUUID();
-        when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus("EVENT", eventId, "ACTIVE"))
+        when(streamSessionRepository.findByEntityTypeAndEntityIdAndStatus(StreamEntityType.EVENT, eventId, StreamStatus.ACTIVE))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> streamService.getStreamByEntity("EVENT", eventId))
+        assertThatThrownBy(() -> streamService.getStreamByEntity(StreamEntityType.EVENT, eventId))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("No active stream found");
     }

@@ -1,7 +1,9 @@
-package com.hustsimulator.streaming.dto;
+package com.hustsimulator.streaming.stream;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import com.hustsimulator.streaming.enums.StreamStatus;
+import com.hustsimulator.streaming.enums.StreamEntityType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,8 +21,8 @@ public class StreamDTO {
         @NotNull(message = "Entity ID is required")
         private UUID entityId;
 
-        @NotBlank(message = "Entity Type is required (EVENT or POST)")
-        private String entityType; // 'EVENT' or 'POST'
+        @NotNull(message = "Entity Type is required (EVENT or POST)")
+        private StreamEntityType entityType;
 
         private String participantName = "Host";
     }
@@ -49,9 +51,9 @@ public class StreamDTO {
     public static class StreamSessionInfo {
         private UUID id;
         private String roomName;
-        private String entityType;
+        private StreamEntityType entityType;
         private UUID entityId;
-        private String status;
+        private StreamStatus status;
         private LocalDateTime createdAt;
     }
 }

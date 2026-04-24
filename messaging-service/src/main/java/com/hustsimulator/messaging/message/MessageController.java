@@ -2,8 +2,8 @@ package com.hustsimulator.messaging.message;
 
 import com.hustsimulator.messaging.entity.Message;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import com.hustsimulator.messaging.enums.MessageType;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,8 +20,8 @@ public class MessageController {
 
     @Data
     public static class MessageRequest {
-        @NotBlank
-        private String type;
+        @NotNull
+        private MessageType type;
         private String content;
         private UUID fileId;
     }

@@ -2,6 +2,7 @@ package com.hustsimulator.social.dto;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import com.hustsimulator.social.enums.RecurringEventStatus;
 
 public record RecurringEventDTO(
     UUID id,
@@ -10,7 +11,7 @@ public record RecurringEventDTO(
     UUID mapId,
     UUID roomId,
     String cronExpression,
-    String status,
+    RecurringEventStatus status,
     Integer durationMinutes,
     LocalDateTime createdAt,
     LocalDateTime updatedAt

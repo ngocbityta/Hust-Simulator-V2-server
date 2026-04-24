@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import com.hustsimulator.messaging.enums.MessageType;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +17,7 @@ public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
 
     @Override
-    public Message save(UUID eventId, UUID senderId, String type, String content, UUID fileId) {
+    public Message save(UUID eventId, UUID senderId, MessageType type, String content, UUID fileId) {
         Message message = Message.builder()
                 .eventId(eventId)
                 .senderId(senderId)

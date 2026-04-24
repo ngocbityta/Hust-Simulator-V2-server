@@ -2,6 +2,8 @@ package com.hustsimulator.context.scheduler;
 
 import com.hustsimulator.context.config.RabbitMQConfig;
 import com.hustsimulator.context.entity.ScheduledJob;
+import com.hustsimulator.context.enums.JobStatus;
+import com.hustsimulator.context.enums.JobType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,9 +35,9 @@ class SchedulerServiceTest {
     }
 
     @Test
-    void scheduleJob_shouldSaveAndPublish() {
+    void scheduleJob_shouldSaveRecord() {
         String jobId = "event-1";
-        String type = "START_CLASS";
+        JobType type = JobType.START_CLASS;
         LocalDateTime targetTime = LocalDateTime.now().plusHours(1);
 
         when(schedulerRepository.findByJobIdAndJobTypeAndTargetTime(any(), any(), any()))
@@ -48,13 +49,12 @@ class SchedulerServiceTest {
 
         assertThat(result).isTrue();
         verify(schedulerRepository).save(any(ScheduledJob.class));
-        verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.DELAY_EXCHANGE), eq(""), any(Map.class), any(org.springframework.amqp.core.MessagePostProcessor.class));
     }
 
     @Test
     void scheduleJob_shouldBeIdempotent() {
         String jobId = "event-1";
-        String type = "START_CLASS";
+        JobType type = JobType.START_CLASS;
         LocalDateTime targetTime = LocalDateTime.now().plusHours(1);
 
         when(schedulerRepository.findByJobIdAndJobTypeAndTargetTime(jobId, type, targetTime))
@@ -64,40 +64,40 @@ class SchedulerServiceTest {
 
         assertThat(result).isFalse();
         verify(schedulerRepository, never()).save(any());
-        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(), any(org.springframework.amqp.core.MessagePostProcessor.class));
     }
 
     @Test
     void markCompleted_shouldUpdateStatus() {
         String jobId = "event-1";
-        String type = "START_CLASS";
+        JobType type = JobType.START_CLASS;
         LocalDateTime targetTime = LocalDateTime.now();
-        ScheduledJob job = ScheduledJob.builder().status("PENDING").build();
+        ScheduledJob job = ScheduledJob.builder().status(JobStatus.PENDING).build();
 
         when(schedulerRepository.findByJobIdAndJobTypeAndTargetTime(jobId, type, targetTime))
                 .thenReturn(Optional.of(job));
 
         schedulerService.markCompleted(jobId, type, targetTime);
 
-        assertThat(job.getStatus()).isEqualTo("COMPLETED");
+        assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
         verify(schedulerRepository).save(job);
     }
 
     @Test
-    void recoverMissedJobs_shouldRePublishPendingJobs() {
+    void dispatchMaturedJobs_shouldDispatchAndMarkDispatched() {
         ScheduledJob job = ScheduledJob.builder()
                 .jobId("missed-1")
-                .jobType("START_CLASS")
-                .status("PENDING")
+                .jobType(JobType.START_CLASS)
+                .status(JobStatus.PENDING)
                 .targetTime(LocalDateTime.now().minusMinutes(5))
                 .build();
 
-        when(schedulerRepository.findByStatusAndTargetTimeBefore(eq("PENDING"), any()))
+        when(schedulerRepository.findByStatusAndTargetTimeBefore(eq(JobStatus.PENDING), any()))
                 .thenReturn(List.of(job));
 
-        schedulerService.recoverMissedJobs();
+        schedulerService.dispatchMaturedJobs();
 
-        // Should publish once for the missed job, and check for future jobs (which won't find any in this mock)
-        verify(rabbitTemplate, atLeastOnce()).convertAndSend(eq(RabbitMQConfig.DELAY_EXCHANGE), eq(""), any(Map.class), any(org.springframework.amqp.core.MessagePostProcessor.class));
+        verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.DLX_EXCHANGE), eq(""), any(Map.class));
+        assertThat(job.getStatus()).isEqualTo(JobStatus.DISPATCHED);
+        verify(schedulerRepository).save(job);
     }
 }

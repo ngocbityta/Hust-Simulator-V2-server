@@ -3,6 +3,8 @@ package com.hustsimulator.context.entity;
 import com.hustsimulator.context.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import com.hustsimulator.context.enums.JobType;
+import com.hustsimulator.context.enums.JobStatus;
 
 import java.time.LocalDateTime;
 
@@ -19,13 +21,15 @@ public class ScheduledJob extends BaseEntity {
     @Column(name = "job_id", nullable = false)
     private String jobId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "job_type", nullable = false)
-    private String jobType;
+    private JobType jobType;
 
     @Column(name = "target_time", nullable = false)
     private LocalDateTime targetTime;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private String status = "PENDING";
+    private JobStatus status = JobStatus.PENDING;
 }

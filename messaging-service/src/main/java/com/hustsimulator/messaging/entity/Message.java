@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
+import com.hustsimulator.messaging.enums.MessageType;
 
 @Entity
 @Table(name = "messages_chat")
@@ -22,9 +23,10 @@ public class Message extends BaseEntity {
     private UUID senderId;
 
     /** text | file | image */
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private String type = "text";
+    private MessageType type = MessageType.TEXT;
 
     /** Text content for type=text, optional caption for file/image */
     @Column(columnDefinition = "TEXT")

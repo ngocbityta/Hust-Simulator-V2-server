@@ -10,11 +10,14 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.scheduling.annotation.Scheduled;
+import com.hustsimulator.context.enums.JobType;
+import com.hustsimulator.context.enums.JobStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +29,7 @@ public class SchedulerServiceImpl implements SchedulerService {
 
     @Override
     @Transactional
-    public boolean scheduleJob(String jobId, String jobType, LocalDateTime targetTime) {
+    public boolean scheduleJob(String jobId, JobType jobType, LocalDateTime targetTime) {
         if (schedulerRepository.findByJobIdAndJobTypeAndTargetTime(jobId, jobType, targetTime).isPresent()) {
             log.debug("SchedulerService: Job already scheduled: {} / {} @ {}", jobId, jobType, targetTime);
             return false;
@@ -36,11 +39,12 @@ public class SchedulerServiceImpl implements SchedulerService {
                 .jobId(jobId)
                 .jobType(jobType)
                 .targetTime(targetTime)
-                .status("PENDING")
+                .status(JobStatus.PENDING)
                 .build();
         schedulerRepository.save(record);
 
-        publishToDelayQueue(jobId, jobType, targetTime);
+        // Dispatched via DB polling instead of delay queue to prevent head-of-line
+        // blocking
 
         log.info("SchedulerService: Scheduled job '{}' of type '{}' for {}", jobId, jobType, targetTime);
         return true;
@@ -48,10 +52,10 @@ public class SchedulerServiceImpl implements SchedulerService {
 
     @Override
     @Transactional
-    public void markCompleted(String jobId, String jobType, LocalDateTime targetTime) {
+    public void markCompleted(String jobId, JobType jobType, LocalDateTime targetTime) {
         schedulerRepository.findByJobIdAndJobTypeAndTargetTime(jobId, jobType, targetTime)
                 .ifPresent(job -> {
-                    job.setStatus("COMPLETED");
+                    job.setStatus(JobStatus.COMPLETED);
                     schedulerRepository.save(job);
                     log.info("SchedulerService: Marked job completed: {} / {}", jobId, jobType);
                 });
@@ -60,47 +64,31 @@ public class SchedulerServiceImpl implements SchedulerService {
     @Override
     @EventListener(ApplicationReadyEvent.class)
     public void recoverMissedJobs() {
+        dispatchMaturedJobs();
+    }
+
+    @Scheduled(fixedRate = 5000)
+    @Transactional
+    public void dispatchMaturedJobs() {
         LocalDateTime now = LocalDateTime.now();
-        List<ScheduledJob> missedJobs = schedulerRepository.findByStatusAndTargetTimeBefore("PENDING", now);
+        List<ScheduledJob> maturedJobs = schedulerRepository.findByStatusAndTargetTimeBefore(JobStatus.PENDING, now);
 
-        if (!missedJobs.isEmpty()) {
-            log.warn("SchedulerService: Recovering {} missed jobs from downtime", missedJobs.size());
-            for (ScheduledJob job : missedJobs) {
-                publishToDelayQueue(job.getJobId(), job.getJobType(), now);
-                log.info("SchedulerService: Re-dispatched missed job: {} / {}", job.getJobId(), job.getJobType());
-            }
-        }
-
-        // Also check for jobs maturing soon to ensure they are in RabbitMQ after a restart
-        List<ScheduledJob> futureJobs = schedulerRepository.findByStatusAndTargetTimeBefore("PENDING", now.plusHours(1));
-        for (ScheduledJob job : futureJobs) {
-            if (job.getTargetTime().isAfter(now)) {
-                publishToDelayQueue(job.getJobId(), job.getJobType(), job.getTargetTime());
-                log.info("SchedulerService: Re-enqueued future job: {} / {} @ {}", job.getJobId(), job.getJobType(), job.getTargetTime());
+        if (!maturedJobs.isEmpty()) {
+            for (ScheduledJob job : maturedJobs) {
+                dispatchToActiveQueue(job.getJobId(), job.getJobType(), job.getTargetTime());
+                job.setStatus(JobStatus.DISPATCHED);
+                schedulerRepository.save(job);
+                log.info("SchedulerService: Dispatched matured job: {} / {}", job.getJobId(), job.getJobType());
             }
         }
     }
 
-    private void publishToDelayQueue(String jobId, String jobType, LocalDateTime targetTime) {
-        LocalDateTime now = LocalDateTime.now();
-        long delayMs = Duration.between(now, targetTime).toMillis();
-        if (delayMs < 0) delayMs = 0;
-        final String delayStr = String.valueOf(delayMs);
-
+    private void dispatchToActiveQueue(String jobId, JobType jobType, LocalDateTime targetTime) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("jobId", jobId);
-        payload.put("type", jobType);
+        payload.put("type", jobType.name());
         payload.put("targetTime", targetTime.toString());
 
-
-        rabbitTemplate.convertAndSend(
-            RabbitMQConfig.DELAY_EXCHANGE,
-            "",
-            payload,
-            message -> {
-                message.getMessageProperties().setExpiration(delayStr);
-                return message;
-            }
-        );
+        rabbitTemplate.convertAndSend(RabbitMQConfig.DLX_EXCHANGE, "", payload);
     }
 }

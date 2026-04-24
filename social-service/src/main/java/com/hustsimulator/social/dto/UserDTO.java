@@ -1,6 +1,7 @@
 package com.hustsimulator.social.dto;
 
 import java.util.UUID;
+import com.hustsimulator.social.enums.UserStatus;
 
 public record UserDTO(
     UUID id,
@@ -10,6 +11,6 @@ public record UserDTO(
     String coverImage,
     String description,
     String role,
-    String status,
+    UserStatus status,
     Boolean online
 ) {}

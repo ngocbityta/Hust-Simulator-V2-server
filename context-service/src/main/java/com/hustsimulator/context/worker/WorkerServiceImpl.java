@@ -1,5 +1,6 @@
 package com.hustsimulator.context.worker;
 
+import com.hustsimulator.context.enums.JobType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,15 @@ public class WorkerServiceImpl implements WorkerService {
 
     @Override
     public void processJob(Map<String, Object> payload) {
-        String type = (String) payload.get("type");
+        String typeStr = (String) payload.get("type");
+        JobType type;
+        try {
+            type = JobType.valueOf(typeStr);
+        } catch (IllegalArgumentException e) {
+            log.error("Unknown job type: {}", typeStr);
+            return;
+        }
+
         String jobId = (String) payload.get("jobId");
 
         log.info("WorkerService: Dispatching task '{}' of type '{}'", jobId, type);

@@ -6,6 +6,7 @@ import lombok.*;
 import org.locationtech.jts.geom.Point;
 
 import java.util.UUID;
+import com.hustsimulator.social.enums.PostStatus;
 
 @Entity
 @Table(name = "posts")
@@ -25,8 +26,9 @@ public class Post extends BaseEntity {
     @Column(name = "video_url")
     private String videoUrl;
 
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    private String status = "ACTIVE";
+    private PostStatus status = PostStatus.ACTIVE;
 
     @Column(columnDefinition = "geometry(Point,4326)")
     private Point location;
