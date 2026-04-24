@@ -2,6 +2,7 @@ package com.hustsimulator.streaming.livekit;
 
 import io.livekit.server.AccessToken;
 import io.livekit.server.CanPublish;
+import io.livekit.server.CanPublishData;
 import io.livekit.server.CanSubscribe;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
@@ -35,6 +36,7 @@ public class LiveKitServiceImpl implements LiveKitService {
                 new RoomJoin(true),
                 new RoomName(roomName),
                 new CanPublish(canPublish),
+                new CanPublishData(true),
                 new CanSubscribe(true)
         );
 

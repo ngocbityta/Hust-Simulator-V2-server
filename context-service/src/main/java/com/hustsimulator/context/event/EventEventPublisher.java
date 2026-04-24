@@ -1,6 +1,5 @@
 package com.hustsimulator.context.event;
 
-import com.hustsimulator.context.config.RabbitMQConfig;
 import com.hustsimulator.context.entity.Event;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -60,5 +60,5 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui/index.html
-    url: /messaging/v3/api-docs
+    url: /v3/api-docs
     operations-sorter: method

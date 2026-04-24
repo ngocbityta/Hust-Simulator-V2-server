@@ -35,7 +35,6 @@ public class RealTimeServiceImpl implements RealTimeService {
             log.info("SocketIO Client disconnected: {}", client.getSessionId())
         );
 
-        // Join a class room
         server.addEventListener("class:join", Object.class, (client, data, ackRequest) -> {
             log.info("Received class:join. Data type: {}, Data: {}", data != null ? data.getClass().getName() : "null", data);
             String classId = data.toString();
@@ -92,7 +91,6 @@ public class RealTimeServiceImpl implements RealTimeService {
             }
         });
 
-        // Leave a class room
         server.addEventListener("class:leave", Object.class, (client, data, ackRequest) -> {
             String classId = data.toString();
             client.leaveRoom("class_" + classId);

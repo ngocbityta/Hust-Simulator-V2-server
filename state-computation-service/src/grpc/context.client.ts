@@ -40,10 +40,10 @@ interface ContextEngineService {
   checkPlayerZone(request: ZoneCheckRequest): Observable<ZoneCheckResponse>;
   reportSpatialTrigger(
     request: SpatialTriggerEvent,
-  ): Observable<{}>;
+  ): Observable<Record<string, never>>;
   updatePlayerState(
     request: UpdatePlayerStateRequest,
-  ): Observable<{}>;
+  ): Observable<Record<string, never>>;
 }
 
 @Injectable()
@@ -51,7 +51,7 @@ export class GrpcContextClient implements OnModuleInit {
   private readonly logger = new Logger(GrpcContextClient.name);
   private contextService!: ContextEngineService;
 
-  constructor(@Inject('CONTEXT_SERVICE') private readonly client: ClientGrpc) { }
+  constructor(@Inject('CONTEXT_SERVICE') private readonly client: ClientGrpc) {}
 
   onModuleInit() {
     this.contextService = this.client.getService<ContextEngineService>(
@@ -73,15 +73,11 @@ export class GrpcContextClient implements OnModuleInit {
     );
   }
 
-  async reportSpatialTrigger(
-    event: SpatialTriggerEvent,
-  ): Promise<void> {
+  async reportSpatialTrigger(event: SpatialTriggerEvent): Promise<void> {
     await firstValueFrom(this.contextService.reportSpatialTrigger(event));
   }
 
-  async updatePlayerState(
-    request: UpdatePlayerStateRequest,
-  ): Promise<void> {
+  async updatePlayerState(request: UpdatePlayerStateRequest): Promise<void> {
     await firstValueFrom(this.contextService.updatePlayerState(request));
   }
 }
