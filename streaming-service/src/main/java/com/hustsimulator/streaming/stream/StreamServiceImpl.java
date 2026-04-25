@@ -22,8 +22,12 @@ public class StreamServiceImpl implements StreamService {
     private final StreamSessionRepository streamSessionRepository;
     private final LiveKitService liveKitService;
 
-    @Value("${livekit.url:http://localhost:7880}")
-    private String livekitUrl;
+    @Value("${livekit.url:http://livekit:7880}")
+    private String livekitInternalUrl;
+
+    // URL trả về cho frontend — mặc định fallback về livekit.url nếu không cấu hình riêng
+    @Value("${livekit.client-url:${livekit.url:ws://localhost:7880}}")
+    private String livekitClientUrl;
 
     /**
      * Start a new stream or rejoin an existing one for the given entity.
@@ -57,7 +61,7 @@ public class StreamServiceImpl implements StreamService {
         String identity = userId.toString();
         String displayName = request.getParticipantName();
         String token = liveKitService.createToken(roomName, identity, displayName, true);
-        return new StreamDTO.StreamTokenResponse(token, roomName, livekitUrl);
+        return new StreamDTO.StreamTokenResponse(token, roomName, livekitClientUrl);
     }
 
     /**
@@ -74,7 +78,7 @@ public class StreamServiceImpl implements StreamService {
         String identity = userId.toString();
         String displayName = request.getParticipantName();
         String token = liveKitService.createToken(roomName, identity, displayName, false);
-        return new StreamDTO.StreamTokenResponse(token, roomName, livekitUrl);
+        return new StreamDTO.StreamTokenResponse(token, roomName, livekitClientUrl);
     }
 
     /**

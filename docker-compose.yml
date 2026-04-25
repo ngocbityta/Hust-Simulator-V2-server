@@ -227,7 +227,10 @@ services:
       STREAMING_SERVICE_PORT: 8084
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
-      LIVEKIT_URL: ${LIVEKIT_URL:-http://livekit:7880}
+      # URL nội bộ Docker để streaming-service gọi LiveKit API
+      LIVEKIT_URL: http://livekit:7880
+      # URL trả về cho frontend browser kết nối WebRTC (phải accessible từ client)
+      LIVEKIT_CLIENT_URL: ${LIVEKIT_CLIENT_URL:-ws://localhost:7880}
 
   state-dissemination-service:
     build:

@@ -46,7 +46,10 @@ management:
 livekit:
   api-key: ${LIVEKIT_API_KEY:devkey}
   api-secret: ${LIVEKIT_API_SECRET:secret}
-  url: ${LIVEKIT_URL:http://localhost:7880}
+  # URL nội bộ Docker — streaming-service dùng để gọi API LiveKit server
+  url: ${LIVEKIT_URL:http://livekit:7880}
+  # URL trả về cho frontend client — phải là địa chỉ mà browser có thể kết nối được
+  client-url: ${LIVEKIT_CLIENT_URL:ws://localhost:7880}
 
 # Swagger/OpenAPI
 springdoc:
