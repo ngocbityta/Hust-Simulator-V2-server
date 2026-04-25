@@ -30,25 +30,25 @@ public class MessageController {
         private UUID fileId;
     }
 
-    // ─── Primary endpoints (recurring-events scope) ────────────────────────────
+    // ─── Primary endpoints (recurring-event-details scope) ─────────────────────
 
-    @Operation(summary = "Get message history for a recurring event")
-    @GetMapping("/api/recurring-events/{recurringEventId}/messages")
-    public List<Message> getHistory(@PathVariable UUID recurringEventId) {
-        return messageService.getHistory(recurringEventId);
+    @Operation(summary = "Get message history for a recurring event detail")
+    @GetMapping("/api/recurring-event-details/{detailId}/messages")
+    public List<Message> getHistory(@PathVariable UUID detailId) {
+        return messageService.getHistory(detailId);
     }
 
-    @Operation(summary = "Send a message to a recurring event chat")
-    @PostMapping("/api/recurring-events/{recurringEventId}/messages")
+    @Operation(summary = "Send a message to a recurring event detail chat")
+    @PostMapping("/api/recurring-event-details/{detailId}/messages")
     @ResponseStatus(HttpStatus.CREATED)
     public Message sendMessage(
-            @PathVariable UUID recurringEventId,
+            @PathVariable UUID detailId,
             @Valid @RequestBody MessageRequest request,
             @RequestHeader("X-User-Id") String userIdHeader) {
 
         UUID senderId = resolveUserId(userIdHeader);
         return messageService.save(
-                recurringEventId,
+                detailId,
                 senderId,
                 request.getType(),
                 request.getContent(),

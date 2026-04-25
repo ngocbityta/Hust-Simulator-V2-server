@@ -9,8 +9,9 @@ version = '0.0.1-SNAPSHOT'
 description = 'Social API Service for HustSimulator V2'
 
 java {
-	sourceCompatibility = '17'
-	targetCompatibility = '17'
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
 }
 
 configurations {
@@ -42,6 +43,7 @@ dependencies {
 	// JTS Topology Suite for geometry and convex polygons
 	implementation 'org.locationtech.jts:jts-core:1.19.0'
 	implementation 'org.hibernate.orm:hibernate-spatial'
+	implementation 'org.n52.jackson:jackson-datatype-jts:1.2.10'
 
 	// Database
 	runtimeOnly 'org.postgresql:postgresql'

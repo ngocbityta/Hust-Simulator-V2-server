@@ -37,19 +37,20 @@ public class RealTimeServiceImpl implements RealTimeService {
 
         server.addEventListener("class:join", Object.class, (client, data, ackRequest) -> {
             log.info("Received class:join. Data type: {}, Data: {}", data != null ? data.getClass().getName() : "null", data);
-            String classId = data.toString();
-            String roomName = "class_" + classId;
+            String detailId = data.toString();
+            String roomName = "class_" + detailId;
             client.joinRoom(roomName);
-            log.info("Client {} joined classroom: {}. Room size: {}", client.getSessionId(), classId, server.getRoomOperations(roomName).getClients().size());
+            log.info("Client {} joined classroom session: {}. Room size: {}", client.getSessionId(), detailId, server.getRoomOperations(roomName).getClients().size());
 
             try {
-                List<Message> history = messageService.getHistory(UUID.fromString(classId));
+                // history is now scoped to the specific occurrence (detailId)
+                List<Message> history = messageService.getHistory(UUID.fromString(detailId));
                 client.sendEvent("class:history", history);
             } catch (Exception e) {
-                log.warn("Could not load chat history for class {}: {}", classId, e.getMessage());
+                log.warn("Could not load chat history for detail {}: {}", detailId, e.getMessage());
             }
 
-            client.sendEvent("class:joined", classId);
+            client.sendEvent("class:joined", detailId);
         });
 
         server.addEventListener("class:message", Object.class, (client, data, ackRequest) -> {
@@ -57,7 +58,8 @@ public class RealTimeServiceImpl implements RealTimeService {
             try {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> mapData = (Map<String, Object>) data;
-                String eventId = (String) mapData.get("eventId");
+                // eventId here is actually the detailId (occurrence)
+                String detailId = (String) mapData.get("eventId");
                 
                 // Get senderId directly from secure client attributes first
                 String secureUserId = client.get("userId");
@@ -76,25 +78,25 @@ public class RealTimeServiceImpl implements RealTimeService {
                 UUID fileId = fileIdStr != null ? UUID.fromString(fileIdStr) : null;
 
                 Message saved = messageService.save(
-                    UUID.fromString(eventId),
+                    UUID.fromString(detailId),
                     UUID.fromString(senderId),
                     type,
                     content,
                     fileId
                 );
 
-                server.getRoomOperations("class_" + eventId).sendEvent("class:message", saved);
+                server.getRoomOperations("class_" + detailId).sendEvent("class:message", saved);
 
-                log.debug("Message persisted and broadcast: type={} event={}", type, eventId);
+                log.debug("Message persisted and broadcast: type={} detail={}", type, detailId);
             } catch (Exception e) {
                 log.error("Failed to process message: {}. Data: {}", e.getMessage(), data, e);
             }
         });
 
         server.addEventListener("class:leave", Object.class, (client, data, ackRequest) -> {
-            String classId = data.toString();
-            client.leaveRoom("class_" + classId);
-            log.info("Client {} left classroom: {}", client.getSessionId(), classId);
+            String detailId = data.toString();
+            client.leaveRoom("class_" + detailId);
+            log.info("Client {} left classroom session: {}", client.getSessionId(), detailId);
         });
 
         server.start();

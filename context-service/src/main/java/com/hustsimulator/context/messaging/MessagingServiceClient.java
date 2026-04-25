@@ -44,11 +44,15 @@ public class MessagingServiceClient {
                 .queryParam("userId", userId.toString())
                 .toUriString();
 
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.set("X-User-Id", userId.toString());
+        org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
+
         try {
             List<UUID> result = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    entity,
                     new ParameterizedTypeReference<List<UUID>>() {}
             ).getBody();
             return result != null ? result : Collections.emptyList();

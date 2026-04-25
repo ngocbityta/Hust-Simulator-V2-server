@@ -1,13 +1,17 @@
 package com.hustsimulator.context.worker;
 
+import com.hustsimulator.context.entity.RecurringEventDetail;
 import com.hustsimulator.context.enums.JobType;
 import com.hustsimulator.context.recurringevent.RecurringEventService;
+import com.hustsimulator.context.recurringeventdetail.RecurringEventDetailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -18,6 +22,7 @@ public class ClassRoomWorkerProcessor implements WorkerProcessor {
     private static final String REALTIME_EXCHANGE = "hust.realtime.exchange";
 
     private final RecurringEventService recurringEventService;
+    private final RecurringEventDetailService detailService;
     private final RabbitTemplate rabbitTemplate;
 
     @Override
@@ -40,13 +45,24 @@ public class ClassRoomWorkerProcessor implements WorkerProcessor {
     private void handleStartClass(Map<String, Object> payload) {
         String eventIdStr = (String) payload.get("jobId");
         UUID eventId = UUID.fromString(eventIdStr);
+        String targetTimeStr = (String) payload.get("targetTime");
+        LocalDateTime scheduledAt = LocalDateTime.parse(targetTimeStr);
 
         log.info("ClassRoomWorkerProcessor: Activating class {}", eventId);
         recurringEventService.activateClass(eventId);
 
-        // Publish realtime event via RabbitMQ → messaging-service will broadcast via
-        // Socket.IO
-        publishRealtimeEvent("class_" + eventIdStr, "class:started", eventIdStr);
+        // Get or Create detail, then activate it
+        RecurringEventDetail detail = detailService.getOrCreate(eventId, scheduledAt);
+        detail = detailService.activate(detail.getId());
+        String detailIdStr = detail.getId().toString();
+
+        // Publish realtime event via RabbitMQ → messaging-service will broadcast via Socket.IO
+        // Note: Broadcast using detailId so client can join the specific occurrence
+        publishRealtimeEvent("class_" + detailIdStr, "class:started", Map.of(
+                "recurringEventId", eventIdStr,
+                "detailId", detailIdStr,
+                "scheduledAt", scheduledAt.toString()
+        ));
     }
 
     private void handleEndClass(Map<String, Object> payload) {
@@ -56,9 +72,17 @@ public class ClassRoomWorkerProcessor implements WorkerProcessor {
         log.info("ClassRoomWorkerProcessor: Completing class {}", eventId);
         recurringEventService.completeClass(eventId);
 
-        // Publish realtime event via RabbitMQ → messaging-service will broadcast via
-        // Socket.IO
-        publishRealtimeEvent("class_" + eventIdStr, "class:ended", eventIdStr);
+        Optional<RecurringEventDetail> currentDetailOpt = detailService.findCurrent(eventId);
+        if (currentDetailOpt.isPresent()) {
+            RecurringEventDetail detail = detailService.complete(currentDetailOpt.get().getId());
+            String detailIdStr = detail.getId().toString();
+            publishRealtimeEvent("class_" + detailIdStr, "class:ended", Map.of(
+                    "recurringEventId", eventIdStr,
+                    "detailId", detailIdStr
+            ));
+        } else {
+            log.warn("ClassRoomWorkerProcessor: No ongoing detail found to complete for event {}", eventId);
+        }
     }
 
     private void publishRealtimeEvent(String room, String event, Object data) {

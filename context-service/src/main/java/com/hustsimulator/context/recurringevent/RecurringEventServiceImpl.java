@@ -24,6 +24,7 @@ public class RecurringEventServiceImpl implements RecurringEventService {
     private final RecurringEventRepository recurringEventRepository;
     private final RoomRepository roomRepository;
     private final MessagingServiceClient messagingServiceClient;
+    private final com.hustsimulator.context.recurringeventdetail.RecurringEventDetailRepository recurringEventDetailRepository;
 
     @Override
     public List<RecurringEvent> findAll() {
@@ -54,11 +55,24 @@ public class RecurringEventServiceImpl implements RecurringEventService {
     @Override
     public List<RecurringEvent> findParticipatedEventsByUserId(UUID userId) {
         // Gọi messaging-service qua HTTP thay vì query cross-service DB trực tiếp
-        List<UUID> participatedEventIds = messagingServiceClient.getParticipatedEventIds(userId);
-        if (participatedEventIds.isEmpty()) {
+        // Note: messaging-service trả về danh sách RecurringEventDetail IDs
+        List<UUID> participatedDetailIds = messagingServiceClient.getParticipatedEventIds(userId);
+        if (participatedDetailIds.isEmpty()) {
             return Collections.emptyList();
         }
-        return recurringEventRepository.findByIdIn(participatedEventIds);
+        
+        // Map detailIds sang recurringEventIds
+        List<UUID> recurringEventIds = recurringEventDetailRepository.findAllById(participatedDetailIds)
+                .stream()
+                .map(com.hustsimulator.context.entity.RecurringEventDetail::getRecurringEventId)
+                .distinct()
+                .toList();
+
+        if (recurringEventIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return recurringEventRepository.findByIdIn(recurringEventIds);
     }
 
     @Override
