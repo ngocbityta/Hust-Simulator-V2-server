@@ -102,16 +102,39 @@ public class RecurringEventServiceImpl implements RecurringEventService {
     }
 
     @Override
+    @Transactional
     public RecurringEvent update(UUID id, RecurringEvent recurringEventDetails) {
         RecurringEvent recurringEvent = findById(id);
+        RecurringEventStatus oldStatus = recurringEvent.getStatus();
+
         recurringEvent.setName(recurringEventDetails.getName());
         recurringEvent.setDescription(recurringEventDetails.getDescription());
         recurringEvent.setMapId(recurringEventDetails.getMapId());
+        if (recurringEventDetails.getRoomId() != null) {
+            recurringEvent.setRoomId(recurringEventDetails.getRoomId());
+        }
         recurringEvent.setCronExpression(recurringEventDetails.getCronExpression());
         recurringEvent.setDurationMinutes(recurringEventDetails.getDurationMinutes());
+        
+        if (recurringEventDetails.getStatus() != null) {
+            recurringEvent.setStatus(recurringEventDetails.getStatus());
+        }
 
         log.info("Updating recurring event: {}", id);
-        return recurringEventRepository.save(recurringEvent);
+        final RecurringEvent savedEvent = recurringEventRepository.save(recurringEvent);
+
+        if (oldStatus != savedEvent.getStatus() && savedEvent.getRoomId() != null) {
+            roomRepository.findById(savedEvent.getRoomId()).ifPresent(room -> {
+                if (savedEvent.getStatus() == RecurringEventStatus.ONGOING) {
+                    room.setStatus(RoomStatus.BUSY);
+                } else {
+                    room.setStatus(RoomStatus.EMPTY);
+                }
+                roomRepository.save(room);
+            });
+        }
+
+        return savedEvent;
     }
 
     @Override
