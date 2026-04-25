@@ -41,6 +41,7 @@ dependencies {
 
 	// JTS Topology Suite for geometry and convex polygons
 	implementation 'org.locationtech.jts:jts-core:1.19.0'
+	implementation 'org.hibernate.orm:hibernate-spatial'
 
 	// Database
 	runtimeOnly 'org.postgresql:postgresql'
