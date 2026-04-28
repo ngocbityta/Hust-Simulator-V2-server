@@ -9,14 +9,10 @@ public class CommentDTO {
 
     public record CreateCommentRequest(
             UUID postId,
-            String content,
-            Double score,
-            String detailMistake
+            String content
     ) {}
 
     public record UpdateCommentRequest(
-            String content,
-            Double score,
-            String detailMistake
+            String content
     ) {}
 }

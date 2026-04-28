@@ -23,9 +23,4 @@ public class Comment extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String content;
-
-    private Double score;
-
-    @Column(name = "detail_mistake", columnDefinition = "TEXT")
-    private String detailMistake;
 }

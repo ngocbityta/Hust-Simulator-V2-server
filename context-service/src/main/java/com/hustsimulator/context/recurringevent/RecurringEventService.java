@@ -13,7 +13,7 @@ public interface RecurringEventService {
     List<RecurringEvent> findParticipatedEventsByUserId(UUID userId);
     void activateClass(UUID classId);
     void completeClass(UUID classId);
-    RecurringEvent create(RecurringEvent recurringEvent);
-    RecurringEvent update(UUID id, RecurringEvent recurringEventDetails);
+    RecurringEvent create(RecurringEventDTO.CreateRecurringEventRequest request);
+    RecurringEvent update(UUID id, RecurringEventDTO.UpdateRecurringEventRequest request);
     void delete(UUID id);
 }

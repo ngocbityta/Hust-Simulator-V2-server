@@ -9,7 +9,7 @@ public interface EventService {
     List<Event> findActiveEvents();
     List<Event> findByMapId(UUID mapId);
     Event findById(UUID id);
-    Event create(Event event);
-    Event update(UUID id, Event eventDetails);
+    Event create(EventDTO.CreateEventRequest request);
+    Event update(UUID id, EventDTO.UpdateEventRequest request);
     void delete(UUID id);
 }

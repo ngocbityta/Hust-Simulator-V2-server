@@ -44,8 +44,6 @@ public class CommentServiceImpl implements CommentService {
                 .userId(userId)
                 .postId(request.postId())
                 .content(request.content())
-                .score(request.score())
-                .detailMistake(request.detailMistake())
                 .build();
         return commentRepository.save(comment);
     }
@@ -60,8 +58,6 @@ public class CommentServiceImpl implements CommentService {
         }
 
         if (request.content() != null) comment.setContent(request.content());
-        if (request.score() != null) comment.setScore(request.score());
-        if (request.detailMistake() != null) comment.setDetailMistake(request.detailMistake());
 
         log.info("Updating comment: {}", id);
         return commentRepository.save(comment);

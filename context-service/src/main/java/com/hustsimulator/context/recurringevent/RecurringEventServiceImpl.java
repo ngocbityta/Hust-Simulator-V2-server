@@ -110,28 +110,37 @@ public class RecurringEventServiceImpl implements RecurringEventService {
     }
 
     @Override
-    public RecurringEvent create(RecurringEvent recurringEvent) {
-        log.info("Creating recurring event: {}", recurringEvent.getName());
+    public RecurringEvent create(RecurringEventDTO.CreateRecurringEventRequest request) {
+        log.info("Creating recurring event: {}", request.name());
+        RecurringEvent recurringEvent = RecurringEvent.builder()
+                .name(request.name())
+                .description(request.description())
+                .mapId(request.mapId())
+                .roomId(request.roomId())
+                .cronExpression(request.cronExpression())
+                .durationMinutes(request.durationMinutes() != null ? request.durationMinutes() : 60)
+                .status(RecurringEventStatus.SCHEDULED)
+                .build();
         return recurringEventRepository.save(recurringEvent);
     }
 
     @Override
     @Transactional
-    public RecurringEvent update(UUID id, RecurringEvent recurringEventDetails) {
+    public RecurringEvent update(UUID id, RecurringEventDTO.UpdateRecurringEventRequest request) {
         RecurringEvent recurringEvent = findById(id);
         RecurringEventStatus oldStatus = recurringEvent.getStatus();
 
-        recurringEvent.setName(recurringEventDetails.getName());
-        recurringEvent.setDescription(recurringEventDetails.getDescription());
-        recurringEvent.setMapId(recurringEventDetails.getMapId());
-        if (recurringEventDetails.getRoomId() != null) {
-            recurringEvent.setRoomId(recurringEventDetails.getRoomId());
+        recurringEvent.setName(request.name());
+        recurringEvent.setDescription(request.description());
+        recurringEvent.setMapId(request.mapId());
+        if (request.roomId() != null) {
+            recurringEvent.setRoomId(request.roomId());
         }
-        recurringEvent.setCronExpression(recurringEventDetails.getCronExpression());
-        recurringEvent.setDurationMinutes(recurringEventDetails.getDurationMinutes());
+        recurringEvent.setCronExpression(request.cronExpression());
+        recurringEvent.setDurationMinutes(request.durationMinutes());
         
-        if (recurringEventDetails.getStatus() != null) {
-            recurringEvent.setStatus(recurringEventDetails.getStatus());
+        if (request.status() != null) {
+            recurringEvent.setStatus(request.status());
         }
 
         log.info("Updating recurring event: {}", id);

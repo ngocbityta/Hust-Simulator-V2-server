@@ -46,14 +46,14 @@ public class EventController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create event", description = "Register a new game event")
-    public Event create(@Valid @RequestBody Event event) {
-        return eventService.create(event);
+    public Event create(@Valid @RequestBody EventDTO.CreateEventRequest request) {
+        return eventService.create(request);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update event", description = "Modify details or status of an existing event")
-    public Event update(@PathVariable UUID id, @Valid @RequestBody Event event) {
-        return eventService.update(id, event);
+    public Event update(@PathVariable UUID id, @Valid @RequestBody EventDTO.UpdateEventRequest request) {
+        return eventService.update(id, request);
     }
 
     @DeleteMapping("/{id}")

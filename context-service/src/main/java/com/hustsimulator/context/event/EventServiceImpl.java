@@ -18,7 +18,6 @@ import org.locationtech.jts.geom.Polygon;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -53,37 +52,66 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public Event create(Event event) {
-        log.info("Creating new event: {}", event.getName());
+    public Event create(EventDTO.CreateEventRequest request) {
+        log.info("Creating new event: {}", request.name());
+        Event event = mapToEntity(request);
         validateEvent(event);
         Event saved = eventRepository.save(event);
         eventEventPublisher.publish(saved, EventEvent.EventType.CREATED);
         return saved;
     }
 
+    private Event mapToEntity(EventDTO.CreateEventRequest request) {
+        Event event;
+        if (com.hustsimulator.context.enums.EventType.INDOOR.equals(request.type())) {
+            IndoorEvent indoorEvent = new IndoorEvent();
+            indoorEvent.setBuildingId(request.buildingId());
+            indoorEvent.setRoomIds(request.roomIds());
+            event = indoorEvent;
+        } else if (com.hustsimulator.context.enums.EventType.OUTDOOR.equals(request.type())) {
+            OutdoorEvent outdoorEvent = new OutdoorEvent();
+            if (request.coordinate() != null) {
+                outdoorEvent.setMinX(request.coordinate().minX());
+                outdoorEvent.setMinY(request.coordinate().minY());
+                outdoorEvent.setMaxX(request.coordinate().maxX());
+                outdoorEvent.setMaxY(request.coordinate().maxY());
+            }
+            event = outdoorEvent;
+        } else {
+            throw new IllegalArgumentException("Invalid event type: " + request.type());
+        }
+
+        event.setName(request.name());
+        event.setDescription(request.description());
+        event.setMapId(request.mapId());
+        event.setStatus(EventStatus.SCHEDULED);
+        event.setStartTime(request.startTime());
+        event.setEndTime(request.endTime());
+
+        return event;
+    }
+
     @Override
-    public Event update(UUID id, Event eventDetails) {
+    public Event update(UUID id, EventDTO.UpdateEventRequest request) {
         Event event = findById(id);
         
-        if (event.getClass() != eventDetails.getClass()) {
-            throw new IllegalArgumentException("Cannot change event type");
-        }
-        
-        event.setName(eventDetails.getName());
-        event.setDescription(eventDetails.getDescription());
-        event.setMapId(eventDetails.getMapId());
-        event.setStatus(eventDetails.getStatus());
-        event.setStartTime(eventDetails.getStartTime());
-        event.setEndTime(eventDetails.getEndTime());
+        event.setName(request.name());
+        event.setDescription(request.description());
+        event.setMapId(request.mapId());
+        event.setStatus(request.status());
+        event.setStartTime(request.startTime());
+        event.setEndTime(request.endTime());
 
-        if (event instanceof IndoorEvent indoorEvent && eventDetails instanceof IndoorEvent indoorDetails) {
-            indoorEvent.setBuildingId(indoorDetails.getBuildingId());
-            indoorEvent.setRoomIds(indoorDetails.getRoomIds());
-        } else if (event instanceof OutdoorEvent outdoorEvent && eventDetails instanceof OutdoorEvent outdoorDetails) {
-            outdoorEvent.setMinX(outdoorDetails.getMinX());
-            outdoorEvent.setMinY(outdoorDetails.getMinY());
-            outdoorEvent.setMaxX(outdoorDetails.getMaxX());
-            outdoorEvent.setMaxY(outdoorDetails.getMaxY());
+        if (event instanceof IndoorEvent indoorEvent) {
+            indoorEvent.setBuildingId(request.buildingId());
+            indoorEvent.setRoomIds(request.roomIds());
+        } else if (event instanceof OutdoorEvent outdoorEvent) {
+            if (request.coordinate() != null) {
+                outdoorEvent.setMinX(request.coordinate().minX());
+                outdoorEvent.setMinY(request.coordinate().minY());
+                outdoorEvent.setMaxX(request.coordinate().maxX());
+                outdoorEvent.setMaxY(request.coordinate().maxY());
+            }
         }
 
         validateEvent(event);
@@ -96,29 +124,37 @@ public class EventServiceImpl implements EventService {
 
     private void validateEvent(Event event) {
         if (event instanceof OutdoorEvent outdoor) {
-            if (outdoor.getMinX() == null || outdoor.getMinY() == null || outdoor.getMaxX() == null || outdoor.getMaxY() == null) {
-                throw new IllegalArgumentException("Outdoor event must have bounding box coordinates");
-            }
-            if (outdoor.getMinX() >= outdoor.getMaxX() || outdoor.getMinY() >= outdoor.getMaxY()) {
-                throw new IllegalArgumentException("Outdoor event bounding box is invalid: min coordinates must be strictly less than max coordinates");
-            }
-            List<Building> buildings = buildingRepository.findByMapId(event.getMapId());
-            
-            // Create event polygon from bounding box
-            List<double[]> eventPoints = new ArrayList<>();
-            eventPoints.add(new double[]{outdoor.getMinX(), outdoor.getMinY()});
-            eventPoints.add(new double[]{outdoor.getMaxX(), outdoor.getMinY()});
-            eventPoints.add(new double[]{outdoor.getMaxX(), outdoor.getMaxY()});
-            eventPoints.add(new double[]{outdoor.getMinX(), outdoor.getMaxY()});
-            eventPoints.add(new double[]{outdoor.getMinX(), outdoor.getMinY()});
-            
-            Polygon eventPolygon = GeometryUtils.createPolygon(eventPoints);
-            
-            for (Building building : buildings) {
-                Polygon buildingPolygon = GeometryUtils.createPolygonFromJson(building.getCoordinates(), objectMapper);
-                if (eventPolygon.intersects(buildingPolygon)) {
-                    throw new IllegalArgumentException("Outdoor event overlaps with building: " + building.getName());
-                }
+            validateOutdoorCoordinates(outdoor);
+            validateOutdoorEventOverlap(outdoor);
+        }
+    }
+
+    private void validateOutdoorCoordinates(OutdoorEvent outdoor) {
+        if (outdoor.getMinX() == null || outdoor.getMinY() == null || outdoor.getMaxX() == null || outdoor.getMaxY() == null) {
+            throw new IllegalArgumentException("Outdoor event must have bounding box coordinates");
+        }
+        if (outdoor.getMinX() >= outdoor.getMaxX() || outdoor.getMinY() >= outdoor.getMaxY()) {
+            throw new IllegalArgumentException("Outdoor event bounding box is invalid: min coordinates must be strictly less than max coordinates");
+        }
+    }
+
+    private void validateOutdoorEventOverlap(OutdoorEvent outdoor) {
+        List<Building> buildings = buildingRepository.findByMapId(outdoor.getMapId());
+        
+        List<double[]> eventPoints = List.of(
+                new double[]{outdoor.getMinX(), outdoor.getMinY()},
+                new double[]{outdoor.getMaxX(), outdoor.getMinY()},
+                new double[]{outdoor.getMaxX(), outdoor.getMaxY()},
+                new double[]{outdoor.getMinX(), outdoor.getMaxY()},
+                new double[]{outdoor.getMinX(), outdoor.getMinY()}
+        );
+        
+        Polygon eventPolygon = GeometryUtils.createPolygon(eventPoints);
+        
+        for (Building building : buildings) {
+            Polygon buildingPolygon = GeometryUtils.createPolygonFromJson(building.getCoordinates(), objectMapper);
+            if (eventPolygon.intersects(buildingPolygon)) {
+                throw new IllegalArgumentException("Outdoor event overlaps with building: " + building.getName());
             }
         }
     }

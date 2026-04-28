@@ -43,13 +43,13 @@ public class RecurringEventController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public RecurringEvent create(@Valid @RequestBody RecurringEvent recurringEvent) {
-        return recurringEventService.create(recurringEvent);
+    public RecurringEvent create(@Valid @RequestBody RecurringEventDTO.CreateRecurringEventRequest request) {
+        return recurringEventService.create(request);
     }
 
     @PutMapping("/{id}")
-    public RecurringEvent update(@PathVariable UUID id, @Valid @RequestBody RecurringEvent recurringEvent) {
-        return recurringEventService.update(id, recurringEvent);
+    public RecurringEvent update(@PathVariable UUID id, @Valid @RequestBody RecurringEventDTO.UpdateRecurringEventRequest request) {
+        return recurringEventService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
