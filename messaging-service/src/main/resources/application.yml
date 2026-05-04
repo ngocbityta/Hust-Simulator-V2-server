@@ -2,6 +2,11 @@ spring:
   application:
     name: messaging-service
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   # PostgreSQL (shared Neon Cloud)
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
