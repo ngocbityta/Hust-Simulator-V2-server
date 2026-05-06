@@ -21,4 +21,4 @@ COPY --from=build /app/streaming-service/build/libs/*.jar app.jar
 
 EXPOSE 8084
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]

@@ -19,4 +19,4 @@ COPY --from=build /app/messaging-service/build/libs/*.jar app.jar
 EXPOSE 8082
 EXPOSE 9092
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]

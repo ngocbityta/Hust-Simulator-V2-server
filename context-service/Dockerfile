@@ -26,4 +26,4 @@ COPY --from=build /app/proto ./proto
 EXPOSE 8080
 EXPOSE 50052
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]

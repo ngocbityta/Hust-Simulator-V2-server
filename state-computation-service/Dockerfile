@@ -36,4 +36,4 @@ ENV NODE_ENV=production
 EXPOSE 3003
 EXPOSE 50053
 
-CMD ["node", "dist/main"]
+CMD ["sh", "-c", "node ${NODE_OPTIONS} dist/main"]

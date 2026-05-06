@@ -5,9 +5,13 @@ services:
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-hustsim_redis}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-hustsim_redis} --maxmemory 192mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hustsim_redis}", "ping" ]
       interval: 10s
@@ -26,6 +30,11 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
       interval: 15s
@@ -47,6 +56,10 @@ services:
       - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ─── DB Migration Service ──────────────────────────────────────────
   db-migration:
@@ -55,6 +68,10 @@ services:
     command: -url=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?sslmode=${POSTGRES_SSL:-disable} -user=${POSTGRES_USER:-hustsim} -password=${POSTGRES_PASSWORD:-hustsim_secret} -schemas=public -baselineOnMigrate=true migrate
     volumes:
       - ./db-migration/sql:/flyway/sql
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ─── API Gateway ────────────────────────────────────────────────────
   api-gateway:
@@ -74,6 +91,10 @@ services:
         condition: service_started
     ports:
       - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   # ─── Auth Service ──────────────────────────────────────────────────
   auth-service:
@@ -101,6 +122,11 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
+      JAVA_OPTS: "-Xmx384m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ─── Messaging Service ─────────────────────────────────────────────
   messaging-service:
@@ -131,6 +157,11 @@ services:
       STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
       STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-./uploads}
       STORAGE_LOCAL_URL: ${STORAGE_LOCAL_URL:-http://localhost/uploads/}
+      JAVA_OPTS: "-Xmx384m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ─── Context Service (refactored) ──────────────────────────────────
   context-service:
@@ -166,8 +197,12 @@ services:
       CONTEXT_SERVICE_GRPC_PORT: 50052
       GAME_SERVER_HOST: state-dissemination-service
       GAME_SERVER_GRPC_PORT: 50051
-      # URL của messaging-service — dùng cho MessagingServiceClient (HTTP)
       MESSAGING_SERVICE_URL: http://messaging-service:8082
+      JAVA_OPTS: "-Xmx384m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ─── Social Service ────────────────────────────────────────────────
   social-service:
@@ -198,6 +233,11 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
       SOCIAL_SERVICE_PORT: 8083
+      JAVA_OPTS: "-Xmx384m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ─── Streaming Service ─────────────────────────────────────────────
   streaming-service:
@@ -227,10 +267,13 @@ services:
       STREAMING_SERVICE_PORT: 8084
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
-      # URL nội bộ Docker để streaming-service gọi LiveKit API
       LIVEKIT_URL: http://livekit:7880
-      # URL trả về cho frontend browser kết nối WebRTC (phải accessible từ client)
       LIVEKIT_CLIENT_URL: ${LIVEKIT_CLIENT_URL:-ws://localhost:7880}
+      JAVA_OPTS: "-Xmx384m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   state-dissemination-service:
     build:
@@ -261,6 +304,11 @@ services:
       COMPUTATION_SERVICE_GRPC_PORT: 50053
       GAME_SERVER_PORT: 3002
       GAME_SERVER_GRPC_PORT: 50051
+      NODE_OPTIONS: "--max-old-space-size=256"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   state-computation-service:
     build:
@@ -286,7 +334,11 @@ services:
       CONTEXT_SERVICE_HOST: context-service
       CONTEXT_SERVICE_GRPC_PORT: 50052
       COMPUTATION_SERVICE_GRPC_PORT: 50053
-
+      NODE_OPTIONS: "--max-old-space-size=256"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
 volumes:
   postgres_data:
