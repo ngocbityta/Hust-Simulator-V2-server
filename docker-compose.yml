@@ -61,34 +61,14 @@ services:
         limits:
           memory: 512M
 
-  # ─── DB Migration Service ──────────────────────────────────────────
-  db-migration:
-    image: flyway/flyway:10-alpine
-    container_name: hustsim-db-migration
-    command: -url=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?sslmode=${POSTGRES_SSL:-disable} -user=${POSTGRES_USER:-hustsim} -password=${POSTGRES_PASSWORD:-hustsim_secret} -schemas=public -baselineOnMigrate=true migrate
-    volumes:
-      - ./db-migration/sql:/flyway/sql
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-  # ─── API Gateway ────────────────────────────────────────────────────
   api-gateway:
     build: ./api-gateway
     container_name: hustsim-api-gateway
     restart: unless-stopped
     depends_on:
-      auth-service:
-        condition: service_started
-      messaging-service:
-        condition: service_started
-      context-service:
-        condition: service_started
-      state-dissemination-service:
-        condition: service_started
-      streaming-service:
-        condition: service_started
+      auth-service: { condition: service_started }
+      messaging-service: { condition: service_started }
+      context-service: { condition: service_started }
     ports:
       - "80:80"
     deploy:
@@ -96,7 +76,6 @@ services:
         limits:
           memory: 64M
 
-  # ─── Auth Service ──────────────────────────────────────────────────
   auth-service:
     build:
       context: .
@@ -109,19 +88,14 @@ services:
     ports:
       - "${AUTH_SERVICE_PORT:-8081}:8081"
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
-      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
-      AUTH_SERVICE_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=auth&sslmode=${POSTGRES_SSL:-disable}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_DEFAULT_SCHEMA: auth
+      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
+      JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
       JAVA_OPTS: "-Xmx384m -Xms128m"
     deploy:
       resources:
@@ -142,28 +116,21 @@ services:
       - "${MESSAGING_SERVICE_PORT:-8082}:8082"
       - "9092:9092"
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
-      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=messaging&sslmode=${POSTGRES_SSL:-disable}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_DEFAULT_SCHEMA: messaging
+      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      MESSAGING_SERVICE_PORT: 8082
-      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
-      STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-./uploads}
-      STORAGE_LOCAL_URL: ${STORAGE_LOCAL_URL:-http://localhost/uploads/}
+      JWT_SECRET: ${JWT_SECRET}
       JAVA_OPTS: "-Xmx384m -Xms128m"
     deploy:
       resources:
         limits:
           memory: 512M
 
-  # ─── Context Service (refactored) ──────────────────────────────────
+  # ─── Context Service ──────────────────────────────────
   context-service:
     build:
       context: .
@@ -177,27 +144,17 @@ services:
         condition: service_healthy
     ports:
       - "${CONTEXT_SERVICE_PORT:-8080}:8080"
-      - "${CONTEXT_SERVICE_GRPC_PORT:-50052}:50052"
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
-      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=context&sslmode=${POSTGRES_SSL:-disable}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_DEFAULT_SCHEMA: context
+      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      CONTEXT_SERVICE_PORT: 8080
-      CONTEXT_SERVICE_GRPC_PORT: 50052
-      GAME_SERVER_HOST: state-dissemination-service
-      GAME_SERVER_GRPC_PORT: 50051
-      MESSAGING_SERVICE_URL: http://messaging-service:8082
       JAVA_OPTS: "-Xmx384m -Xms128m"
     deploy:
       resources:
@@ -219,27 +176,22 @@ services:
     ports:
       - "${SOCIAL_SERVICE_PORT:-8083}:8083"
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
-      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=social&sslmode=${POSTGRES_SSL:-disable}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_DEFAULT_SCHEMA: social
+      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
-      SOCIAL_SERVICE_PORT: 8083
       JAVA_OPTS: "-Xmx384m -Xms128m"
     deploy:
       resources:
         limits:
           memory: 512M
 
-  # ─── Streaming Service ─────────────────────────────────────────────
   streaming-service:
     build:
       context: .
@@ -247,28 +199,21 @@ services:
     container_name: hustsim-streaming-service
     restart: unless-stopped
     depends_on:
-      redis:
-        condition: service_healthy
-      livekit:
-        condition: service_started
+      redis: { condition: service_healthy }
+      livekit: { condition: service_started }
     ports:
       - "${STREAMING_SERVICE_PORT:-8084}:8084"
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-hustsimulator}
-      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
-      POSTGRES_CHANNEL_BINDING: ${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=streaming&sslmode=${POSTGRES_SSL:-disable}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_DEFAULT_SCHEMA: streaming
+      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
-      STREAMING_SERVICE_PORT: 8084
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
       LIVEKIT_URL: http://livekit:7880
-      LIVEKIT_CLIENT_URL: ${LIVEKIT_CLIENT_URL:-ws://localhost:7880}
       JAVA_OPTS: "-Xmx384m -Xms128m"
     deploy:
       resources:
@@ -282,28 +227,12 @@ services:
     container_name: hustsim-state-dissemination-service
     restart: unless-stopped
     depends_on:
-      redis:
-        condition: service_healthy
-      context-service:
-        condition: service_started
-      state-computation-service:
-        condition: service_started
-    ports:
-      - "${GAME_SERVER_PORT:-3002}:3002"
-      - "${GAME_SERVER_GRPC_PORT:-50051}:50051"
+      redis: { condition: service_healthy }
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=state&sslmode=${POSTGRES_SSL:-disable}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
-      CONTEXT_SERVICE_HOST: context-service
-      CONTEXT_SERVICE_GRPC_PORT: 50052
-      COMPUTATION_SERVICE_HOST: state-computation-service
-      COMPUTATION_SERVICE_GRPC_PORT: 50053
-      GAME_SERVER_PORT: 3002
-      GAME_SERVER_GRPC_PORT: 50051
       NODE_OPTIONS: "--max-old-space-size=256"
     deploy:
       resources:
@@ -317,23 +246,12 @@ services:
     container_name: hustsim-state-computation-service
     restart: unless-stopped
     depends_on:
-      redis:
-        condition: service_healthy
-      context-service:
-        condition: service_started
-    ports:
-      - "${COMPUTATION_SERVICE_PORT:-3003}:3003"
-      - "${COMPUTATION_SERVICE_GRPC_PORT:-50053}:50053"
+      redis: { condition: service_healthy }
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=state&sslmode=${POSTGRES_SSL:-disable}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_USER: ${RABBITMQ_USER:-hustsim}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
-      CONTEXT_SERVICE_HOST: context-service
-      CONTEXT_SERVICE_GRPC_PORT: 50052
-      COMPUTATION_SERVICE_GRPC_PORT: 50053
       NODE_OPTIONS: "--max-old-space-size=256"
     deploy:
       resources:
@@ -341,6 +259,5 @@ services:
           memory: 384M
 
 volumes:
-  postgres_data:
   redis_data:
   rabbitmq_data:

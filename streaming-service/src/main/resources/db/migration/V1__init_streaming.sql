@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS stream_sessions (
     id UUID PRIMARY KEY,
     room_name VARCHAR(255) NOT NULL UNIQUE,
