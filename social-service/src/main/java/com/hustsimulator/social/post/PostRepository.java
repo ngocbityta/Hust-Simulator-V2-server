@@ -15,4 +15,5 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     Page<Post> findByBuildingIdOrderByCreatedAtDesc(UUID buildingId, Pageable pageable);
     Page<Post> findByRoomIdOrderByCreatedAtDesc(UUID roomId, Pageable pageable);
     Page<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    java.util.List<Post> findByUserIdAndCreatedAtBetweenOrderByCreatedAtAsc(UUID userId, java.time.LocalDateTime start, java.time.LocalDateTime end);
 }
