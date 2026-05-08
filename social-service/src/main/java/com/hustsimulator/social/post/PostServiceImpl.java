@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "journeyPreview", key = "#userId")
     public Post create(PostDTO.CreatePostRequest request, UUID userId) {
         log.info("Creating post for user {}", userId);
         Post post = Post.builder()
@@ -94,6 +96,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "journeyPreview", key = "#userId")
     public void delete(UUID id, UUID userId) {
         Post post = findById(id);
         
