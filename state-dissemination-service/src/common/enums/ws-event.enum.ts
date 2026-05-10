@@ -11,4 +11,11 @@ export enum WsEvent {
   USER_ERROR = 'user:error',
   USER_STATE_ERROR = 'user:state_error',
   USER_STATE_UPDATE = 'user:state_update',
+
+  // Heatmap
+  HEATMAP_SUBSCRIBE = 'heatmap:subscribe',
+  HEATMAP_UNSUBSCRIBE = 'heatmap:unsubscribe',
+  HEATMAP_SUBSCRIBED = 'heatmap:subscribed',
+  HEATMAP_UNSUBSCRIBED = 'heatmap:unsubscribed',
+  HEATMAP_UPDATE = 'heatmap:update',
 }

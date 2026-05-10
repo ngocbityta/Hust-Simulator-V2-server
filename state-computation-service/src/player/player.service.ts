@@ -51,12 +51,12 @@ export class PlayerService {
     await this.redisService.client.updatePlayerState(
       stateKey,
       RedisKey.PLAYER_GEO_KEY,
-      updates,
       Date.now().toString(),
       'true',
       position.longitude,
       position.latitude,
       userId,
+      ...updates,
     );
   }
 
@@ -99,12 +99,12 @@ export class PlayerService {
     await this.redisService.client.updatePlayerState(
       stateKey,
       RedisKey.PLAYER_GEO_KEY,
-      updates,
       Date.now().toString(),
       'false',
       0,
       0,
       '',
+      ...updates,
     );
 
     this.logger.log(`User ${userId} state changed to ${state}`);
@@ -175,12 +175,13 @@ export class PlayerService {
     await this.redisService.client.updatePlayerState(
       stateKey,
       RedisKey.PLAYER_GEO_KEY,
-      ['isOnline', event.isConnected.toString()],
       Date.now().toString(),
       'false',
       0,
       0,
       '',
+      'isOnline',
+      event.isConnected.toString(),
     );
 
     this.logger.log(

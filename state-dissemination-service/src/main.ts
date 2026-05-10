@@ -121,6 +121,50 @@ Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Un
 - **Frontend Action:** Lập trình viên Client khi nhận được bản dữ liệu này cần dò tìm đúng ID nhân vật trong Scene, và chạy script \`Lerp(currentTransform, payload.position)\` để nhân vật trượt trên màn hình cực kỳ mượt mà.
 
 ---
+
+### 🔥 4. Heatmap - Bản đồ Nhiệt Mật độ Người dùng
+
+#### 📤 4.1 Đăng ký nhận Heatmap
+- **Sự kiện:** \`heatmap:subscribe\`
+- **Mô tả:** Client gửi để bắt đầu nhận dữ liệu heatmap mỗi 5 giây.
+- **Dữ liệu gửi lên:**
+  \`\`\`json
+  { "event": "heatmap:subscribe", "data": {} }
+  \`\`\`
+- **Server phản hồi:** \`heatmap:subscribed\`
+
+#### 📤 4.2 Hủy đăng ký Heatmap
+- **Sự kiện:** \`heatmap:unsubscribe\`
+- **Dữ liệu gửi lên:**
+  \`\`\`json
+  { "event": "heatmap:unsubscribe", "data": {} }
+  \`\`\`
+
+#### 📥 4.3 Nhận dữ liệu Heatmap (Mỗi ~5 giây)
+- **Sự kiện Lắng nghe:** \`heatmap:update\`
+- **Dữ liệu nhận được:**
+  \`\`\`json
+  {
+    "event": "heatmap:update",
+    "data": {
+      "timestamp": 1715400000000,
+      "totalOnline": 42,
+      "cells": [
+        {
+          "cellX": 244180,
+          "cellY": 46623,
+          "count": 5,
+          "centerLat": 21.00315,
+          "centerLng": 105.84275,
+          "activities": { "ROAMING": 3, "IN_BUILDING": 1, "IN_EVENT": 1 }
+        }
+      ]
+    }
+  }
+  \`\`\`
+- **Frontend Action:** Render mỗi cell dưới dạng hình tròn/hình vuông bán kính 50m tại vị trí (centerLat, centerLng). Màu sắc/opacity tỉ lệ với count.
+
+---
 `,
     )
     .setVersion('1.0')

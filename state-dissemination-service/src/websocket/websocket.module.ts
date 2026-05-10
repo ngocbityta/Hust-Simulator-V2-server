@@ -6,9 +6,10 @@ import { SessionService } from './session.service';
 import { InterestModule } from '../interest/interest.module';
 import { GrpcModule } from '../grpc/grpc.module';
 import { ISessionService } from './session.interface';
+import { HeatmapModule } from '../heatmap/heatmap.module';
 
 @Module({
-  imports: [GrpcModule, SpatialModule, InterestModule],
+  imports: [GrpcModule, SpatialModule, InterestModule, HeatmapModule],
   providers: [
     GameGateway,
     DisseminationService,

@@ -233,6 +233,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      COMPUTATION_SERVICE_HOST: state-computation-service
+      CONTEXT_SERVICE_HOST: context-service
       NODE_OPTIONS: "--max-old-space-size=256"
     deploy:
       resources:
@@ -252,6 +254,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      CONTEXT_SERVICE_HOST: context-service
       NODE_OPTIONS: "--max-old-space-size=256"
     deploy:
       resources:

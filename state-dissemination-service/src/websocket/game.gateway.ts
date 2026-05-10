@@ -14,6 +14,7 @@ import { UserActivityState } from '../common/enums/user-activity-state.enum';
 import { DisseminationService } from './dissemination.service';
 import { ISessionService } from './session.interface';
 import { GrpcComputationClient } from '../grpc/computation.client';
+import { HeatmapDisseminationService } from '../heatmap/heatmap-dissemination.service';
 import { WsEvent } from '../common/enums/ws-event.enum';
 
 @WebSocketGateway({
@@ -32,6 +33,7 @@ export class GameGateway
     private readonly grpcComputationClient: GrpcComputationClient,
     private readonly disseminationService: DisseminationService,
     @Inject(ISessionService) private readonly sessionService: ISessionService,
+    private readonly heatmapService: HeatmapDisseminationService,
   ) {}
 
   afterInit() {
@@ -47,6 +49,7 @@ export class GameGateway
   handleDisconnect(client: WebSocket) {
     const userId = this.sessionService.getUserId(client);
     this.disseminationService.removeClient(client);
+    this.heatmapService.removeSubscriber(client);
     if (userId) {
       this.sessionService.removeSession(client);
       this.logger.debug(
@@ -139,5 +142,19 @@ export class GameGateway
     );
 
     return { event: WsEvent.USER_STATE_CHANGED_ACK, data: result };
+  }
+
+  @SubscribeMessage(WsEvent.HEATMAP_SUBSCRIBE)
+  handleHeatmapSubscribe(@ConnectedSocket() client: WebSocket) {
+    this.heatmapService.addSubscriber(client);
+    this.logger.debug('Client subscribed to heatmap');
+    return { event: WsEvent.HEATMAP_SUBSCRIBED, data: { status: 'ok' } };
+  }
+
+  @SubscribeMessage(WsEvent.HEATMAP_UNSUBSCRIBE)
+  handleHeatmapUnsubscribe(@ConnectedSocket() client: WebSocket) {
+    this.heatmapService.removeSubscriber(client);
+    this.logger.debug('Client unsubscribed from heatmap');
+    return { event: WsEvent.HEATMAP_UNSUBSCRIBED, data: { status: 'ok' } };
   }
 }

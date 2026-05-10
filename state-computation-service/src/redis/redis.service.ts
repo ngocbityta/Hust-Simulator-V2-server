@@ -12,12 +12,12 @@ declare module 'ioredis' {
     updatePlayerState(
       key: string,
       geoKey: string,
-      fieldValuePairs: (string | number)[],
       timestamp: string,
       shouldGeoAdd: string,
       longitude: number | string,
       latitude: number | string,
       userId: string,
+      ...updates: (string | number)[]
     ): Promise<number>;
   }
 }
