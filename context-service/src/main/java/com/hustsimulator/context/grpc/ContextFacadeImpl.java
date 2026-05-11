@@ -7,11 +7,18 @@ import com.hustsimulator.context.enums.UserActivityState;
 import com.hustsimulator.context.grpc.proto.ContextProto;
 import com.hustsimulator.context.recurringevent.RecurringEventService;
 import com.hustsimulator.context.userstate.UserStateService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hustsimulator.context.common.ContextConstants;
+import com.hustsimulator.context.common.GeometryUtils;
+import com.hustsimulator.context.entity.Room;
+import com.hustsimulator.context.room.RoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -20,9 +27,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ContextFacadeImpl implements IContextFacade {
 
-        private final UserStateService userStateService;
-        private final BuildingService buildingService;
-        private final RecurringEventService recurringEventService;
+	private final UserStateService userStateService;
+	private final BuildingService buildingService;
+	private final RoomService roomService;
+	private final RecurringEventService recurringEventService;
+	private final ObjectMapper objectMapper;
 
         @Override
         public ContextProto.ZoneCheckResponse checkPlayerZone(ContextProto.ZoneCheckRequest request) {
@@ -69,15 +78,34 @@ public class ContextFacadeImpl implements IContextFacade {
         public ContextProto.ActiveEventsResponse getActiveEvents(ContextProto.ActiveEventsRequest request) {
                 List<RecurringEvent> activeEvents = recurringEventService.findActive();
 
-                List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
-                                .map(e -> ContextProto.ContextEvent.newBuilder()
-                                                .setEventId(e.getId().toString())
-                                                .setPlayerId(request.getPlayerId())
-                                                .setEventType("VIRTUAL_CLASS")
-                                                .setTitle(e.getName())
-                                                .setDescription(e.getDescription() != null ? e.getDescription() : "")
-                                                .build())
-                                .collect(Collectors.toList());
+		List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
+				.map(e -> {
+					Map<String, String> payload = new HashMap<>();
+					if (e.getRoomId() != null) {
+						try {
+							Room room = roomService.findById(e.getRoomId());
+							Building building = buildingService.findById(room.getBuildingId());
+							double[] centroid = GeometryUtils.getCentroid(building.getCoordinates(), objectMapper);
+							// Map coordinates (lon, lat) -> (lng, lat)
+							payload.put(ContextConstants.PAYLOAD_LONGITUDE, String.valueOf(centroid[0]));
+							payload.put(ContextConstants.PAYLOAD_LATITUDE, String.valueOf(centroid[1]));
+							payload.put(ContextConstants.PAYLOAD_BUILDING_NAME, building.getName());
+							payload.put(ContextConstants.PAYLOAD_ROOM_NAME, room.getName());
+						} catch (Exception ex) {
+							log.warn("Failed to get coordinates for event {}: {}", e.getId(), ex.getMessage());
+						}
+					}
+
+					return ContextProto.ContextEvent.newBuilder()
+							.setEventId(e.getId().toString())
+							.setPlayerId(request.getPlayerId())
+							.setEventType(ContextConstants.EVENT_TYPE_VIRTUAL_CLASS)
+							.setTitle(e.getName())
+							.setDescription(e.getDescription() != null ? e.getDescription() : "")
+							.putAllPayload(payload)
+							.build();
+				})
+				.collect(Collectors.toList());
 
                 return ContextProto.ActiveEventsResponse.newBuilder()
                                 .addAllEvents(eventProtos)

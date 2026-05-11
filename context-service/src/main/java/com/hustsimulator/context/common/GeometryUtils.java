@@ -94,4 +94,13 @@ public class GeometryUtils {
         Polygon polygon = createPolygonFromJson(json, objectMapper);
         return isPointInPolygon(x, y, polygon);
     }
+
+    /**
+     * Returns the centroid of a JSON-defined polygon.
+     */
+    public static double[] getCentroid(String json, ObjectMapper objectMapper) {
+        Polygon polygon = createPolygonFromJson(json, objectMapper);
+        Point centroid = polygon.getCentroid();
+        return new double[]{centroid.getX(), centroid.getY()};
+    }
 }

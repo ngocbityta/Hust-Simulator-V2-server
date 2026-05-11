@@ -103,10 +103,8 @@ export class HeatmapService {
       // 4. Build payload with center coordinates
       const cells: HeatmapCell[] = [];
       for (const cellData of cellMap.values()) {
-        const centerLng =
-          ((cellData.cellX + 0.5) * cellSize) / metersPerLng;
-        const centerLat =
-          ((cellData.cellY + 0.5) * cellSize) / metersPerLat;
+        const centerLng = ((cellData.cellX + 0.5) * cellSize) / metersPerLng;
+        const centerLat = ((cellData.cellY + 0.5) * cellSize) / metersPerLat;
 
         const activities: Record<string, number> = {};
         for (const [state, count] of cellData.activities) {

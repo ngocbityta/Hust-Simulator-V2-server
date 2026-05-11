@@ -49,7 +49,7 @@ export class SpatialService implements ISpatialService {
   getCellChannel(cell: GridCell): string {
     return `${RedisKey.CELL_CHANNEL_PREFIX}${this.getCellKey(cell)}`;
   }
-  
+
   getCellSize(): number {
     return this.cellSize;
   }

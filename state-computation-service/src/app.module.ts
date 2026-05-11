@@ -7,6 +7,7 @@ import { RedisModule } from './redis/redis.module';
 import { SpatialModule } from './spatial/spatial.module';
 import { ComputationModule } from './computation/computation.module';
 import { HeatmapModule } from './heatmap/heatmap.module';
+import { IntentModule } from './intent/intent.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { HeatmapModule } from './heatmap/heatmap.module';
     PlayerModule,
     ComputationModule,
     HeatmapModule,
+    IntentModule,
   ],
 })
 export class AppModule {}

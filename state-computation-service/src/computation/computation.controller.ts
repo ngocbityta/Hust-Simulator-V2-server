@@ -39,7 +39,7 @@ export class ComputationController {
   async processUserMove(data: UserMoveEvent) {
     this.logger.debug(`Processing move for user ${data.userId}`);
 
-    await this.playerService.updatePosition(
+    const prediction = await this.playerService.updatePosition(
       data.userId,
       data.position,
       data.speed,
@@ -51,6 +51,7 @@ export class ComputationController {
       position: data.position,
       speed: data.speed,
       heading: data.heading,
+      intent: prediction,
       type: 'move',
       clientTimestamp: data.clientTimestamp,
     });

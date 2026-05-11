@@ -36,6 +36,24 @@ interface UpdatePlayerStateRequest {
   timestamp: { millis: number };
 }
 
+interface ActiveEventsRequest {
+  playerId: string;
+}
+
+interface ContextEvent {
+  eventId: string;
+  playerId: string;
+  eventType: string;
+  title: string;
+  description: string;
+  payload: Record<string, string>;
+  timestamp: { millis: number };
+}
+
+interface ActiveEventsResponse {
+  events: ContextEvent[];
+}
+
 interface ContextEngineService {
   checkPlayerZone(request: ZoneCheckRequest): Observable<ZoneCheckResponse>;
   reportSpatialTrigger(
@@ -44,6 +62,9 @@ interface ContextEngineService {
   updatePlayerState(
     request: UpdatePlayerStateRequest,
   ): Observable<Record<string, never>>;
+  getActiveEvents(
+    request: ActiveEventsRequest,
+  ): Observable<ActiveEventsResponse>;
 }
 
 @Injectable()
@@ -79,5 +100,9 @@ export class GrpcContextClient implements OnModuleInit {
 
   async updatePlayerState(request: UpdatePlayerStateRequest): Promise<void> {
     await firstValueFrom(this.contextService.updatePlayerState(request));
+  }
+
+  async getActiveEvents(playerId: string): Promise<ActiveEventsResponse> {
+    return firstValueFrom(this.contextService.getActiveEvents({ playerId }));
   }
 }

@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { UserActivityState } from '../common/enums/user-activity-state.enum';
 import { RedisKey } from '../common/enums/redis-key.enum';
+import { IIntentService, IntentPrediction } from '../intent/intent.interface';
 
 export interface UserState {
   userId: string;
@@ -22,17 +23,36 @@ export interface UserState {
 export class PlayerService {
   private readonly logger = new Logger(PlayerService.name);
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    @Inject(IIntentService) private readonly intentService: IIntentService,
+  ) {}
 
   async updatePosition(
     userId: string,
     position: { latitude: number; longitude: number },
     speed: number,
     heading: number,
-  ): Promise<void> {
+  ): Promise<IntentPrediction | null> {
     const stateKey = `${RedisKey.PLAYER_STATE_PREFIX}${userId}`;
 
-    // Flattened field-value pairs for HASH
+    // 1. Predict Intent
+    const prediction = await this.intentService.predictIntent(
+      userId,
+      position.latitude,
+      position.longitude,
+      heading,
+    );
+
+    if (prediction) {
+      await this.redisService.client.setex(
+        `${RedisKey.PLAYER_INTENT_PREFIX}${userId}`,
+        30, // 30 seconds TTL
+        JSON.stringify(prediction),
+      );
+    }
+
+    // 2. Update position in Redis
     const updates = [
       'userId',
       userId,
@@ -58,6 +78,8 @@ export class PlayerService {
       userId,
       ...updates,
     );
+
+    return prediction;
   }
 
   async getPlayerState(userId: string): Promise<UserState | null> {

@@ -3,4 +3,5 @@ export enum RedisKey {
   PLAYER_GEO_KEY = 'game:players:geo',
   CELL_CHANNEL_PREFIX = 'game:cell:',
   HEATMAP_CHANNEL = 'game:heatmap',
+  PLAYER_INTENT_PREFIX = 'game:players:intent:',
 }
