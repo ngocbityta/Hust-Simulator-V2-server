@@ -4,16 +4,19 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { UserActivityState } from '../common/enums/user-activity-state.enum';
 
 interface ComputationService {
-  processUserMove(data: any): Observable<{ success: boolean; message: string }>;
-  processUserStateChange(
-    data: any,
-  ): Observable<{ success: boolean; message: string }>;
+  processUserMove(data: any): Observable<void>;
+  processUserStateChange(data: any): Observable<void>;
+}
+
+interface UserStateService {
+  notifyUserConnection(data: any): Observable<void>;
 }
 
 @Injectable()
 export class GrpcComputationClient implements OnModuleInit {
   private readonly logger = new Logger(GrpcComputationClient.name);
   private computationService!: ComputationService;
+  private userStateService!: UserStateService;
 
   constructor(
     @Inject('COMPUTATION_SERVICE') private readonly client: ClientGrpc,
@@ -22,6 +25,8 @@ export class GrpcComputationClient implements OnModuleInit {
   onModuleInit() {
     this.computationService =
       this.client.getService<ComputationService>('ComputationService');
+    this.userStateService =
+      this.client.getService<UserStateService>('UserStateService');
     this.logger.log('gRPC Computation client initialized');
   }
 
@@ -31,7 +36,7 @@ export class GrpcComputationClient implements OnModuleInit {
     speed: number,
     heading: number,
     clientTimestamp?: number,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<void> {
     return firstValueFrom(
       this.computationService.processUserMove({
         userId,
@@ -50,7 +55,7 @@ export class GrpcComputationClient implements OnModuleInit {
     eventId?: string,
     sessionData?: Record<string, unknown>,
     position?: { latitude: number; longitude: number },
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<void> {
     return firstValueFrom(
       this.computationService.processUserStateChange({
         userId,
@@ -59,6 +64,19 @@ export class GrpcComputationClient implements OnModuleInit {
         eventId: eventId || '',
         sessionData: sessionData ? JSON.stringify(sessionData) : '',
         position,
+      }),
+    );
+  }
+
+  async notifyUserConnection(
+    userId: string,
+    isConnected: boolean,
+  ): Promise<void> {
+    return firstValueFrom(
+      this.userStateService.notifyUserConnection({
+        userId,
+        isConnected,
+        timestamp: { millis: Date.now() },
       }),
     );
   }

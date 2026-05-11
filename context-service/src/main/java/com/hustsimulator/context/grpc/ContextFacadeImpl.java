@@ -27,11 +27,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ContextFacadeImpl implements IContextFacade {
 
-	private final UserStateService userStateService;
-	private final BuildingService buildingService;
-	private final RoomService roomService;
-	private final RecurringEventService recurringEventService;
-	private final ObjectMapper objectMapper;
+        private final UserStateService userStateService;
+        private final BuildingService buildingService;
+        private final RoomService roomService;
+        private final RecurringEventService recurringEventService;
+        private final ObjectMapper objectMapper;
 
         @Override
         public ContextProto.ZoneCheckResponse checkPlayerZone(ContextProto.ZoneCheckRequest request) {
@@ -64,7 +64,9 @@ public class ContextFacadeImpl implements IContextFacade {
         @Override
         public com.google.protobuf.Empty updatePlayerState(ContextProto.UpdatePlayerStateRequest request) {
                 UUID userId = UUID.fromString(request.getPlayerId());
-                UserActivityState activityState = UserActivityState.valueOf(request.getActivityState().name());
+
+                // Safe conversion: use proto enum's string name, handle UNSPECIFIED gracefully
+                UserActivityState activityState = convertProtoActivityState(request.getActivityState());
 
                 // Sync activity and position
                 userStateService.updateActivity(userId, activityState, null);
@@ -74,38 +76,59 @@ public class ContextFacadeImpl implements IContextFacade {
                 return com.google.protobuf.Empty.getDefaultInstance();
         }
 
+        private UserActivityState convertProtoActivityState(
+                        com.hustsimulator.context.grpc.proto.PlayerProto.UserActivityState protoState) {
+                if (protoState == com.hustsimulator.context.grpc.proto.PlayerProto.UserActivityState.USER_ACTIVITY_STATE_UNSPECIFIED
+                                || protoState == com.hustsimulator.context.grpc.proto.PlayerProto.UserActivityState.UNRECOGNIZED) {
+                        return UserActivityState.ROAMING;
+                }
+                try {
+                        return UserActivityState.valueOf(protoState.name());
+                } catch (IllegalArgumentException e) {
+                        log.warn("Unknown proto UserActivityState '{}', defaulting to ROAMING", protoState.name());
+                        return UserActivityState.ROAMING;
+                }
+        }
+
         @Override
         public ContextProto.ActiveEventsResponse getActiveEvents(ContextProto.ActiveEventsRequest request) {
                 List<RecurringEvent> activeEvents = recurringEventService.findActive();
 
-		List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
-				.map(e -> {
-					Map<String, String> payload = new HashMap<>();
-					if (e.getRoomId() != null) {
-						try {
-							Room room = roomService.findById(e.getRoomId());
-							Building building = buildingService.findById(room.getBuildingId());
-							double[] centroid = GeometryUtils.getCentroid(building.getCoordinates(), objectMapper);
-							// Map coordinates (lon, lat) -> (lng, lat)
-							payload.put(ContextConstants.PAYLOAD_LONGITUDE, String.valueOf(centroid[0]));
-							payload.put(ContextConstants.PAYLOAD_LATITUDE, String.valueOf(centroid[1]));
-							payload.put(ContextConstants.PAYLOAD_BUILDING_NAME, building.getName());
-							payload.put(ContextConstants.PAYLOAD_ROOM_NAME, room.getName());
-						} catch (Exception ex) {
-							log.warn("Failed to get coordinates for event {}: {}", e.getId(), ex.getMessage());
-						}
-					}
+                List<ContextProto.ContextEvent> eventProtos = activeEvents.stream()
+                                .map(e -> {
+                                        Map<String, String> payload = new HashMap<>();
+                                        if (e.getRoomId() != null) {
+                                                try {
+                                                        Room room = roomService.findById(e.getRoomId());
+                                                        Building building = buildingService
+                                                                        .findById(room.getBuildingId());
+                                                        double[] centroid = GeometryUtils.getCentroid(
+                                                                        building.getCoordinates(), objectMapper);
+                                                        // Map coordinates (lon, lat) -> (lng, lat)
+                                                        payload.put(ContextConstants.PAYLOAD_LONGITUDE,
+                                                                        String.valueOf(centroid[0]));
+                                                        payload.put(ContextConstants.PAYLOAD_LATITUDE,
+                                                                        String.valueOf(centroid[1]));
+                                                        payload.put(ContextConstants.PAYLOAD_BUILDING_NAME,
+                                                                        building.getName());
+                                                        payload.put(ContextConstants.PAYLOAD_ROOM_NAME, room.getName());
+                                                } catch (Exception ex) {
+                                                        log.warn("Failed to get coordinates for event {}: {}",
+                                                                        e.getId(), ex.getMessage());
+                                                }
+                                        }
 
-					return ContextProto.ContextEvent.newBuilder()
-							.setEventId(e.getId().toString())
-							.setPlayerId(request.getPlayerId())
-							.setEventType(ContextConstants.EVENT_TYPE_VIRTUAL_CLASS)
-							.setTitle(e.getName())
-							.setDescription(e.getDescription() != null ? e.getDescription() : "")
-							.putAllPayload(payload)
-							.build();
-				})
-				.collect(Collectors.toList());
+                                        return ContextProto.ContextEvent.newBuilder()
+                                                        .setEventId(e.getId().toString())
+                                                        .setPlayerId(request.getPlayerId())
+                                                        .setEventType(ContextConstants.EVENT_TYPE_VIRTUAL_CLASS)
+                                                        .setTitle(e.getName())
+                                                        .setDescription(e.getDescription() != null ? e.getDescription()
+                                                                        : "")
+                                                        .putAllPayload(payload)
+                                                        .build();
+                                })
+                                .collect(Collectors.toList());
 
                 return ContextProto.ActiveEventsResponse.newBuilder()
                                 .addAllEvents(eventProtos)

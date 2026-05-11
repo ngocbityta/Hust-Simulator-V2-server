@@ -1,7 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { WsAdapter } from '@nestjs/platform-ws';
@@ -172,24 +170,6 @@ Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Un
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-
-  // Connect gRPC microservice (exposes PlayerStateService)
-  const grpcPort = configService.get<number>('GAME_SERVER_GRPC_PORT', 50051);
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.GRPC,
-    options: {
-      package: ['hustsimulator.player'],
-      protoPath: [
-        join(__dirname, '../../proto/player.proto'),
-        join(__dirname, '../../proto/common.proto'),
-      ],
-      url: `0.0.0.0:${grpcPort}`,
-    },
-  });
-
-  // Start all microservices
-  await app.startAllMicroservices();
-  logger.log(`gRPC server running on port ${grpcPort}`);
 
   // Start HTTP + WebSocket server
   const httpPort = configService.get<number>('GAME_SERVER_PORT', 3000);

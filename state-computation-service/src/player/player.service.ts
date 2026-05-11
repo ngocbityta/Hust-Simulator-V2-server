@@ -26,7 +26,7 @@ export class PlayerService {
   constructor(
     private readonly redisService: RedisService,
     @Inject(IIntentService) private readonly intentService: IIntentService,
-  ) {}
+  ) { }
 
   async updatePosition(
     userId: string,
@@ -152,7 +152,7 @@ export class PlayerService {
 
     const otherIds = nearbyIds.filter((id) => id !== userId);
     if (otherIds.length === 0) {
-      return { players: [] };
+      return { users: [] };
     }
 
     const pipeline = client.pipeline();
@@ -184,7 +184,7 @@ export class PlayerService {
       }
     });
 
-    return { players: nearby };
+    return { users: nearby };
   }
 
   async handleConnectionEvent(event: {
@@ -205,6 +205,13 @@ export class PlayerService {
       'isOnline',
       event.isConnected.toString(),
     );
+
+    if (!event.isConnected) {
+      await this.redisService.client.zrem(
+        RedisKey.PLAYER_GEO_KEY,
+        event.userId,
+      );
+    }
 
     this.logger.log(
       `User ${event.userId} is now ${event.isConnected ? 'online' : 'offline'}`,

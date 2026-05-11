@@ -10,6 +10,12 @@ export class SessionService implements ISessionService {
   private userToClient = new Map<string, WebSocket>();
 
   setSession(client: WebSocket, userId: string) {
+    const existingClient = this.userToClient.get(userId);
+    if (existingClient && existingClient !== client) {
+      this.logger.warn(`Kicking existing session for user ${userId}`);
+      existingClient.close(1000, 'Logged in from another device');
+    }
+
     this.clientToUser.set(client, userId);
     this.userToClient.set(userId, client);
     this.logger.debug(`Session registered: ${userId}`);
@@ -26,7 +32,9 @@ export class SessionService implements ISessionService {
   removeSession(client: WebSocket) {
     const userId = this.clientToUser.get(client);
     if (userId) {
-      this.userToClient.delete(userId);
+      if (this.userToClient.get(userId) === client) {
+        this.userToClient.delete(userId);
+      }
       this.clientToUser.delete(client);
       this.logger.debug(`Session removed: ${userId}`);
     }

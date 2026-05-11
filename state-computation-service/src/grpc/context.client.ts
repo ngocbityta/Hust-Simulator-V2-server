@@ -40,7 +40,7 @@ interface ActiveEventsRequest {
   playerId: string;
 }
 
-interface ContextEvent {
+export interface ContextEvent {
   eventId: string;
   playerId: string;
   eventType: string;
@@ -50,7 +50,7 @@ interface ContextEvent {
   timestamp: { millis: number };
 }
 
-interface ActiveEventsResponse {
+export interface ActiveEventsResponse {
   events: ContextEvent[];
 }
 

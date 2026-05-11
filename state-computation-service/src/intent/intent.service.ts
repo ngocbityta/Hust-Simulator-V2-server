@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as turf from '@turf/turf';
 import { RedisService } from '../redis/redis.service';
-import { GrpcContextClient } from '../grpc/context.client';
+import {
+  GrpcContextClient,
+  ActiveEventsResponse,
+} from '../grpc/context.client';
 import { RedisKey } from '../common/enums/redis-key.enum';
 
 import { IIntentService, IntentPrediction } from './intent.interface';
@@ -18,6 +21,13 @@ export class IntentService implements IIntentService {
   private readonly headingWeight: number;
   private readonly stationaryThresholdMeters: number;
 
+  // Cache for active events
+  private eventCache = new Map<
+    string,
+    { events: ActiveEventsResponse; timestamp: number }
+  >();
+  private readonly cacheTtlMs: number;
+
   constructor(
     private readonly redisService: RedisService,
     private readonly grpcContextClient: GrpcContextClient,
@@ -26,6 +36,10 @@ export class IntentService implements IIntentService {
     this.confidenceThreshold = this.configService.get<number>(
       'INTENT_CONFIDENCE_THRESHOLD',
       0.6,
+    );
+    this.cacheTtlMs = this.configService.get<number>(
+      'INTENT_CACHE_TTL_MS',
+      30000,
     );
     this.maxDistanceMeters = this.configService.get<number>(
       'INTENT_MAX_DISTANCE',
@@ -93,10 +107,27 @@ export class IntentService implements IIntentService {
         );
       }
 
-      // 4. Fetch upcoming events from Context Service as potential destinations
-      const activeEvents = await this.grpcContextClient.getActiveEvents(userId);
+      // 4. Fetch upcoming events from Context Service as potential destinations (with cache)
+      const now = Date.now();
+      let userCache = this.eventCache.get(userId);
 
-      const potentialDestinations = (activeEvents.events || [])
+      if (!userCache || now - userCache.timestamp > this.cacheTtlMs) {
+        const events = await this.grpcContextClient.getActiveEvents(userId);
+        userCache = { events, timestamp: now };
+        this.eventCache.set(userId, userCache);
+
+        // Optional: Simple cleanup of expired caches to prevent memory leak
+        if (this.eventCache.size > 1000) {
+          for (const [key, cache] of this.eventCache.entries()) {
+            if (now - cache.timestamp > this.cacheTtlMs) {
+              this.eventCache.delete(key);
+            }
+          }
+        }
+      }
+      const activeEvents = userCache.events;
+
+      const potentialDestinations = (activeEvents?.events || [])
         .map((event) => ({
           id: event.eventId,
           name: event.title,

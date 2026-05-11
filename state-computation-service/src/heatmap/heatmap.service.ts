@@ -1,5 +1,6 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
+import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../redis/redis.service';
 import { ISpatialService } from '../spatial/spatial.interface';
 import { RedisKey } from '../common/enums/redis-key.enum';
@@ -20,15 +21,30 @@ interface HeatmapPayload {
 }
 
 @Injectable()
-export class HeatmapService {
+export class HeatmapService implements OnModuleInit {
   private readonly logger = new Logger(HeatmapService.name);
 
   constructor(
     private readonly redisService: RedisService,
     @Inject(ISpatialService) private readonly spatialService: ISpatialService,
+    private readonly schedulerRegistry: SchedulerRegistry,
+    private readonly configService: ConfigService,
   ) {}
 
-  @Interval(5000)
+  onModuleInit() {
+    const intervalMs = this.configService.get<number>(
+      'HEATMAP_INTERVAL_MS',
+      5000,
+    );
+    const interval = setInterval(() => {
+      this.aggregateHeatmap().catch((err) => {
+        this.logger.error('Error during aggregateHeatmap:', err);
+      });
+    }, intervalMs);
+    this.schedulerRegistry.addInterval('heatmapInterval', interval);
+    this.logger.log(`Heatmap interval set to ${intervalMs}ms`);
+  }
+
   async aggregateHeatmap(): Promise<void> {
     const startTime = Date.now();
     const cellSize = this.spatialService.getCellSize();

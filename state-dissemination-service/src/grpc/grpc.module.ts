@@ -14,9 +14,10 @@ import { GrpcComputationClient } from './computation.client';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.GRPC,
           options: {
-            package: ['hustsimulator.computation'],
+            package: ['hustsimulator.computation', 'hustsimulator.player'],
             protoPath: [
               join(__dirname, '../../../proto/computation.proto'),
+              join(__dirname, '../../../proto/player.proto'),
               join(__dirname, '../../../proto/common.proto'),
             ],
             url: `${configService.get<string>('COMPUTATION_SERVICE_HOST', 'localhost')}:${configService.get<number>('COMPUTATION_SERVICE_GRPC_PORT', 50053)}`,

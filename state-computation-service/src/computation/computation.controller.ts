@@ -1,4 +1,5 @@
 import { Controller, Logger, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { PlayerService } from '../player/player.service';
 import { ISpatialService } from '../spatial/spatial.interface';
@@ -33,6 +34,7 @@ export class ComputationController {
     @Inject(ISpatialService) private readonly spatialService: ISpatialService,
     private readonly redisService: RedisService,
     private readonly grpcClient: GrpcContextClient,
+    private readonly configService: ConfigService,
   ) {}
 
   @GrpcMethod('ComputationService', 'ProcessUserMove')
@@ -56,9 +58,16 @@ export class ComputationController {
       clientTimestamp: data.clientTimestamp,
     });
 
-    // Time-based throttle instead of 20% random sync: sync max once every 5 seconds per user
+    // Time-based throttle instead of 20% random sync: sync max once every N seconds per user
     const throttleKey = `throttle:sync:${data.userId}`;
-    const canSync = await this.redisService.throttle(throttleKey, 5);
+    const syncThrottleSeconds = this.configService.get<number>(
+      'SYNC_THROTTLE_SECONDS',
+      5,
+    );
+    const canSync = await this.redisService.throttle(
+      throttleKey,
+      syncThrottleSeconds,
+    );
 
     if (canSync) {
       const state = await this.playerService.getPlayerState(data.userId);
@@ -74,9 +83,17 @@ export class ComputationController {
   async processUserStateChange(data: UserStateChangeEvent) {
     this.logger.debug(`Processing state change for user ${data.userId}`);
 
-    const sessionDataObj = data.sessionData
-      ? (JSON.parse(data.sessionData) as Record<string, unknown>)
-      : undefined;
+    let sessionDataObj: Record<string, unknown> | undefined = undefined;
+    if (data.sessionData) {
+      try {
+        sessionDataObj = JSON.parse(data.sessionData) as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        throw new RpcException('Invalid sessionData JSON format');
+      }
+    }
 
     const result = await this.playerService.updateActivityState(
       data.userId,

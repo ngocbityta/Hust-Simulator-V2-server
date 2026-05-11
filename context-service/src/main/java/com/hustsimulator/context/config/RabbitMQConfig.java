@@ -13,7 +13,7 @@ public class RabbitMQConfig {
     public static final String DLX_EXCHANGE = "hust.job.active.exchange";
     public static final String DELAY_EXCHANGE = "hust.job.delay.exchange";
     public static final String REALTIME_EXCHANGE = "hust.realtime.exchange";
-    
+
     public static final String ACTIVE_JOB_QUEUE = "hust.job.active.queue";
     public static final String DELAY_JOB_QUEUE = "hust.job.delay.queue";
 
@@ -76,7 +76,14 @@ public class RabbitMQConfig {
 
     @Bean
     public org.springframework.amqp.support.converter.MessageConverter jsonMessageConverter() {
-        return new org.springframework.amqp.support.converter.Jackson2JsonMessageConverter();
+        org.springframework.amqp.support.converter.Jackson2JsonMessageConverter converter = new org.springframework.amqp.support.converter.Jackson2JsonMessageConverter();
+        org.springframework.amqp.support.converter.DefaultClassMapper classMapper = new org.springframework.amqp.support.converter.DefaultClassMapper();
+        classMapper.setTrustedPackages("*");
+        classMapper.setIdClassMapping(java.util.Map.of(
+                "com.hustsimulator.auth.user.UserEvent",
+                com.hustsimulator.context.userstate.UserEvent.class));
+        converter.setClassMapper(classMapper);
+        return converter;
     }
 
     // Event Publisher Config
@@ -87,5 +94,3 @@ public class RabbitMQConfig {
         return new TopicExchange(EVENT_EXCHANGE);
     }
 }
-
-

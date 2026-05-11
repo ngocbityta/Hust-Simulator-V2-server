@@ -21,15 +21,6 @@ spring:
     init:
       mode: never
 
-  # Redis
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:hustsim_redis}
-      repositories:
-        enabled: false
-
   # RabbitMQ
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
@@ -48,10 +39,6 @@ grpc:
     port: ${CONTEXT_SERVICE_GRPC_PORT:50052}
     security:
       enabled: false
-  client:
-    game-server:
-      address: static://${GAME_SERVER_HOST:localhost}:${GAME_SERVER_GRPC_PORT:50051}
-      negotiation-type: plaintext
 
 # Actuator, Tracing, Metrics
 management:

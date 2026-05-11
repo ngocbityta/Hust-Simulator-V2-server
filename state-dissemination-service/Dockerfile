@@ -34,6 +34,5 @@ WORKDIR /app/state-dissemination-service
 ENV NODE_ENV=production
 
 EXPOSE 3002
-EXPOSE 50051
 
 CMD ["sh", "-c", "node ${NODE_OPTIONS} dist/main"]

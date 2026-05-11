@@ -1,8 +1,15 @@
 package com.hustsimulator.messaging.config;
 
+import com.hustsimulator.messaging.eventcache.EventEvent;
+import com.hustsimulator.messaging.usercache.UserEvent;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.support.converter.DefaultClassMapper;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Map;
 
 @Configuration
 public class RabbitMQConfig {
@@ -66,9 +73,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public org.springframework.amqp.support.converter.MessageConverter jsonMessageConverter() {
-        return new org.springframework.amqp.support.converter.Jackson2JsonMessageConverter();
+    public MessageConverter jsonMessageConverter() {
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        DefaultClassMapper classMapper = new DefaultClassMapper();
+        classMapper.setTrustedPackages("*");
+        classMapper.setIdClassMapping(Map.of(
+                "com.hustsimulator.auth.user.UserEvent", UserEvent.class,
+                "com.hustsimulator.context.event.EventEvent", EventEvent.class));
+        converter.setClassMapper(classMapper);
+        return converter;
     }
 }
-
-
