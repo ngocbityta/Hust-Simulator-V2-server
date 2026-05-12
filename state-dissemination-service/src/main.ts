@@ -4,12 +4,24 @@ import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { WinstonModule } from 'nest-winston';
+import * as winston from 'winston';
 
 async function bootstrap() {
+  // Create HTTP app with Winston Logger
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger({
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+      ],
+    }),
+  });
   const logger = new Logger('Bootstrap');
-
-  // Create HTTP app
-  const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   // Use raw WebSocket adapter (ws library) instead of Socket.IO

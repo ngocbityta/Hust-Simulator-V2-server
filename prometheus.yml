@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'spring-boot-services'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - 'context-service:8080'
+          - 'auth-service:8081'
+          - 'messaging-service:8082'
+          - 'social-service:8083'
+          - 'streaming-service:8084'
+
+  - job_name: 'nestjs-services'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'state-dissemination-service:3002'
+          - 'state-computation-service:3003'

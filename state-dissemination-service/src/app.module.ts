@@ -5,8 +5,12 @@ import { WebsocketModule } from './websocket/websocket.module';
 import { RedisModule } from './redis/redis.module';
 import { SpatialModule } from './spatial/spatial.module';
 
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+
 @Module({
   imports: [
+    // Prometheus Metrics
+    PrometheusModule.register(),
     // Global config from .env
     ConfigModule.forRoot({
       isGlobal: true,

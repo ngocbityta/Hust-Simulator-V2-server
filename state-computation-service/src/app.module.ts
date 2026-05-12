@@ -9,8 +9,12 @@ import { ComputationModule } from './computation/computation.module';
 import { HeatmapModule } from './heatmap/heatmap.module';
 import { IntentModule } from './intent/intent.module';
 
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+
 @Module({
   imports: [
+    // Prometheus Metrics
+    PrometheusModule.register(),
     // Global config from .env
     ConfigModule.forRoot({
       isGlobal: true,
