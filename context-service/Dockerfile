@@ -14,14 +14,21 @@ COPY proto ./proto
 # Build
 RUN cd context-service && gradle bootJar --no-daemon
 
+# Extract stage
+FROM eclipse-temurin:17-jre-alpine AS extract
+WORKDIR /app
+COPY --from=build /app/context-service/build/libs/*.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --destination extracted
+
 # Run stage
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copy built jar and proto (if needed for some runtimes, but usually Spring Boot bundles protos)
-# However, keeping proto structure just in case of dynamic loading
-COPY --from=build /app/context-service/build/libs/*.jar app.jar
-COPY --from=build /app/proto ./proto
+# Use a non-root user for security
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+COPY --from=extract /app/extracted ./
 
 EXPOSE 8080
 EXPOSE 50052

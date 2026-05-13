@@ -71,6 +71,12 @@ tasks.named('test') {
 	useJUnitPlatform()
 }
 
+bootJar {
+	layered {
+		enabled = true
+	}
+}
+
 // Automatically load environment variables from root .env for local development
 tasks.named('bootRun') {
 	systemProperties = System.properties

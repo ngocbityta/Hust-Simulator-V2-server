@@ -90,7 +90,7 @@ services:
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-Xmx384m -Xms128m"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
     deploy:
       resources:
         limits:
@@ -116,7 +116,7 @@ services:
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       RABBITMQ_HOST: rabbitmq
       JWT_SECRET: ${JWT_SECRET}
-      JAVA_OPTS: "-Xmx384m -Xms128m"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
     deploy:
       resources:
         limits:
@@ -141,7 +141,7 @@ services:
       SPRING_FLYWAY_DEFAULT_SCHEMA: context
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-Xmx384m -Xms128m"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
     deploy:
       resources:
         limits:
@@ -171,7 +171,7 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-Xmx384m -Xms128m"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
     deploy:
       resources:
         limits:
@@ -198,7 +198,7 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       LIVEKIT_URL: http://livekit:7880
-      JAVA_OPTS: "-Xmx384m -Xms128m"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
     deploy:
       resources:
         limits:
