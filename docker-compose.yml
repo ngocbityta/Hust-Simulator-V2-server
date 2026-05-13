@@ -3,8 +3,6 @@ services:
     image: redis:7-alpine
     container_name: hustsim-redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-hustsim_redis} --maxmemory 48mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -22,9 +20,6 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: hustsim-rabbitmq
     restart: unless-stopped
-    ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-hustsim}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-hustsim_rabbit}
@@ -85,8 +80,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    ports:
-      - "${AUTH_SERVICE_PORT:-8081}:8081"
+    # No host ports — accessed via API Gateway only
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=auth&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -112,9 +106,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    ports:
-      - "${MESSAGING_SERVICE_PORT:-8082}:8082"
-      - "9092:9092"
+    # No host ports — accessed via API Gateway only
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=messaging&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -140,8 +132,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    ports:
-      - "${CONTEXT_SERVICE_PORT:-8080}:8080"
+    # No host ports — accessed via API Gateway only
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=context&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -168,8 +159,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    ports:
-      - "${SOCIAL_SERVICE_PORT:-8083}:8083"
+    # No host ports — accessed via API Gateway only
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=social&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -196,8 +186,7 @@ services:
     depends_on:
       redis: { condition: service_healthy }
       livekit: { condition: service_started }
-    ports:
-      - "${STREAMING_SERVICE_PORT:-8084}:8084"
+    # No host ports — accessed via API Gateway only
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=streaming&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -245,8 +234,7 @@ services:
     restart: unless-stopped
     depends_on:
       redis: { condition: service_healthy }
-    ports:
-      - "50053:50053"
+    # No host ports — internal gRPC only
     environment:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -262,8 +250,7 @@ services:
   loki:
     image: grafana/loki:2.9.0
     container_name: hustsim-loki
-    ports:
-      - "3100:3100"
+    # No host ports — accessed by Grafana internally
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml
@@ -290,8 +277,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.45.0
     container_name: hustsim-prometheus
-    ports:
-      - "9090:9090"
+    # No host ports — accessed by Grafana internally
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus

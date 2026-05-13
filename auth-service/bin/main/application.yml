@@ -2,7 +2,7 @@ spring:
   application:
     name: auth-service
 
-  # PostgreSQL (shared Neon Cloud)
+  # PostgreSQL
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
     username: ${POSTGRES_USER:hustsim}
@@ -17,6 +17,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        default_schema: auth
   sql:
     init:
       mode: never
@@ -31,6 +32,7 @@ spring:
 hustsimulator:
   jwtSecret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   jwtExpirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+  refreshTokenExpirationMs: ${REFRESH_TOKEN_EXPIRATION_MS:604800000} # 7 days
 
 # Server
 server:
@@ -42,7 +44,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,prometheus
 
 # Swagger/OpenAPI
 springdoc:

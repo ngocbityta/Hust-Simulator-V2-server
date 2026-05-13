@@ -7,7 +7,7 @@ import com.hustsimulator.auth.enums.UserStatus;
 import lombok.*;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", schema = "auth")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor

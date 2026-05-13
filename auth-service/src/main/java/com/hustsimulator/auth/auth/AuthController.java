@@ -17,14 +17,14 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication API", description = "Operations for user registration and login")
+@Tag(name = "Authentication API", description = "Operations for user registration, login, token refresh, and logout")
 public class AuthController {
 
     private final AuthService authService;
     private final UserRepository userRepository;
 
     @PostMapping("/login")
-    @Operation(summary = "Login to get JWT token")
+    @Operation(summary = "Login to get JWT access token and refresh token")
     public AuthDTO.AuthResponse login(@Valid @RequestBody AuthDTO.LoginRequest loginRequest) {
         return authService.login(loginRequest);
     }
@@ -34,6 +34,21 @@ public class AuthController {
     @Operation(summary = "Register a new user account")
     public User register(@Valid @RequestBody AuthDTO.RegisterRequest registerRequest) {
         return authService.register(registerRequest);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token using a valid refresh token",
+            description = "Exchanges a valid refresh token for a new access token and rotated refresh token")
+    public AuthDTO.TokenRefreshResponse refreshToken(@Valid @RequestBody AuthDTO.RefreshTokenRequest request) {
+        return authService.refreshToken(request);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout and invalidate all refresh tokens for the user",
+            description = "Deletes all refresh tokens for the user, effectively logging out from all devices")
+    public ResponseEntity<?> logout(@Valid @RequestBody AuthDTO.RefreshTokenRequest request) {
+        authService.logout(request.refreshToken());
+        return ResponseEntity.ok().body(java.util.Map.of("message", "Logged out successfully"));
     }
 
     @GetMapping("/validate")
@@ -59,4 +74,3 @@ public class AuthController {
                 .build();
     }
 }
-
