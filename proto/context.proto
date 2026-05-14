@@ -90,4 +90,17 @@ service ContextEngineService {
 
   // Stream context events to game-server (server push)
   rpc StreamContextEvents(ActiveEventsRequest) returns (stream ContextEvent);
+
+  // Get historical density for a cell
+  rpc GetHistoricalDensity(GetHistoricalDensityRequest) returns (GetHistoricalDensityResponse);
+}
+
+message GetHistoricalDensityRequest {
+  int32 cell_x = 1;
+  int32 cell_y = 2;
+  int64 since_timestamp_ms = 3;
+}
+
+message GetHistoricalDensityResponse {
+  double average_count = 1;
 }

@@ -246,6 +246,18 @@ services:
         limits:
           memory: 128M
 
+  prediction-service:
+    build:
+      context: .
+      dockerfile: prediction-service/Dockerfile
+    container_name: hustsim-prediction-service
+    restart: unless-stopped
+    # No host ports — internal gRPC only (50055)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   # ─── Monitoring ──────────────────────────────────────────────────
   loki:
     image: grafana/loki:2.9.0

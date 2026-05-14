@@ -23,6 +23,7 @@ interface HeatmapPayload {
 @Injectable()
 export class HeatmapService implements OnModuleInit {
   private readonly logger = new Logger(HeatmapService.name);
+  private latestHeatmap: HeatmapPayload | null = null;
 
   constructor(
     private readonly redisService: RedisService,
@@ -143,10 +144,18 @@ export class HeatmapService implements OnModuleInit {
         totalOnline,
         cells,
       };
+      
+      this.latestHeatmap = payload;
 
       await this.redisService.pubClient.publish(
         RedisKey.HEATMAP_CHANNEL,
         JSON.stringify(payload),
+      );
+
+      // Save latest for Context Service analytics
+      await this.redisService.client.set(
+        'game:heatmap:latest', 
+        JSON.stringify(payload)
       );
 
       this.logger.debug(
@@ -157,5 +166,9 @@ export class HeatmapService implements OnModuleInit {
         this.logger.error(`Heatmap aggregation failed: ${err.message}`);
       }
     }
+  }
+
+  getLatestHeatmap(): HeatmapPayload | null {
+    return this.latestHeatmap;
   }
 }

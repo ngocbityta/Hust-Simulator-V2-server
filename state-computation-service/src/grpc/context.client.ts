@@ -54,6 +54,16 @@ export interface ActiveEventsResponse {
   events: ContextEvent[];
 }
 
+export interface GetHistoricalDensityRequest {
+  cellX: number;
+  cellY: number;
+  sinceTimestampMs: number;
+}
+
+export interface GetHistoricalDensityResponse {
+  averageCount: number;
+}
+
 interface ContextEngineService {
   checkPlayerZone(request: ZoneCheckRequest): Observable<ZoneCheckResponse>;
   reportSpatialTrigger(
@@ -65,6 +75,9 @@ interface ContextEngineService {
   getActiveEvents(
     request: ActiveEventsRequest,
   ): Observable<ActiveEventsResponse>;
+  getHistoricalDensity(
+    request: GetHistoricalDensityRequest,
+  ): Observable<GetHistoricalDensityResponse>;
 }
 
 @Injectable()
@@ -104,5 +117,19 @@ export class GrpcContextClient implements OnModuleInit {
 
   async getActiveEvents(playerId: string): Promise<ActiveEventsResponse> {
     return firstValueFrom(this.contextService.getActiveEvents({ playerId }));
+  }
+
+  async getHistoricalDensity(
+    cellX: number,
+    cellY: number,
+    sinceTimestampMs: number,
+  ): Promise<GetHistoricalDensityResponse> {
+    return firstValueFrom(
+      this.contextService.getHistoricalDensity({
+        cellX,
+        cellY,
+        sinceTimestampMs,
+      }),
+    );
   }
 }

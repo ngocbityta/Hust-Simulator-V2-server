@@ -50,4 +50,11 @@ public class ContextGrpcService extends ContextEngineServiceGrpc.ContextEngineSe
         // Still a stub as streaming requires more complex logic (e.g. state tracking)
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void getHistoricalDensity(ContextProto.GetHistoricalDensityRequest request,
+            StreamObserver<ContextProto.GetHistoricalDensityResponse> responseObserver) {
+        responseObserver.onNext(contextFacade.getHistoricalDensity(request));
+        responseObserver.onCompleted();
+    }
 }

@@ -59,13 +59,13 @@ Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Un
 
 #### 🔑 2.1 Định danh Session (Bắt buộc đầu tiên)
 - **Sự kiện:** \`user:join\`
-- **Mô tả:** Hệ thống cần Client tự xưng danh để map Connection TCP với User trên Database.
+- **Mô tả:** Hệ thống cần Client gửi JWT Token (lấy từ lúc Login) để xác thực và map Connection TCP với User.
 - **Dữ liệu gửi lên (Payload):**
   \`\`\`json
   {
     "event": "user:join",
     "data": {
-      "userId": "string - Bắt buộc (VD: 'player-123')"
+      "token": "string - Bắt buộc (JWT token của user)"
     }
   }
   \`\`\`

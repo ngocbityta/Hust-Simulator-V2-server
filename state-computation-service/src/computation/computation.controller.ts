@@ -7,6 +7,7 @@ import { RedisService } from '../redis/redis.service';
 import { GrpcContextClient } from '../grpc/context.client';
 import { UserActivityState } from '../common/enums/user-activity-state.enum';
 import { UserState } from '../player/player.service';
+import { AssistantService } from '../assistant/assistant.service';
 
 interface UserMoveEvent {
   userId: string;
@@ -35,6 +36,7 @@ export class ComputationController {
     private readonly redisService: RedisService,
     private readonly grpcClient: GrpcContextClient,
     private readonly configService: ConfigService,
+    private readonly assistantService: AssistantService,
   ) {}
 
   @GrpcMethod('ComputationService', 'ProcessUserMove')
@@ -57,6 +59,18 @@ export class ComputationController {
       type: 'move',
       clientTimestamp: data.clientTimestamp,
     });
+
+    if (prediction && prediction.predictedDestinationName && prediction.targetLat && prediction.targetLng) {
+      this.assistantService.generateJourneyContext(
+        data.userId,
+        data.position.latitude,
+        data.position.longitude,
+        prediction.predictedDestinationName,
+        prediction.targetLat,
+        prediction.targetLng,
+        data.speed,
+      ).catch(err => this.logger.error(`AssistantService error: ${err}`));
+    }
 
     // Time-based throttle instead of 20% random sync: sync max once every N seconds per user
     const throttleKey = `throttle:sync:${data.userId}`;
