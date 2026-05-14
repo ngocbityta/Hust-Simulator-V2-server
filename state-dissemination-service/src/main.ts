@@ -43,7 +43,7 @@ Tài liệu này cung cấp **Contract Data** chính thức dành cho Client (Un
 
 ### 🌐 1. Cấu hình kết nối (Connection Details)
 - **Chuẩn kết nối:** WebSocket Mộc (Native WS / Socket.IO)
-- **URL Môi trường Dev:** \`ws://localhost:3002/ws\`
+- **URL Môi trường Dev:** \`ws://localhost/ws\` (Qua API Gateway)
 - **Định dạng đóng gói:** \`UTF-8 JSON String\`
 - **Cấu trúc chung của mọi Message:**
   \`\`\`json

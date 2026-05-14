@@ -61,13 +61,14 @@ export class GameGateway
     }, heartbeatInterval);
   }
 
-  handleConnection(client: WebSocket) {
+  handleConnection(client: WebSocket, request: any) {
+    const ip = request.socket.remoteAddress;
     this.aliveClients.add(client);
     client.on('pong', () => {
       this.aliveClients.add(client);
     });
-    this.logger.debug(
-      `Client connected. Total sessions: ${this.sessionService.getSessionCount() + 1}`,
+    this.logger.log(
+      `Client connected from ${ip}. Total sessions: ${this.sessionService.getSessionCount() + 1}`,
     );
   }
 
@@ -81,7 +82,7 @@ export class GameGateway
       // Check if user is still connected (e.g. from another tab)
       const currentClient = this.sessionService.getClient(userId);
       if (!currentClient) {
-        this.logger.debug(
+        this.logger.log(
           `User ${userId} disconnected. Total sessions: ${this.sessionService.getSessionCount()}`,
         );
         this.grpcComputationClient
