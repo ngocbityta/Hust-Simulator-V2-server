@@ -13,4 +13,4 @@ COPY prediction-service/ .
 # Copy proto file from the root proto dir (this assumes build context is server dir)
 # We will do this via a script or command to generate pb2 files.
 
-CMD ["python", "main.py"]
+CMD ["sh", "-c", "python pipeline_orchestrator.py & python main.py"]

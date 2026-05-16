@@ -11,6 +11,8 @@ export interface ISpatialService {
   getCellSize(): number;
   getMetersPerLat(): number;
   getMetersPerLng(): number;
+  getZoneId(longitude: number): number;
+  isBorderLongitude(longitude: number): boolean;
 }
 
 export const ISpatialService = Symbol('ISpatialService');

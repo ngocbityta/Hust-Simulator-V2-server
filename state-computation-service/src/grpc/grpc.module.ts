@@ -4,6 +4,7 @@ import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GrpcContextClient } from './context.client';
 import { GrpcPredictionClient } from './prediction.client';
+import { GrpcInterestMatcherClient } from './interest-matcher.client';
 
 @Module({
   imports: [
@@ -42,7 +43,7 @@ import { GrpcPredictionClient } from './prediction.client';
       },
     ]),
   ],
-  providers: [GrpcContextClient, GrpcPredictionClient],
-  exports: [GrpcContextClient, GrpcPredictionClient],
+  providers: [GrpcContextClient, GrpcPredictionClient, GrpcInterestMatcherClient],
+  exports: [GrpcContextClient, GrpcPredictionClient, GrpcInterestMatcherClient],
 })
 export class GrpcModule {}

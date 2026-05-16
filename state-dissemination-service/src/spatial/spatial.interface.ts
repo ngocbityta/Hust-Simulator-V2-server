@@ -8,6 +8,9 @@ export interface ISpatialService {
   getCellKey(cell: GridCell): string;
   getAoiCells(centerCell: GridCell): GridCell[];
   getCellChannel(cell: GridCell): string;
+  getCellSize(): number;
+  getMetersPerLat(): number;
+  getMetersPerLng(): number;
 }
 
 export const ISpatialService = Symbol('ISpatialService');

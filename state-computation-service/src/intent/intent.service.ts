@@ -4,6 +4,7 @@ import { HeuristicPredictor } from './predictors/heuristic.predictor';
 import { AIPredictor } from './predictors/ai.predictor';
 import { TrajectoryService } from './trajectory.service';
 import { IntentType } from '../common/enums/intent.enum';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class IntentService implements IIntentService {
@@ -13,6 +14,7 @@ export class IntentService implements IIntentService {
     private readonly heuristicPredictor: HeuristicPredictor,
     private readonly aiPredictor: AIPredictor,
     private readonly trajectoryService: TrajectoryService,
+    private readonly configService: ConfigService,
   ) {}
 
   async predictIntent(
@@ -40,7 +42,10 @@ export class IntentService implements IIntentService {
         trajectory,
       };
 
-      if (trajectory && trajectory.length >= 5) {
+      const forceHeuristicVal = this.configService.get('USE_HEURISTIC_ONLY');
+      const forceHeuristic = forceHeuristicVal === true || forceHeuristicVal === 'true';
+
+      if (!forceHeuristic && trajectory && trajectory.length >= 5) {
         aiPrediction = await this.aiPredictor.predict(context);
       }
 

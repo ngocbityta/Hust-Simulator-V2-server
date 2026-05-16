@@ -13,10 +13,22 @@ export class SpatialService implements ISpatialService {
   private readonly METERS_PER_LAT = METERS_PER_LAT;
   private readonly METERS_PER_LNG: number;
 
+  // Zone boundaries (longitude) — mirrored in interest-matcher-service
+  private readonly zone1Lng: number;
+  private readonly zone2Lng: number;
+  // Border margin in degrees (~1 cell width)
+  private readonly borderMarginDeg: number;
+
   constructor(private configService: ConfigService) {
     this.cellSize = this.configService.get<number>('GRID_CELL_SIZE', 50);
     const avgLat = this.configService.get<number>('MAP_CENTER_LAT', 21.003);
     this.METERS_PER_LNG = METERS_PER_LAT * Math.cos((avgLat * Math.PI) / 180);
+
+    // Zone boundary longitudes (must match interest-matcher-service env)
+    this.zone1Lng = parseFloat(String(this.configService.get('ZONE_1_LNG', '105.84')));
+    this.zone2Lng = parseFloat(String(this.configService.get('ZONE_2_LNG', '105.85')));
+    // Border margin ≈ 1 cell width in degrees
+    this.borderMarginDeg = this.cellSize / this.METERS_PER_LNG;
 
     this.logger.log(
       `SpatialService initialized with cell size ${this.cellSize}m`,
@@ -60,5 +72,26 @@ export class SpatialService implements ISpatialService {
 
   getMetersPerLng(): number {
     return this.METERS_PER_LNG;
+  }
+
+  /**
+   * Returns the zone ID (0, 1 or 2) for a given longitude.
+   * Zone boundaries mirror the interest-matcher-service configuration.
+   */
+  getZoneId(longitude: number): number {
+    if (longitude < this.zone1Lng) return 0;
+    if (longitude < this.zone2Lng) return 1;
+    return 2;
+  }
+
+  /**
+   * Returns true if the longitude is within one cell-width of a zone boundary.
+   * Used by ComputationController — the Interest Matcher broker handles the
+   * actual forwarding, but the publisher can log/debug border events.
+   */
+  isBorderLongitude(longitude: number): boolean {
+    const distToZone1 = Math.abs(longitude - this.zone1Lng);
+    const distToZone2 = Math.abs(longitude - this.zone2Lng);
+    return distToZone1 < this.borderMarginDeg || distToZone2 < this.borderMarginDeg;
   }
 }

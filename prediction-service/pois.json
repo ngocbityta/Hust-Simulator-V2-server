@@ -1,0 +1,6 @@
+{
+    "0": {"id": "c1_building", "name": "Tòa C1", "lat": 21.006, "lng": 105.843},
+    "1": {"id": "d3_building", "name": "Tòa D3", "lat": 21.004, "lng": 105.845},
+    "2": {"id": "library_tqb", "name": "Thư viện Tạ Quang Bửu", "lat": 21.005, "lng": 105.844},
+    "3": {"id": "canteen_b", "name": "Căng tin B", "lat": 21.003, "lng": 105.842}
+}

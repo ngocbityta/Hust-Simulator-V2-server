@@ -212,6 +212,9 @@ services:
     restart: unless-stopped
     depends_on:
       redis: { condition: service_healthy }
+      interest-matcher-0: { condition: service_started }
+      interest-matcher-1: { condition: service_started }
+      interest-matcher-2: { condition: service_started }
     environment:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -221,6 +224,18 @@ services:
       GAME_SERVER_PORT: 3002
       JWT_SECRET: ${JWT_SECRET}
       NODE_OPTIONS: "--max-old-space-size=256"
+      # Interest Matcher broker endpoints (zone routing)
+      IM_ZONE_0_HOST: interest-matcher-0
+      IM_ZONE_1_HOST: interest-matcher-1
+      IM_ZONE_2_HOST: interest-matcher-2
+      IM_BASE_PORT: "4000"
+      IM_NUM_ZONES: "3"
+      ZONE_1_LNG: "105.84"
+      ZONE_2_LNG: "105.85"
+      GRID_CELL_SIZE: "50"
+      MAP_CENTER_LAT: "21.003"
+      # Unique node ID for Redis Stream delivery routing
+      DISS_NODE_ID: diss-node-0
     deploy:
       resources:
         limits:
@@ -234,6 +249,9 @@ services:
     restart: unless-stopped
     depends_on:
       redis: { condition: service_healthy }
+      interest-matcher-0: { condition: service_started }
+      interest-matcher-1: { condition: service_started }
+      interest-matcher-2: { condition: service_started }
     # No host ports — internal gRPC only
     environment:
       REDIS_HOST: redis
@@ -241,10 +259,98 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       CONTEXT_SERVICE_HOST: context-service
       NODE_OPTIONS: "--max-old-space-size=256"
+      LOG_LEVEL: debug
+      USE_HEURISTIC_ONLY: ${USE_HEURISTIC_ONLY:-false}
+      # Interest Matcher broker endpoints (zone routing)
+      IM_ZONE_0_HOST: interest-matcher-0
+      IM_ZONE_1_HOST: interest-matcher-1
+      IM_ZONE_2_HOST: interest-matcher-2
+      IM_BASE_PORT: "4000"
+      IM_NUM_ZONES: "3"
+      ZONE_1_LNG: "105.84"
+      ZONE_2_LNG: "105.85"
+      GRID_CELL_SIZE: "50"
+      MAP_CENTER_LAT: "21.003"
     deploy:
       resources:
         limits:
           memory: 128M
+
+  # ─── Interest Matcher Brokers (SPS multi-broker AOI) ─────────────────────
+  # Each instance manages one spatial zone, implements the Interest Matcher
+  # role as described in: "Spatial Publish/Subscribe for MMOGs" (MMVE '24).
+  interest-matcher-0:
+    build:
+      context: .
+      dockerfile: interest-matcher-service/Dockerfile
+    container_name: hustsim-interest-matcher-0
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      ZONE_ID: "0"
+      ZONE_1_LNG: "105.84"
+      ZONE_2_LNG: "105.85"
+      GRID_CELL_SIZE: "50"
+      MAP_CENTER_LAT: "21.003"
+      IM_BASE_PORT: "4000"
+      # Format: host:port:zoneId
+      NEIGHBOR_BROKERS: "interest-matcher-1:4001:1"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  interest-matcher-1:
+    build:
+      context: .
+      dockerfile: interest-matcher-service/Dockerfile
+    container_name: hustsim-interest-matcher-1
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      ZONE_ID: "1"
+      ZONE_1_LNG: "105.84"
+      ZONE_2_LNG: "105.85"
+      GRID_CELL_SIZE: "50"
+      MAP_CENTER_LAT: "21.003"
+      IM_BASE_PORT: "4000"
+      NEIGHBOR_BROKERS: "interest-matcher-0:4000:0,interest-matcher-2:4002:2"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  interest-matcher-2:
+    build:
+      context: .
+      dockerfile: interest-matcher-service/Dockerfile
+    container_name: hustsim-interest-matcher-2
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      ZONE_ID: "2"
+      ZONE_1_LNG: "105.84"
+      ZONE_2_LNG: "105.85"
+      GRID_CELL_SIZE: "50"
+      MAP_CENTER_LAT: "21.003"
+      IM_BASE_PORT: "4000"
+      NEIGHBOR_BROKERS: "interest-matcher-1:4001:1"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   prediction-service:
     build:
@@ -252,11 +358,17 @@ services:
       dockerfile: prediction-service/Dockerfile
     container_name: hustsim-prediction-service
     restart: unless-stopped
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
     # No host ports — internal gRPC only (50055)
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 1G
 
   # ─── Monitoring ──────────────────────────────────────────────────
   loki:

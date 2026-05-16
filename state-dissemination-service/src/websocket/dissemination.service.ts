@@ -6,19 +6,19 @@ import {
   Inject,
 } from '@nestjs/common';
 import { WebSocket } from 'ws';
-import Redis from 'ioredis';
 import { ISpatialService } from '../spatial/spatial.interface';
 import { RedisService } from '../redis/redis.service';
 import { ISessionService } from './session.interface';
 import { IInterestService } from '../interest/interest.interface';
-import { RedisKey } from '../common/enums/redis-key.enum';
 import { WsEvent } from '../common/enums/ws-event.enum';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DisseminationService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DisseminationService.name);
 
-  private subClient: Redis;
+  // Unique node ID — used as stream key suffix and broker SUBSCRIBE identifier
+  private readonly nodeId: string;
 
   private clientCenterCell = new Map<WebSocket, string>();
 
@@ -26,33 +26,49 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
     private readonly redisService: RedisService,
     @Inject(ISpatialService) private readonly spatialService: ISpatialService,
     @Inject(ISessionService) private readonly sessionService: ISessionService,
-    @Inject(IInterestService)
-    private readonly interestService: IInterestService,
-  ) {}
-
-  onModuleInit() {
-    this.subClient = this.redisService.subClient;
-
-    this.subClient.on('message', (channel, message) => {
-      this.handleRedisMessage(channel, message);
-    });
+    @Inject(IInterestService) private readonly interestService: IInterestService,
+    private readonly configService: ConfigService,
+  ) {
+    this.nodeId = this.configService.get<string>(
+      'DISS_NODE_ID',
+      process.env.HOSTNAME ?? 'diss-default',
+    );
   }
 
-  onModuleDestroy() {}
+  onModuleInit() {
+    // Start consuming the Redis Stream: "diss:{nodeId}:events"
+    // Interest Matcher brokers push state-update messages into this stream.
+    void this.redisService.consumeDeliveryStream(
+      this.nodeId,
+      (payload) => this.handleStreamMessage(payload),
+    );
+    this.logger.log(`DisseminationService started (nodeId: ${this.nodeId})`);
+  }
+
+  onModuleDestroy() { }
 
   updateLocation(client: WebSocket, latitude: number, longitude: number) {
     const currentCell = this.spatialService.getGridCell(latitude, longitude);
     const currentCellKey = this.spatialService.getCellKey(currentCell);
 
     const lastCellKey = this.clientCenterCell.get(client);
-    if (lastCellKey !== currentCellKey) {
-      const aoiCells = this.spatialService.getAoiCells(currentCell);
-      const aoiKeys = new Set(
-        aoiCells.map((c) => this.spatialService.getCellKey(c)),
-      );
-      this.interestService.updateInterests(client, aoiKeys);
-      this.clientCenterCell.set(client, currentCellKey);
+    if (lastCellKey === currentCellKey) return;
+
+    const aoiCells = this.spatialService.getAoiCells(currentCell);
+
+    // Build longitude map for zone routing in InterestService
+    const aoiCellLngMap = new Map<string, number>();
+    const aoiKeys = new Set<string>();
+    for (const cell of aoiCells) {
+      const key = this.spatialService.getCellKey(cell);
+      // Approximate longitude from cell x coordinate
+      const lng = (cell.x * this.spatialService.getCellSize()) / this.spatialService.getMetersPerLng();
+      aoiKeys.add(key);
+      aoiCellLngMap.set(key, lng);
     }
+
+    this.interestService.updateInterests(client, aoiKeys, aoiCellLngMap);
+    this.clientCenterCell.set(client, currentCellKey);
   }
 
   removeClient(client: WebSocket) {
@@ -60,32 +76,41 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
     this.clientCenterCell.delete(client);
   }
 
-  private handleRedisMessage(channel: string, message: string) {
-    const cellKey = channel.replace(RedisKey.CELL_CHANNEL_PREFIX, '');
-    const clients = this.interestService.getClientsInCell(cellKey);
+  private handleStreamMessage(rawPayload: string) {
+    try {
+      const payload = JSON.parse(rawPayload) as {
+        userId: string;
+        cellKey?: string;
+        [key: string]: unknown;
+      };
 
-    if (clients && clients.size > 0) {
-      try {
-        const payload = JSON.parse(message) as {
-          userId: string;
-          [key: string]: unknown;
-        };
-        const wsMessage = JSON.stringify({
-          event: WsEvent.USER_STATE_UPDATE,
-          data: payload,
-        });
-
-        clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            const clientUserId = this.sessionService.getUserId(client);
-            if (clientUserId !== payload.userId) {
-              client.send(wsMessage);
-            }
-          }
-        });
-      } catch (err) {
-        this.logger.error('Failed to parse Redis message', err);
+      const cellKey = payload.cellKey as string | undefined;
+      if (!cellKey) {
+        this.logger.warn('Stream message missing cellKey — dropped', rawPayload.substring(0, 100));
+        return;
       }
+
+      // Find local WS clients subscribed to this specific cell.
+      const targets = this.interestService.getClientsInCell(cellKey);
+      if (!targets || targets.size === 0) return;
+
+      const wsMessage = JSON.stringify({
+        event: WsEvent.USER_STATE_UPDATE,
+        data: payload,
+      });
+
+      targets.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          const clientUserId = this.sessionService.getUserId(client);
+          // Do not echo back to the originating user
+          if (clientUserId !== payload.userId) {
+            client.send(wsMessage);
+          }
+        }
+      });
+    } catch (err) {
+      this.logger.error('Failed to parse stream message', err);
     }
   }
 }
+
