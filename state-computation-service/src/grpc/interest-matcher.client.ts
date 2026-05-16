@@ -89,9 +89,11 @@ export class GrpcInterestMatcherClient implements OnModuleInit, OnModuleDestroy 
    * Determine zone ID from entity longitude.
    */
   getZoneId(longitude: number): number {
-    if (longitude < this.zone1Lng) return 0;
-    if (longitude < this.zone2Lng) return 1;
-    return 2;
+    const boundaries = [this.zone1Lng, this.zone2Lng];
+    for (let i = 0; i < boundaries.length; i++) {
+      if (longitude < boundaries[i]) return i;
+    }
+    return boundaries.length;
   }
 
   /**

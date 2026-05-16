@@ -61,8 +61,7 @@ export class DisseminationService implements OnModuleInit, OnModuleDestroy {
     const aoiKeys = new Set<string>();
     for (const cell of aoiCells) {
       const key = this.spatialService.getCellKey(cell);
-      // Approximate longitude from cell x coordinate
-      const lng = (cell.x * this.spatialService.getCellSize()) / this.spatialService.getMetersPerLng();
+      const lng = this.spatialService.getLongitudeFromX(cell.x);
       aoiKeys.add(key);
       aoiCellLngMap.set(key, lng);
     }

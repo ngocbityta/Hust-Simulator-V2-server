@@ -61,5 +61,9 @@ export class SpatialService implements ISpatialService {
   getMetersPerLng(): number {
     return this.METERS_PER_LNG;
   }
+
+  getLongitudeFromX(x: number): number {
+    return (x * this.cellSize) / this.METERS_PER_LNG;
+  }
 }
 

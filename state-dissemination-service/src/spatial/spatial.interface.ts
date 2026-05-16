@@ -11,6 +11,7 @@ export interface ISpatialService {
   getCellSize(): number;
   getMetersPerLat(): number;
   getMetersPerLng(): number;
+  getLongitudeFromX(x: number): number;
 }
 
 export const ISpatialService = Symbol('ISpatialService');

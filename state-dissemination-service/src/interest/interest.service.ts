@@ -5,24 +5,6 @@ import { IInterestService } from './interest.interface';
 import { ISpatialService } from '../spatial/spatial.interface';
 import { Inject } from '@nestjs/common';
 
-/**
- * InterestService — manages AOI subscriptions for WebSocket clients.
- *
- * Architecture (multi-broker SPS):
- *   - Local maps track which WebSocket clients are interested in which cells
- *     (for fast message delivery within this dissemination node).
- *   - Interest Matcher gRPC calls register this node with the correct broker
- *     per zone, so the broker can push messages into our Redis Stream.
- *
- * The Interest Matcher broker handles:
- *   - Routing publications to subscribed dissemination nodes (via Redis Stream)
- *   - Inter-broker forwarding at zone boundaries
- *
- * This service handles:
- *   - Tracking which WebSocket clients need messages from which cells
- *   - Calling broker Subscribe/Unsubscribe when the set of needed cells changes
- *   - Reference counting to avoid redundant broker calls
- */
 @Injectable()
 export class InterestService implements IInterestService {
   private readonly logger = new Logger(InterestService.name);
@@ -37,7 +19,7 @@ export class InterestService implements IInterestService {
   constructor(
     private readonly interestMatcherClient: GrpcInterestMatcherClient,
     @Inject(ISpatialService) private readonly spatialService: ISpatialService,
-  ) {}
+  ) { }
 
   /**
    * Called whenever a client moves — updates local cell subscriptions and
@@ -161,14 +143,8 @@ export class InterestService implements IInterestService {
       if (provided?.has(key)) {
         result.set(key, provided.get(key)!);
       } else {
-        // Approximate longitude from cell x-coordinate
-        // cellKey = "{x}:{y}", x = floor(lng * METERS_PER_LNG / cellSize)
-        // Reverse: lng ≈ x * cellSize / METERS_PER_LNG
         const x = parseInt(key.split(':')[0], 10);
-        const approxLng =
-          (x * this.spatialService.getCellSize()) /
-          this.spatialService.getMetersPerLng();
-        result.set(key, approxLng);
+        result.set(key, this.spatialService.getLongitudeFromX(x));
       }
     }
     return result;
