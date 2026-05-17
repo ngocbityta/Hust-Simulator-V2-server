@@ -5,6 +5,7 @@ import { HeatmapService } from '../heatmap/heatmap.service';
 import { ISpatialService } from '../spatial/spatial.interface';
 import { ConfigService } from '@nestjs/config';
 import { GrpcContextClient } from '../grpc/context.client';
+import { GrpcInterestMatcherClient } from '../grpc/interest-matcher.client';
 
 @Injectable()
 export class AssistantService {
@@ -16,6 +17,7 @@ export class AssistantService {
     @Inject(ISpatialService) private readonly spatialService: ISpatialService,
     private readonly configService: ConfigService,
     private readonly contextClient: GrpcContextClient,
+    private readonly interestMatcherClient: GrpcInterestMatcherClient,
   ) {}
 
   async generateJourneyContext(
@@ -101,18 +103,20 @@ export class AssistantService {
 
       this.logger.log(`Assistant Message for ${userId}: ${finalMessage}`);
 
-      // 4. Publish Notification
+      // 4. Publish Notification via Interest Matcher (SPS PUBLISH)
       const currentGridCell = this.spatialService.getGridCell(currentLat, currentLng);
-      const channel = this.spatialService.getCellChannel(currentGridCell);
+      const cellKey = this.spatialService.getCellKey(currentGridCell);
       
-      const payload = {
+      const payload = JSON.stringify({
+        userId,
         type: 'assistant_notification',
         targetUserId: userId,
         message: finalMessage,
-        timestamp: Date.now()
-      };
+        cellKey,
+        timestamp: Date.now(),
+      });
 
-      await this.redisService.pubClient.publish(channel, JSON.stringify(payload));
+      await this.interestMatcherClient.publish(currentLng, cellKey, payload);
 
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
