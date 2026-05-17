@@ -57,10 +57,10 @@ def sync_pois():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    logger.info("Fetching active buildings from public.buildings...")
+    logger.info("Fetching active buildings from context.buildings...")
     cursor.execute("""
         SELECT id, name, coordinates 
-        FROM public.buildings 
+        FROM context.buildings 
         WHERE is_active = true 
         ORDER BY id ASC
     """)
