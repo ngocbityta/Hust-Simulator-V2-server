@@ -141,6 +141,9 @@ services:
       SPRING_FLYWAY_DEFAULT_SCHEMA: context
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       RABBITMQ_HOST: rabbitmq
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
     deploy:
       resources:
@@ -364,6 +367,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_SSL: ${POSTGRES_SSL:-disable}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
     # No host ports — internal gRPC only (50055)
     deploy:
       resources:

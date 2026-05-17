@@ -15,6 +15,7 @@ import math
 import psycopg2
 import pandas as pd
 from datetime import datetime
+from poi_config import POIS, NUM_POIS, POI_IDS_SORTED
 
 # DB Config
 DB_HOST     = os.environ.get('POSTGRES_HOST',     'localhost')
@@ -22,19 +23,12 @@ DB_NAME     = os.environ.get('POSTGRES_DB',       'neondb')
 DB_USER     = os.environ.get('POSTGRES_USER',     'neondb_owner')
 DB_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
 DB_PORT     = os.environ.get('POSTGRES_PORT',     '5432')
+DB_SSLMODE  = os.environ.get('POSTGRES_SSL',      'disable')
 
 THRESHOLD      = 100          # Min new records before retraining
 LAST_SYNC_FILE = 'last_sync.txt'
 MIN_CHECKINS   = 3            # Paper: discard trajectories with < min check-ins
 CHECK_IN_RADIUS_M = 80        # Metres — GPS point must be this close to snap to POI
-
-POIS = {
-    0: {"id": "c1_building",  "name": "Tòa C1",                 "lat": 21.006, "lng": 105.843},
-    1: {"id": "d3_building",  "name": "Tòa D3",                 "lat": 21.004, "lng": 105.845},
-    2: {"id": "library_tqb", "name": "Thư viện Tạ Quang Bửu",  "lat": 21.005, "lng": 105.844},
-    3: {"id": "canteen_b",   "name": "Căng tin B",              "lat": 21.003, "lng": 105.842},
-}
-
 
 # ===================== Spatial Utilities =====================
 def haversine_m(lat1, lng1, lat2, lng2):
@@ -56,11 +50,6 @@ def snap_to_poi(lat, lng):
     return (best_id, best_dist) if best_dist <= CHECK_IN_RADIUS_M else (None, best_dist)
 
 def gps_to_checkin_seq(gps_points, timestamps):
-    """
-    Convert ordered GPS points to a deduplicated check-in sequence.
-    Applies POI snapping + removes consecutive duplicates.
-    Returns list of (poi_id, hour_of_week).
-    """
     checkins = []
     last_poi = None
     for pt, ts in zip(gps_points, timestamps):
@@ -80,8 +69,14 @@ def gps_to_checkin_seq(gps_points, timestamps):
 def get_db_connection():
     return psycopg2.connect(
         host=DB_HOST, database=DB_NAME, user=DB_USER,
-        password=DB_PASSWORD, port=DB_PORT, sslmode='require',
+        password=DB_PASSWORD, port=DB_PORT, sslmode=DB_SSLMODE,
     )
+
+# Reverse lookup mapping from building UUID to lat/lng coordinates
+UUID_TO_COORDS = {}
+for poi in POIS.values():
+    if 'db_uuid' in poi:
+        UUID_TO_COORDS[poi['db_uuid']] = {'lat': poi['lat'], 'lng': poi['lng']}
 
 def check_new_data():
     last_sync = '1970-01-01 00:00:00'
@@ -91,11 +86,11 @@ def check_new_data():
 
     conn   = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT COUNT(*) FROM social.journey_items "
-        "WHERE created_at > %s AND type = 'LOCATION'",
-        (last_sync,)
-    )
+    cursor.execute("""
+        SELECT 
+            (SELECT COUNT(*) FROM social.journey_items WHERE created_at > %s AND type = 'CHECKIN') +
+            (SELECT COUNT(*) FROM prediction.checkin_sequences WHERE created_at > %s)
+    """, (last_sync, last_sync))
     count = cursor.fetchone()[0]
     cursor.close(); conn.close()
     return count, last_sync
@@ -108,22 +103,31 @@ def extract_and_preprocess(last_sync):
 
     print(f"Extracting journey data since {last_sync} ...")
 
+    # Union active check-ins (social schema) and passive check-ins (prediction schema)
+    # For passive check-ins, we group by user and date, synthesize a deterministic journey ID,
+    # and pass the POI UUID as the metadata value.
     cursor.execute("""
-        SELECT j.id       AS journey_id,
-               j.user_id  AS user_id,
-               ji.metadata,
+        SELECT j.id::text       AS journey_id,
+               j.user_id::text  AS user_id,
+               ji.metadata::text,
                ji.timestamp,
                ji.created_at
         FROM   social.journey_items ji
         JOIN   social.journeys j ON ji.journey_id = j.id
-        WHERE  j.id IN (
-                   SELECT DISTINCT journey_id
-                   FROM   social.journey_items
-                   WHERE  created_at > %s AND type = 'LOCATION'
-               )
-        AND    ji.type = 'LOCATION'
-        ORDER  BY j.id, ji.sort_order ASC
-    """, (last_sync,))
+        WHERE  ji.type = 'CHECKIN' AND ji.created_at > %s
+
+        UNION ALL
+
+        SELECT md5(user_id::text || timestamp::date::text)::uuid::text AS journey_id,
+               user_id::text,
+               poi_id::text AS metadata,
+               timestamp,
+               created_at
+        FROM   prediction.checkin_sequences
+        WHERE  created_at > %s
+
+        ORDER  BY journey_id, timestamp ASC
+    """, (last_sync, last_sync))
 
     rows = cursor.fetchall()
     cursor.close(); conn.close()
@@ -137,10 +141,22 @@ def extract_and_preprocess(last_sync):
     # Group GPS points by journey
     journeys = {}   # journey_id → {user_id, gps_points, timestamps}
     for journey_id, user_id, metadata, ts, _ in rows:
-        if isinstance(metadata, str):
-            metadata = json.loads(metadata)
-        lat = float(metadata.get('lat', metadata.get('latitude',  0)))
-        lng = float(metadata.get('lng', metadata.get('longitude', 0)))
+        lat, lng = 0.0, 0.0
+        if metadata:
+            try:
+                # Try to parse as JSON first (active checkin)
+                meta_json = json.loads(metadata)
+                lat = float(meta_json.get('lat', meta_json.get('latitude', 0)))
+                lng = float(meta_json.get('lng', meta_json.get('longitude', 0)))
+            except (json.JSONDecodeError, TypeError):
+                # If not JSON, it's a POI UUID (passive checkin stay point)
+                if metadata in UUID_TO_COORDS:
+                    lat = UUID_TO_COORDS[metadata]['lat']
+                    lng = UUID_TO_COORDS[metadata]['lng']
+                else:
+                    # Skip if POI is not active/found in pois.json
+                    continue
+
         if journey_id not in journeys:
             journeys[journey_id] = {'user_id': user_id, 'points': [], 'timestamps': []}
         journeys[journey_id]['points'].append({'lat': lat, 'lng': lng})
@@ -186,6 +202,7 @@ def extract_and_preprocess(last_sync):
         f.write(max_created_at.strftime('%Y-%m-%d %H:%M:%S'))
 
     return True
+
 
 
 if __name__ == '__main__':

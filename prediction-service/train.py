@@ -11,7 +11,7 @@ Architecture:
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 import pandas as pd
 import numpy as np
 import os
@@ -19,8 +19,9 @@ import argparse
 import math
 import random
 
+from poi_config import POIS, NUM_POIS, POI_IDS_SORTED
+
 # ===================== Hyperparameters =====================
-NUM_POIS    = 4
 NUM_USERS   = 10000
 TIME_BINS   = 168       # 7 days x 24 hours
 D_MODEL     = 64
@@ -29,14 +30,6 @@ NUM_LAYERS  = 2         # L = 2  (paper default)
 DROPOUT     = 0.1
 MAX_SEQ_LEN = 50
 NE          = 10        # Negative samples per positive (Balance Sampler, paper §4.3)
-
-POIS = {
-    0: {"id": "c1_building",  "name": "Tòa C1",                 "lat": 21.006, "lng": 105.843},
-    1: {"id": "d3_building",  "name": "Tòa D3",                 "lat": 21.004, "lng": 105.845},
-    2: {"id": "library_tqb", "name": "Thư viện Tạ Quang Bửu",  "lat": 21.005, "lng": 105.844},
-    3: {"id": "canteen_b",   "name": "Căng tin B",              "lat": 21.003, "lng": 105.842},
-}
-POI_IDS = list(POIS.keys())   # [0, 1, 2, 3]
 
 
 # ===================== Dataset =====================
@@ -89,7 +82,9 @@ class CheckInDataset(Dataset):
             })
 
     def _hash_user(self, uid: str) -> int:
-        return (hash(uid) % NUM_USERS) + 1   # 1-based; 0 reserved for padding
+        import hashlib
+        hash_int = int(hashlib.md5(str(uid).encode('utf-8')).hexdigest(), 16)
+        return (hash_int % NUM_USERS) + 1   # 1-based; 0 reserved for padding
 
     def __len__(self):
         return len(self.samples)
@@ -117,7 +112,7 @@ class STTFRecommender(nn.Module):
     def __init__(
         self, num_users=NUM_USERS, num_pois=NUM_POIS,
         d_model=D_MODEL, num_heads=NUM_HEADS, num_layers=NUM_LAYERS,
-        time_bins=TIME_BINS, dropout=DROPOUT,
+        time_bins=TIME_BINS, dropout=DROPOUT, max_seq_len=MAX_SEQ_LEN,
     ):
         super().__init__()
         self.d_model = d_model
@@ -127,6 +122,7 @@ class STTFRecommender(nn.Module):
         self.user_embedding     = nn.Embedding(num_users + 1, d_model, padding_idx=0)
         self.location_embedding = nn.Embedding(num_pois  + 1, d_model, padding_idx=0)
         self.time_embedding     = nn.Embedding(time_bins,     d_model)
+        self.position_embedding = nn.Embedding(max_seq_len, d_model)
 
         # Tầng 2 — Transformer Aggregation (paper eq. 4)
         encoder_layer = nn.TransformerEncoderLayer(
@@ -139,13 +135,19 @@ class STTFRecommender(nn.Module):
 
     def get_trajectory_repr(self, user_ids, poi_ids, time_ids, mask=None):
         """Returns S(u) = H^L — trajectory summary, shape (batch, d_model)."""
+        batch_size = poi_ids.shape[0]
         seq_len = poi_ids.shape[1]
         u_emb   = self.user_embedding(user_ids).unsqueeze(1).expand(-1, seq_len, -1)
         p_emb   = self.location_embedding(poi_ids)
         t_emb   = self.time_embedding(time_ids)
-        H = u_emb + p_emb + t_emb                          # e_r = e_u + e_p + e_t
+
+        # Positional encoding for sequence order
+        positions = torch.arange(seq_len, device=poi_ids.device).unsqueeze(0).expand(batch_size, -1)
+        pos_emb = self.position_embedding(positions)  # (batch, seq_len, d)
+
+        H = u_emb + p_emb + t_emb + pos_emb            # e_r = e_u + e_p + e_t + e_pos
         H = self.transformer(H, src_key_padding_mask=mask)
-        S = self.layer_norm(H[:, -1, :])                   # (batch, d)
+        S = self.layer_norm(H[:, -1, :])                # (batch, d)
         return S
 
     def attention_match(self, S, candidate_ids):
@@ -201,6 +203,63 @@ def balanced_cross_entropy_loss(model, S, target_poi_ids, ne=NE):
     return total_loss / batch_size
 
 
+# ===================== Evaluation Metrics =====================
+# Paper §5: Acc@K, MRR (Mean Reciprocal Rank)
+
+def evaluate(model, dataloader):
+    """
+    Evaluate model on a dataset.
+    Returns dict with Acc@1, Acc@3, MRR metrics.
+    """
+    model.eval()
+    total = 0
+    correct_at_1 = 0
+    correct_at_3 = 0
+    reciprocal_ranks = []
+
+    # Build candidate tensor (all POIs, 1-indexed for embedding)
+    all_cand = torch.tensor(
+        [poi_id + 1 for poi_id in POI_IDS_SORTED], dtype=torch.long
+    )  # (num_pois,)
+
+    with torch.no_grad():
+        for user_ids, poi_seqs, time_seqs, masks, targets in dataloader:
+            S = model.get_trajectory_repr(user_ids, poi_seqs, time_seqs, mask=masks)
+
+            # Expand candidates for batch: (batch, num_pois)
+            batch_cand = all_cand.unsqueeze(0).expand(S.shape[0], -1)
+            scores = model.attention_match(S, batch_cand)  # (batch, num_pois)
+
+            # Rank predictions (descending score)
+            _, ranked_indices = scores.sort(dim=-1, descending=True)
+
+            for i in range(targets.shape[0]):
+                target = targets[i].item()
+                total += 1
+
+                # ranked_indices[i] maps to indices into POI_IDS_SORTED
+                pred_ranking = [POI_IDS_SORTED[idx] for idx in ranked_indices[i].tolist()]
+
+                if target in pred_ranking:
+                    rank = pred_ranking.index(target) + 1
+                else:
+                    rank = len(pred_ranking) + 1
+
+                if rank == 1:
+                    correct_at_1 += 1
+                if rank <= 3:
+                    correct_at_3 += 1
+                reciprocal_ranks.append(1.0 / rank)
+
+    n = max(total, 1)
+    return {
+        'Acc@1': correct_at_1 / n,
+        'Acc@3': correct_at_3 / n,
+        'MRR':   sum(reciprocal_ranks) / n,
+        'total': total,
+    }
+
+
 # ===================== Training Loop =====================
 def main():
     parser = argparse.ArgumentParser(description='Train STTF-Recommender')
@@ -210,12 +269,31 @@ def main():
     parser.add_argument('--batch',  type=int, default=32)
     parser.add_argument('--ne',     type=int, default=NE,
                         help='Negative samples per positive (Balance Sampler)')
+    parser.add_argument('--val-ratio',  type=float, default=0.15,
+                        help='Fraction of data for validation')
+    parser.add_argument('--test-ratio', type=float, default=0.15,
+                        help='Fraction of data for test (held-out, evaluated once)')
     args = parser.parse_args()
 
     print(f"Loading check-in data from {args.data} ...")
-    dataset    = CheckInDataset(args.data)
-    dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=True)
-    print(f"  → {len(dataset)} training samples")
+    full_dataset = CheckInDataset(args.data)
+
+    # 3-way split: train / val / test  (default 70/15/15)
+    total       = len(full_dataset)
+    test_size   = int(total * args.test_ratio)
+    val_size    = int(total * args.val_ratio)
+    train_size  = total - val_size - test_size
+
+    train_dataset, val_dataset, test_dataset = random_split(
+        full_dataset, [train_size, val_size, test_size],
+        generator=torch.Generator().manual_seed(42),
+    )
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
+    val_loader   = DataLoader(val_dataset,   batch_size=args.batch, shuffle=False)
+    test_loader  = DataLoader(test_dataset,  batch_size=args.batch, shuffle=False)
+    print(f"  → {train_size} train / {val_size} val / {test_size} test samples")
+    print(f"  → {NUM_POIS} POIs loaded from pois.json")
 
     model     = STTFRecommender()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -224,10 +302,13 @@ def main():
     print(f"\nStarting STTF-Recommender training "
           f"(epochs={args.epochs}, ne={args.ne}, lr={args.lr}) ...")
 
+    best_mrr = 0.0
+
     for epoch in range(args.epochs):
+        # --- Training ---
         model.train()
         epoch_loss = 0.0
-        for user_ids, poi_seqs, time_seqs, masks, targets in dataloader:
+        for user_ids, poi_seqs, time_seqs, masks, targets in train_loader:
             optimizer.zero_grad()
 
             # Trajectory representation S(u)
@@ -240,13 +321,50 @@ def main():
             epoch_loss += loss.item()
 
         scheduler.step()
-        avg_loss = epoch_loss / max(len(dataloader), 1)
-        print(f"  Epoch [{epoch+1:2d}/{args.epochs}]  Loss: {avg_loss:.4f}  "
-              f"LR: {scheduler.get_last_lr()[0]:.5f}")
+        avg_loss = epoch_loss / max(len(train_loader), 1)
 
-    # Save model
-    os.makedirs('model', exist_ok=True)
-    torch.save(model.state_dict(), 'model/sttf_model.pth')
+        # --- Validation ---
+        metrics = evaluate(model, val_loader) if val_size > 0 else {}
+        val_str = (
+            f"  Val Acc@1={metrics['Acc@1']:.3f}  "
+            f"Acc@3={metrics['Acc@3']:.3f}  "
+            f"MRR={metrics['MRR']:.3f}"
+        ) if metrics else ""
+
+        print(f"  Epoch [{epoch+1:2d}/{args.epochs}]  "
+              f"Loss: {avg_loss:.4f}  "
+              f"LR: {scheduler.get_last_lr()[0]:.5f}{val_str}")
+
+        # Save best model by MRR
+        if metrics and metrics['MRR'] > best_mrr:
+            best_mrr = metrics['MRR']
+            os.makedirs('model', exist_ok=True)
+            torch.save(model.state_dict(), 'model/sttf_model.pth')
+            print(f"    ↑ New best MRR={best_mrr:.3f} — model saved.")
+
+    # Final save (in case no val data)
+    if val_size == 0:
+        os.makedirs('model', exist_ok=True)
+        torch.save(model.state_dict(), 'model/sttf_model.pth')
+
+    # --- Final Evaluation on Validation ---
+    if val_size > 0:
+        val_final = evaluate(model, val_loader)
+        print(f"\n{'='*55}")
+        print(f"  Validation Results ({val_final['total']} samples):")
+        print(f"    Acc@1 = {val_final['Acc@1']:.4f}")
+        print(f"    Acc@3 = {val_final['Acc@3']:.4f}")
+        print(f"    MRR   = {val_final['MRR']:.4f}")
+
+    # --- Held-out Test Set (evaluated ONCE — for thesis report) ---
+    if test_size > 0:
+        test_final = evaluate(model, test_loader)
+        print(f"\n  Test Results ({test_final['total']} samples, held-out):")
+        print(f"    Acc@1 = {test_final['Acc@1']:.4f}")
+        print(f"    Acc@3 = {test_final['Acc@3']:.4f}")
+        print(f"    MRR   = {test_final['MRR']:.4f}")
+        print(f"{'='*55}")
+
     print("\nModel saved → model/sttf_model.pth")
 
     # Create flag so hot-reload in main.py is triggered
@@ -257,3 +375,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

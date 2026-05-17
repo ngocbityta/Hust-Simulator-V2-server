@@ -17,9 +17,17 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        default_schema: context
   sql:
     init:
       mode: never
+
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
   # RabbitMQ
   rabbitmq:

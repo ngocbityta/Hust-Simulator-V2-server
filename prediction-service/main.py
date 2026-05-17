@@ -8,16 +8,15 @@ import math
 import torch
 import numpy as np
 import torch.nn as nn
-import json
 from datetime import datetime, timezone
 
 # Import generated classes
 import prediction_pb2
 import prediction_pb2_grpc
+from poi_config import POIS, NUM_POIS, POI_IDS_SORTED
 
 # ===================== Model Hyperparameters =====================
 # Matching paper: ijgi-12-00079 (STTF-Recommender)
-NUM_POIS = 4          # Number of known POIs (= number of location classes P)
 NUM_USERS = 10000     # Max unique users for embedding lookup
 TIME_BINS = 168       # 7 days x 24 hours — captures weekly periodicity
 D_MODEL = 64          # Embedding dimension d
@@ -28,22 +27,6 @@ MAX_SEQ_LEN = 50      # Max check-in sequence length n
 
 # GPS → check-in conversion
 CHECK_IN_RADIUS_M = 80   # meters — snap GPS point to POI if within this radius
-
-# Load Known POIs from config
-POIS = {}
-try:
-    with open('pois.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-        POIS = {int(k): v for k, v in data.items()}
-except Exception as e:
-    POIS = {
-        0: {"id": "c1_building",   "name": "Tòa C1",                  "lat": 21.006, "lng": 105.843},
-        1: {"id": "d3_building",   "name": "Tòa D3",                  "lat": 21.004, "lng": 105.845},
-        2: {"id": "library_tqb",  "name": "Thư viện Tạ Quang Bửu",   "lat": 21.005, "lng": 105.844},
-        3: {"id": "canteen_b",    "name": "Căng tin B",               "lat": 21.003, "lng": 105.842},
-    }
-
-POI_IDS_SORTED = sorted(POIS.keys())   # [0, 1, 2, 3]
 
 # ===================== Utility Functions =====================
 
@@ -75,9 +58,13 @@ def get_hour_of_week():
     now = datetime.now(timezone.utc)
     return now.weekday() * 24 + now.hour   # weekday(): 0=Mon … 6=Sun
 
+import hashlib
+
 def hash_user_id(user_id_str: str) -> int:
-    """Map string user_id to integer in [1, NUM_USERS]."""
-    return (hash(user_id_str) % NUM_USERS) + 1   # 0 is reserved for padding
+    """Map string user_id to deterministic integer in [1, NUM_USERS]."""
+    # Use MD5 to get a deterministic integer hash across different Python runs
+    hash_int = int(hashlib.md5(str(user_id_str).encode('utf-8')).hexdigest(), 16)
+    return (hash_int % NUM_USERS) + 1   # 0 is reserved for padding
 
 def gps_trajectory_to_checkins(trajectory_points, current_hour_of_week: int):
     """
@@ -94,13 +81,6 @@ def gps_trajectory_to_checkins(trajectory_points, current_hour_of_week: int):
             last_poi = poi_id
     return checkins
 
-# ===================== STTF-Recommender Model =====================
-# Paper: ijgi-12-00079, Section 4
-# Three layers:
-#   1. Spatio-Temporal Embedding Layer  — user + location + time embeddings
-#   2. Transformer Aggregation Layer    — Multi-Head Self-Attention (h=8, L=2)
-#   3. Output Layer                     — Attention Matcher over candidate POIs
-
 class STTFRecommender(nn.Module):
     """
     STTF-Recommender: Spatio-Temporal Transformer Fusion Recommender.
@@ -115,22 +95,21 @@ class STTFRecommender(nn.Module):
         num_layers=NUM_LAYERS,
         time_bins=TIME_BINS,
         dropout=DROPOUT,
+        max_seq_len=MAX_SEQ_LEN,
     ):
         super().__init__()
         self.d_model = d_model
         self.num_pois = num_pois
 
         # --- Tầng 1: Spatio-Temporal Embedding Layer ---
-        # e_u: user embedding  (U → R^d)
-        # e_p: location embedding (P → R^d), padding_idx=0
-        # e_t: time embedding  (168 → R^d), captures weekly periodicity
         self.user_embedding     = nn.Embedding(num_users + 1, d_model, padding_idx=0)
         self.location_embedding = nn.Embedding(num_pois  + 1, d_model, padding_idx=0)
         self.time_embedding     = nn.Embedding(time_bins,     d_model)
 
+        # Positional encoding for sequence order (paper §4.1, extended)
+        self.position_embedding = nn.Embedding(max_seq_len, d_model)
+
         # --- Tầng 2: Transformer Aggregation Layer ---
-        # Multi-Head Self-Attention + Position-wise FFN (GELU)
-        # With residual connections and Layer Normalization (paper eq. 4)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=num_heads,
@@ -152,6 +131,7 @@ class STTFRecommender(nn.Module):
         Returns:
             S: (batch, d_model) — trajectory summary representation S(u) = H^L
         """
+        batch_size = poi_ids.shape[0]
         seq_len = poi_ids.shape[1]
 
         # e_u broadcast across sequence
@@ -159,8 +139,12 @@ class STTFRecommender(nn.Module):
         p_emb = self.location_embedding(poi_ids)   # (batch, seq_len, d)
         t_emb = self.time_embedding(time_ids)       # (batch, seq_len, d)
 
-        # Combined check-in representation: e_r = e_u + e_p + e_t  (paper §4.1)
-        H = u_emb + p_emb + t_emb                  # (batch, seq_len, d)
+        # Positional encoding for sequence order
+        positions = torch.arange(seq_len, device=poi_ids.device).unsqueeze(0).expand(batch_size, -1)
+        pos_emb = self.position_embedding(positions)  # (batch, seq_len, d)
+
+        # Combined check-in representation: e_r = e_u + e_p + e_t + e_pos  (paper §4.1, extended)
+        H = u_emb + p_emb + t_emb + pos_emb        # (batch, seq_len, d)
 
         # Transformer aggregation (paper §4.2)
         H = self.transformer(H, src_key_padding_mask=src_key_padding_mask)
@@ -214,14 +198,25 @@ def load_model_if_needed():
 
     if needs_load and os.path.exists(model_file):
         try:
-            new_model = STTFRecommender()
+            # Dynamically reload POI configuration because pois.json might have changed
+            import importlib
+            import poi_config
+            importlib.reload(poi_config)
+            
+            # Rebind global variables that depend on poi_config
+            global POIS, NUM_POIS, POI_IDS_SORTED
+            POIS = poi_config.POIS
+            NUM_POIS = poi_config.NUM_POIS
+            POI_IDS_SORTED = poi_config.POI_IDS_SORTED
+
+            new_model = STTFRecommender(num_pois=NUM_POIS)
             new_model.load_state_dict(
-                torch.load(model_file, weights_only=True)
+                torch.load(model_file, map_location='cpu', weights_only=True)
             )
             new_model.eval()
             model = new_model
             last_model_load_time = time.time()
-            logger.info("Loaded STTF-Recommender model successfully.")
+            logger.info(f"Loaded STTF-Recommender model successfully (NUM_POIS={NUM_POIS}).")
         except Exception as e:
             logger.error(f"Failed to load model: {e}. Keeping previous model.")
 
@@ -280,8 +275,9 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                         src_key_padding_mask=mask_tensor,
                     )  # (1, num_pois)
                     probs_np = probs[0].numpy()
-                    predicted_class = int(np.argmax(probs_np))
-                    confidence = float(probs_np[predicted_class])
+                    predicted_idx = int(np.argmax(probs_np))
+                    predicted_class = POI_IDS_SORTED[predicted_idx]
+                    confidence = float(probs_np[predicted_idx])
 
                 logger.info(
                     f"STTF inference → POI {predicted_class} "
@@ -296,7 +292,7 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
         # --- Build response ---
         poi = POIS[predicted_class]
         response = prediction_pb2.PredictNextLocationResponse(
-            predicted_poi_id   = poi["id"],
+            predicted_poi_id   = poi.get("db_uuid", poi.get("id")),
             predicted_poi_name = poi["name"],
             confidence         = confidence,
             intent_type        = "GOING_TO_LOCATION",

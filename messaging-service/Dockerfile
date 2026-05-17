@@ -25,6 +25,7 @@ WORKDIR /app
 
 # Use a non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
+RUN mkdir -p /app/uploads && chown -R spring:spring /app
 USER spring:spring
 
 COPY --from=extract /app/extracted ./
