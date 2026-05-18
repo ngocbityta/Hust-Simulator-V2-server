@@ -7,6 +7,8 @@ import { RedisService } from '../redis/redis.service';
 import { GrpcContextClient } from '../grpc/context.client';
 import { UserActivityState } from '../common/enums/user-activity-state.enum';
 import { UserState } from '../player/player.service';
+import { AssistantService } from '../assistant/assistant.service';
+import { GrpcInterestMatcherClient } from '../grpc/interest-matcher.client';
 
 interface UserMoveEvent {
   userId: string;
@@ -35,6 +37,8 @@ export class ComputationController {
     private readonly redisService: RedisService,
     private readonly grpcClient: GrpcContextClient,
     private readonly configService: ConfigService,
+    private readonly assistantService: AssistantService,
+    private readonly interestMatcherClient: GrpcInterestMatcherClient,
   ) {}
 
   @GrpcMethod('ComputationService', 'ProcessUserMove')
@@ -57,6 +61,18 @@ export class ComputationController {
       type: 'move',
       clientTimestamp: data.clientTimestamp,
     });
+
+    if (prediction && prediction.predictedDestinationName && prediction.targetLat && prediction.targetLng) {
+      this.assistantService.generateJourneyContext(
+        data.userId,
+        data.position.latitude,
+        data.position.longitude,
+        prediction.predictedDestinationName,
+        prediction.targetLat,
+        prediction.targetLng,
+        data.speed,
+      ).catch(err => this.logger.error(`AssistantService error: ${err}`));
+    }
 
     // Time-based throttle instead of 20% random sync: sync max once every N seconds per user
     const throttleKey = `throttle:sync:${data.userId}`;
@@ -130,6 +146,11 @@ export class ComputationController {
     return {};
   }
 
+  /**
+   * Disseminate state update via Interest Matcher broker (SPS PUBLISH).
+   * The broker routes the message to all subscribed dissemination nodes
+   * and handles inter-broker forwarding at zone boundaries.
+   */
   private async disseminate(
     userId: string,
     position: { latitude: number; longitude: number },
@@ -139,13 +160,20 @@ export class ComputationController {
       position.latitude,
       position.longitude,
     );
-    const channel = this.spatialService.getCellChannel(currentCell);
+    const cellKey = this.spatialService.getCellKey(currentCell);
     const message = JSON.stringify({
       userId,
       ...payload,
+      cellKey,      // required by dissemination service for local WS fan-out
       timestamp: Date.now(),
     });
-    await this.redisService.pubClient.publish(channel, message);
+
+    // Route to correct Interest Matcher broker (SPS PUBLISH)
+    await this.interestMatcherClient.publish(
+      position.longitude,
+      cellKey,
+      message,
+    );
   }
 
   private async syncStateWithContext(userId: string, state: UserState) {

@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package hustsimulator.interest_matcher;
+
+// ─── Interest Matcher Service ───────────────────────────────────────────────
+// Implements the Spatial Publish/Subscribe (SPS) broker ("Interest Matcher")
+// as described in: "Spatial Publish/Subscribe: Decoupling Game State
+// Dissemination from State Computation for MMOGs" (MMVE '24, 3652212.3652216)
+//
+// Each Interest Matcher instance manages one spatial zone. Multiple instances
+// form a multi-broker network with inter-broker forwarding at zone boundaries.
+
+service InterestMatcher {
+  // Called by state-computation-service: publish a state update for a cell
+  rpc Publish (PublishRequest) returns (PublishResponse);
+
+  // Called by state-dissemination-service: subscribe to a set of AOI cells
+  rpc Subscribe (SubscribeRequest) returns (SubscribeResponse);
+
+  // Called by state-dissemination-service: unsubscribe from cells
+  rpc Unsubscribe (UnsubscribeRequest) returns (UnsubscribeResponse);
+}
+
+// ─── Publish ────────────────────────────────────────────────────────────────
+message PublishRequest {
+  // Cell key in format "{x}:{y}" (grid coordinates)
+  string cell_key = 1;
+
+  // Serialised JSON payload (entity state)
+  string payload = 2;
+
+  // Longitude of publishing entity — used for zone routing & border detection
+  double entity_longitude = 3;
+}
+
+message PublishResponse {
+  bool success = 1;
+}
+
+// ─── Subscribe ──────────────────────────────────────────────────────────────
+message SubscribeRequest {
+  // Unique ID for the dissemination node (hostname or env-set NODE_ID)
+  string diss_node_id = 1;
+
+  // Set of grid cell keys this node wants to receive updates for
+  repeated string cell_keys = 2;
+}
+
+message SubscribeResponse {
+  bool success = 1;
+}
+
+// ─── Unsubscribe ────────────────────────────────────────────────────────────
+message UnsubscribeRequest {
+  string diss_node_id = 1;
+  repeated string cell_keys = 2;
+}
+
+message UnsubscribeResponse {
+  bool success = 1;
+}

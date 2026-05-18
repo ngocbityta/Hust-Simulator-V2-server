@@ -74,6 +74,7 @@ export class GameGateway
 
   handleDisconnect(client: WebSocket) {
     const userId = this.sessionService.getUserId(client);
+    this.aliveClients.delete(client);
     this.disseminationService.removeClient(client);
     this.heatmapService.removeSubscriber(client);
     if (userId) {

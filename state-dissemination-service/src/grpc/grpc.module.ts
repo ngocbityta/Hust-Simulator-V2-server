@@ -3,6 +3,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GrpcComputationClient } from './computation.client';
+import { GrpcInterestMatcherClient } from './interest-matcher.client';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { GrpcComputationClient } from './computation.client';
       },
     ]),
   ],
-  providers: [GrpcComputationClient],
-  exports: [GrpcComputationClient],
+  providers: [GrpcComputationClient, GrpcInterestMatcherClient],
+  exports: [GrpcComputationClient, GrpcInterestMatcherClient],
 })
 export class GrpcModule {}

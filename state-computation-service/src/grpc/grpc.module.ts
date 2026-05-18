@@ -3,6 +3,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GrpcContextClient } from './context.client';
+import { GrpcPredictionClient } from './prediction.client';
+import { GrpcInterestMatcherClient } from './interest-matcher.client';
 
 @Module({
   imports: [
@@ -24,9 +26,24 @@ import { GrpcContextClient } from './context.client';
           },
         }),
       },
+      {
+        name: 'PREDICTION_SERVICE',
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.GRPC,
+          options: {
+            package: ['prediction'],
+            protoPath: [
+              join(__dirname, '../../../proto/prediction.proto'),
+            ],
+            url: `${configService.get<string>('PREDICTION_SERVICE_HOST', 'prediction-service')}:${configService.get<number>('PREDICTION_SERVICE_GRPC_PORT', 50055)}`,
+          },
+        }),
+      },
     ]),
   ],
-  providers: [GrpcContextClient],
-  exports: [GrpcContextClient],
+  providers: [GrpcContextClient, GrpcPredictionClient, GrpcInterestMatcherClient],
+  exports: [GrpcContextClient, GrpcPredictionClient, GrpcInterestMatcherClient],
 })
 export class GrpcModule {}

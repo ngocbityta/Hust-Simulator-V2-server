@@ -28,4 +28,9 @@ public interface IContextFacade {
      * Gets active events for a player.
      */
     ContextProto.ActiveEventsResponse getActiveEvents(ContextProto.ActiveEventsRequest request);
+
+    /**
+     * Gets the historical density for a specific map cell since a given timestamp.
+     */
+    ContextProto.GetHistoricalDensityResponse getHistoricalDensity(ContextProto.GetHistoricalDensityRequest request);
 }

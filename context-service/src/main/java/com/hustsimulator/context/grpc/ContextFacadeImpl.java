@@ -12,6 +12,7 @@ import com.hustsimulator.context.common.ContextConstants;
 import com.hustsimulator.context.common.GeometryUtils;
 import com.hustsimulator.context.entity.Room;
 import com.hustsimulator.context.room.RoomService;
+import com.hustsimulator.context.heatmap.HeatmapHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class ContextFacadeImpl implements IContextFacade {
         private final BuildingService buildingService;
         private final RoomService roomService;
         private final RecurringEventService recurringEventService;
+        private final HeatmapHistoryRepository heatmapHistoryRepository;
         private final ObjectMapper objectMapper;
 
         @Override
@@ -133,6 +135,23 @@ public class ContextFacadeImpl implements IContextFacade {
                 return ContextProto.ActiveEventsResponse.newBuilder()
                                 .addAllEvents(eventProtos)
                                 .build();
+        }
+
+        @Override
+        public ContextProto.GetHistoricalDensityResponse getHistoricalDensity(ContextProto.GetHistoricalDensityRequest request) {
+                int cellX = request.getCellX();
+                int cellY = request.getCellY();
+                long sinceMs = request.getSinceTimestampMs();
+
+                java.time.LocalDateTime since = java.time.Instant.ofEpochMilli(sinceMs)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime();
+
+                double avg = heatmapHistoryRepository.findAverageCountByCellSince(cellX, cellY, since).orElse(0.0);
+
+                return ContextProto.GetHistoricalDensityResponse.newBuilder()
+                        .setAverageCount(avg)
+                        .build();
         }
 
         private ContextProto.Zone mapToZoneProto(Building building) {

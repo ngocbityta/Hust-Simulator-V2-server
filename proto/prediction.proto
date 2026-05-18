@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package prediction;
+
+service PredictionService {
+  rpc PredictNextLocation (PredictNextLocationRequest) returns (PredictNextLocationResponse);
+}
+
+message TrajectoryPoint {
+  double latitude = 1;
+  double longitude = 2;
+  int64 timestamp = 3; // Milliseconds since epoch
+}
+
+message PredictNextLocationRequest {
+  string user_id = 1;
+  repeated TrajectoryPoint trajectory = 2; // Last N points
+  // We can include current context if needed
+  double current_heading = 3;
+}
+
+message PredictNextLocationResponse {
+  string predicted_poi_id = 1;
+  string predicted_poi_name = 2;
+  double confidence = 3;
+  string intent_type = 4; // e.g., "GOING_TO_EVENT", "WANDERING"
+  double target_lat = 5;
+  double target_lng = 6;
+}

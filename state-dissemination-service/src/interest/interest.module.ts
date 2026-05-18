@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { InterestService } from './interest.service';
-import { RedisModule } from '../redis/redis.module';
 import { IInterestService } from './interest.interface';
+import { GrpcModule } from '../grpc/grpc.module';
+import { SpatialModule } from '../spatial/spatial.module';
 
 @Module({
-  imports: [RedisModule],
+  imports: [GrpcModule, SpatialModule],
   providers: [
     {
       provide: IInterestService,
