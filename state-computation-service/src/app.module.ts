@@ -9,6 +9,7 @@ import { ComputationModule } from './computation/computation.module';
 import { HeatmapModule } from './heatmap/heatmap.module';
 import { IntentModule } from './intent/intent.module';
 import { AssistantModule } from './assistant/assistant.module';
+import { PredictionModule } from './prediction/prediction.module';
 
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
@@ -34,6 +35,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     HeatmapModule,
     IntentModule,
     AssistantModule,
+    PredictionModule,
   ],
 })
 export class AppModule {}

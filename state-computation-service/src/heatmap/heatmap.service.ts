@@ -14,7 +14,7 @@ interface HeatmapCell {
   activities: Record<string, number>;
 }
 
-interface HeatmapPayload {
+export interface HeatmapPayload {
   timestamp: number;
   totalOnline: number;
   cells: HeatmapCell[];
