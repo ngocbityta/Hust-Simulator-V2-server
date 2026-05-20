@@ -13,6 +13,15 @@ export interface PredictNextLocationRequest {
   userId: string;
   trajectory: TrajectoryPoint[];
   currentHeading: number;
+  targetTimestampMs?: number;
+}
+
+export interface PoiPrediction {
+  poiId: string;
+  poiName: string;
+  probability: number;
+  lat: number;
+  lng: number;
 }
 
 export interface PredictNextLocationResponse {
@@ -22,6 +31,7 @@ export interface PredictNextLocationResponse {
   intentType: string;
   targetLat: number;
   targetLng: number;
+  candidateDestinations?: PoiPrediction[];
 }
 
 interface PredictionServiceGrpc {

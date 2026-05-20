@@ -9,6 +9,8 @@ Architecture:
 """
 
 import torch
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split
@@ -36,11 +38,13 @@ NE          = 10        # Negative samples per positive (Balance Sampler, paper 
 class CheckInDataset(Dataset):
     """
     Reads CSV produced by extract_and_preprocess.py.
-    Expected columns: journey_id, step, user_id, poi_id, hour_of_week, target_poi
+    Expected columns: journey_id, step, user_id, poi_id, hour_of_week, target_poi, journey_time
     Each row is one check-in; rows are grouped by journey_id.
     """
-    def __init__(self, csv_file, max_seq_len=MAX_SEQ_LEN):
+    def __init__(self, csv_file, allowed_journeys=None, max_seq_len=MAX_SEQ_LEN):
         df = pd.read_csv(csv_file)
+        if allowed_journeys is not None:
+            df = df[df['journey_id'].isin(allowed_journeys)]
         self.max_seq_len = max_seq_len
         self.num_pois = NUM_POIS
 
@@ -276,18 +280,36 @@ def main():
     args = parser.parse_args()
 
     print(f"Loading check-in data from {args.data} ...")
-    full_dataset = CheckInDataset(args.data)
+    df = pd.read_csv(args.data)
 
-    # 3-way split: train / val / test  (default 70/15/15)
-    total       = len(full_dataset)
-    test_size   = int(total * args.test_ratio)
-    val_size    = int(total * args.val_ratio)
-    train_size  = total - val_size - test_size
+    train_journeys = []
+    val_journeys   = []
+    test_journeys  = []
 
-    train_dataset, val_dataset, test_dataset = random_split(
-        full_dataset, [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(42),
-    )
+    # Get unique journeys per user with journey_time
+    journey_metadata = df[['user_id', 'journey_id', 'journey_time']].drop_duplicates()
+
+    for user_id, group in journey_metadata.groupby('user_id'):
+        sorted_group = group.sort_values('journey_time')
+        j_ids = sorted_group['journey_id'].tolist()
+        n = len(j_ids)
+
+        if n < 3:
+            train_journeys.extend(j_ids)
+        else:
+            val_idx = int(n * 0.70)
+            test_idx = int(n * 0.85)
+            train_journeys.extend(j_ids[:val_idx])
+            val_journeys.extend(j_ids[val_idx:test_idx])
+            test_journeys.extend(j_ids[test_idx:])
+
+    train_dataset = CheckInDataset(args.data, allowed_journeys=set(train_journeys))
+    val_dataset   = CheckInDataset(args.data, allowed_journeys=set(val_journeys))
+    test_dataset  = CheckInDataset(args.data, allowed_journeys=set(test_journeys))
+
+    train_size = len(train_dataset)
+    val_size   = len(val_dataset)
+    test_size  = len(test_dataset)
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
     val_loader   = DataLoader(val_dataset,   batch_size=args.batch, shuffle=False)

@@ -15,42 +15,53 @@ export class IntentService implements IIntentService {
     private readonly aiPredictor: AIPredictor,
     private readonly trajectoryService: TrajectoryService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async predictIntent(
     userId: string,
     currentLat: number,
     currentLng: number,
     clientHeading?: number,
+    targetTimestampMs?: number,
   ): Promise<IntentPrediction | null> {
     try {
-      // 1. Log the new point into trajectory
-      await this.trajectoryService.addPoint(userId, currentLat, currentLng, Date.now());
+      // 1. Log the new point into trajectory (only in live mode to avoid polluting the trajectory during forecast requests)
+      if (!targetTimestampMs) {
+        await this.trajectoryService.addPoint(userId, currentLat, currentLng, Date.now());
+      }
 
       // 2. Fetch recent trajectory
       const trajectory = await this.trajectoryService.getTrajectory(userId);
 
       // 3. Hybrid Strategy
       let aiPrediction: IntentPrediction | null = null;
-      
-      // Try AI Predictor if we have enough data (e.g., 5 points)
+
       const context = {
         userId,
         currentLat,
         currentLng,
         clientHeading,
         trajectory,
+        targetTimestampMs,
       };
 
       const forceHeuristicVal = this.configService.get('USE_HEURISTIC_ONLY');
       const forceHeuristic = forceHeuristicVal === true || forceHeuristicVal === 'true';
 
       if (!forceHeuristic && trajectory && trajectory.length >= 5) {
+        this.logger.debug(`[Hybrid] Calling AI Predictor for ${userId} with ${trajectory.length} points.`);
         aiPrediction = await this.aiPredictor.predict(context);
+        this.logger.debug(`[Hybrid] AI Predictor returned: ${JSON.stringify(aiPrediction)}`);
+      } else {
+        this.logger.debug(`[Hybrid] Skipped AI Predictor. forceHeuristic=${forceHeuristic}, trajectoryLength=${trajectory?.length}`);
+      }
+
+      if (aiPrediction) {
+        this.logger.debug(`[Hybrid] AI Prediction generated: ${aiPrediction.predictedDestinationName}, confidence: ${aiPrediction.confidence}`);
       }
 
       // If AI prediction is highly confident, use it
-      if (aiPrediction && aiPrediction.confidence >= 0.8) {
+      if (aiPrediction && aiPrediction.confidence >= 0.15) {
         this.logger.debug(`[Hybrid] Using AI Prediction for ${userId}: ${aiPrediction.predictedDestinationName}`);
         return aiPrediction;
       }
@@ -72,7 +83,7 @@ export class IntentService implements IIntentService {
         confidence: 0.5,
         timestamp: Date.now(),
       };
-      
+
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to predict intent for user ${userId}: ${message}`);

@@ -31,6 +31,16 @@ public class EventController {
         return eventService.findActiveEvents();
     }
 
+    @GetMapping("/active-at")
+    @Operation(summary = "Find active events at a specific time", description = "Retrieve events that are active at the given timestamp (ms)")
+    public List<Event> findActiveAt(@RequestParam("time") Long timestampMs) {
+        java.time.LocalDateTime targetTime = java.time.LocalDateTime.ofInstant(
+            java.time.Instant.ofEpochMilli(timestampMs), 
+            java.time.ZoneId.of("Asia/Ho_Chi_Minh")
+        );
+        return eventService.findActiveAt(targetTime);
+    }
+
     @GetMapping("/map/{mapId}")
     @Operation(summary = "Find events by Map ID", description = "Retrieve all events scheduled for a specific map")
     public List<Event> findByMapId(@PathVariable UUID mapId) {

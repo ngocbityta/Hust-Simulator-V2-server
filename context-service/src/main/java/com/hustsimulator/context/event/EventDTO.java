@@ -17,6 +17,7 @@ public class EventDTO {
             @NotNull LocalDateTime startTime,
             @NotNull LocalDateTime endTime,
             @NotNull com.hustsimulator.context.enums.EventType type,
+            Integer estimatedParticipants,
             
             // INDOOR specific
             UUID buildingId,
@@ -33,6 +34,7 @@ public class EventDTO {
             @NotNull EventStatus status,
             @NotNull LocalDateTime startTime,
             @NotNull LocalDateTime endTime,
+            Integer estimatedParticipants,
             
             // INDOOR specific
             UUID buildingId,

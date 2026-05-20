@@ -5,7 +5,17 @@ import logging
 import random
 import os
 import math
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import torch
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+
 import numpy as np
 import torch.nn as nn
 from datetime import datetime, timezone
@@ -231,9 +241,13 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
         load_model_if_needed()
 
         # --- Convert GPS trajectory to check-in sequence ---
-        hour_of_week = get_hour_of_week()
+        if hasattr(request, 'target_timestamp_ms') and request.target_timestamp_ms > 0:
+            target_dt = datetime.fromtimestamp(request.target_timestamp_ms / 1000.0, tz=timezone.utc)
+            hour_of_week = target_dt.weekday() * 24 + target_dt.hour
+        else:
+            hour_of_week = get_hour_of_week()
         checkins = gps_trajectory_to_checkins(request.trajectory, hour_of_week)
-        logger.info(f"Check-in sequence length after GPS→POI snapping: {len(checkins)}")
+        logger.info(f"Check-in sequence length after GPS→POI snapping: {len(checkins)}, hour_of_week: {hour_of_week}")
 
         # --- Fallback: Heuristic Predictor ---
         # Used when: model not ready OR check-in sequence too short
@@ -275,22 +289,55 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                         src_key_padding_mask=mask_tensor,
                     )  # (1, num_pois)
                     probs_np = probs[0].numpy()
-                    predicted_idx = int(np.argmax(probs_np))
+                    
+                    top_k = 10
+                    top_indices = np.argsort(probs_np)[-top_k:][::-1]
+                    
+                    predicted_idx = int(top_indices[0])
                     predicted_class = POI_IDS_SORTED[predicted_idx]
                     confidence = float(probs_np[predicted_idx])
+                    
+                    candidate_destinations = []
+                    for idx in top_indices:
+                        prob = float(probs_np[idx])
+                        if prob > 0.01:
+                            c_poi_id = POI_IDS_SORTED[idx]
+                            c_poi = POIS[c_poi_id]
+                            candidate_destinations.append(
+                                prediction_pb2.PoiPrediction(
+                                    poi_id=c_poi.get("db_uuid", c_poi.get("id")),
+                                    poi_name=c_poi["name"],
+                                    probability=prob,
+                                    lat=c_poi["lat"],
+                                    lng=c_poi["lng"]
+                                )
+                            )
 
                 logger.info(
                     f"STTF inference → POI {predicted_class} "
                     f"({POIS[predicted_class]['name']}) "
-                    f"confidence={confidence:.3f}"
+                    f"confidence={confidence:.3f} (Total candidates: {len(candidate_destinations)})"
                 )
             except Exception as e:
                 logger.error(f"Inference error: {e}. Using heuristic fallback.")
                 predicted_class = random.choice(POI_IDS_SORTED)
                 confidence = 0.4
+                candidate_destinations = []
 
         # --- Build response ---
         poi = POIS[predicted_class]
+        
+        if 'candidate_destinations' not in locals() or not candidate_destinations:
+            candidate_destinations = [
+                prediction_pb2.PoiPrediction(
+                    poi_id=poi.get("db_uuid", poi.get("id")),
+                    poi_name=poi["name"],
+                    probability=confidence,
+                    lat=poi["lat"],
+                    lng=poi["lng"]
+                )
+            ]
+
         response = prediction_pb2.PredictNextLocationResponse(
             predicted_poi_id   = poi.get("db_uuid", poi.get("id")),
             predicted_poi_name = poi["name"],
@@ -298,6 +345,7 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
             intent_type        = "GOING_TO_LOCATION",
             target_lat         = poi["lat"],
             target_lng         = poi["lng"],
+            candidate_destinations = candidate_destinations
         )
         logger.info(
             f"Response → {poi['name']} (conf={confidence:.3f})"

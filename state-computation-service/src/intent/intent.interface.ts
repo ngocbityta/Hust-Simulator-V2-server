@@ -1,5 +1,5 @@
 import { IntentType } from '../common/enums/intent.enum';
-import { TrajectoryPoint } from '../grpc/prediction.client';
+import { TrajectoryPoint, PoiPrediction } from '../grpc/prediction.client';
 
 export interface PredictContext {
   userId: string;
@@ -7,6 +7,7 @@ export interface PredictContext {
   currentLng: number;
   clientHeading?: number;
   trajectory?: TrajectoryPoint[];
+  targetTimestampMs?: number;
 }
 
 export interface IPredictor {
@@ -22,6 +23,7 @@ export interface IntentPrediction {
   intent: IntentType;
   confidence: number;
   timestamp: number;
+  candidateDestinations?: PoiPrediction[];
 }
 
 export interface IIntentService {
@@ -30,6 +32,7 @@ export interface IIntentService {
     currentLat: number,
     currentLng: number,
     clientHeading?: number,
+    targetTimestampMs?: number,
   ): Promise<IntentPrediction | null>;
 }
 

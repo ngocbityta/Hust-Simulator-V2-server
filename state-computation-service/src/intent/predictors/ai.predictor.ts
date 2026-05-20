@@ -22,6 +22,7 @@ export class AIPredictor implements IPredictor {
         userId,
         trajectory,
         currentHeading: clientHeading || 0,
+        targetTimestampMs: context.targetTimestampMs,
       });
 
       return {
@@ -33,6 +34,7 @@ export class AIPredictor implements IPredictor {
         intent: response.intentType as IntentType,
         confidence: response.confidence,
         timestamp: Date.now(),
+        candidateDestinations: response.candidateDestinations,
       };
     } catch (error) {
       this.logger.error(`AI Prediction failed for user ${userId}: ${error}`);

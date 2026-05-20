@@ -54,6 +54,9 @@ async function bootstrap() {
     },
   });
 
+  // Enable CORS for Admin UI
+  app.enableCors();
+
   // Start all microservices
   await app.startAllMicroservices();
   logger.log(`gRPC server running on port ${grpcPort}`);

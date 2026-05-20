@@ -173,6 +173,7 @@ def extract_and_preprocess(last_sync):
             skipped += 1
             continue
 
+        journey_time = jdata['timestamps'][0].strftime('%Y-%m-%d %H:%M:%S')
         target_poi = checkins[-1][0]   # Final destination = training label
 
         for step, (poi_id, hour_of_week) in enumerate(checkins):
@@ -183,6 +184,7 @@ def extract_and_preprocess(last_sync):
                 'poi_id'       : poi_id,
                 'hour_of_week' : hour_of_week,
                 'target_poi'   : target_poi,
+                'journey_time' : journey_time,
             })
 
     if not records:

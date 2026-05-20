@@ -41,11 +41,28 @@ export class HeuristicPredictor implements IPredictor {
 
     if (!state || Object.keys(state).length === 0) return null;
 
-    const prevLat = parseFloat(state.latitude || '0');
-    const prevLng = parseFloat(state.longitude || '0');
     const isOnline = state.isOnline === 'true';
+    if (!isOnline) {
+      return {
+        userId,
+        intent: IntentType.STATIONARY,
+        confidence: 1.0,
+        timestamp: Date.now(),
+      };
+    }
 
-    if (!isOnline || (prevLat === 0 && prevLng === 0)) {
+    let prevLat = currentLat;
+    let prevLng = currentLng;
+    if (context.trajectory && context.trajectory.length >= 2) {
+      const prevPoint = context.trajectory[context.trajectory.length - 2];
+      prevLat = prevPoint.latitude;
+      prevLng = prevPoint.longitude;
+    } else {
+      prevLat = parseFloat(state.latitude || '0');
+      prevLng = parseFloat(state.longitude || '0');
+    }
+
+    if (prevLat === 0 && prevLng === 0) {
       return {
         userId,
         intent: IntentType.STATIONARY,

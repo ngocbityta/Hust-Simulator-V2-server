@@ -27,6 +27,7 @@ RUN cd state-computation-service && npm ci --omit=dev
 
 # Copy built assets
 COPY --from=build /app/state-computation-service/dist ./state-computation-service/dist
+COPY --from=build /app/state-computation-service/pois.json ./state-computation-service/pois.json
 COPY --from=build /app/proto ./proto
 
 WORKDIR /app/state-computation-service

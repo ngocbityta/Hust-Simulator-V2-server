@@ -235,7 +235,7 @@ services:
       IM_NUM_ZONES: "3"
       ZONE_1_LNG: "105.84"
       ZONE_2_LNG: "105.85"
-      GRID_CELL_SIZE: "50"
+      GRID_CELL_SIZE: "10"
       MAP_CENTER_LAT: "21.003"
       # Unique node ID for Redis Stream delivery routing
       DISS_NODE_ID: diss-node-0
@@ -272,7 +272,7 @@ services:
       IM_NUM_ZONES: "3"
       ZONE_1_LNG: "105.84"
       ZONE_2_LNG: "105.85"
-      GRID_CELL_SIZE: "50"
+      GRID_CELL_SIZE: "10"
       MAP_CENTER_LAT: "21.003"
     deploy:
       resources:
@@ -297,7 +297,7 @@ services:
       ZONE_ID: "0"
       ZONE_1_LNG: "105.84"
       ZONE_2_LNG: "105.85"
-      GRID_CELL_SIZE: "50"
+      GRID_CELL_SIZE: "10"
       MAP_CENTER_LAT: "21.003"
       IM_BASE_PORT: "4000"
       # Format: host:port:zoneId
@@ -322,7 +322,7 @@ services:
       ZONE_ID: "1"
       ZONE_1_LNG: "105.84"
       ZONE_2_LNG: "105.85"
-      GRID_CELL_SIZE: "50"
+      GRID_CELL_SIZE: "10"
       MAP_CENTER_LAT: "21.003"
       IM_BASE_PORT: "4000"
       NEIGHBOR_BROKERS: "interest-matcher-0:4000:0,interest-matcher-2:4002:2"
@@ -346,7 +346,7 @@ services:
       ZONE_ID: "2"
       ZONE_1_LNG: "105.84"
       ZONE_2_LNG: "105.85"
-      GRID_CELL_SIZE: "50"
+      GRID_CELL_SIZE: "10"
       MAP_CENTER_LAT: "21.003"
       IM_BASE_PORT: "4000"
       NEIGHBOR_BROKERS: "interest-matcher-1:4001:1"
@@ -371,6 +371,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      VECLIB_MAXIMUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
     # No host ports — internal gRPC only (50055)
     deploy:
       resources:

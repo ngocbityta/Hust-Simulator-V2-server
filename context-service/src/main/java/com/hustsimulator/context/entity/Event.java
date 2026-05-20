@@ -56,6 +56,9 @@ public abstract class Event {
     @Column(name = "end_time", nullable = false)
     private LocalDateTime endTime;
 
+    @Column(name = "estimated_participants")
+    private Integer estimatedParticipants;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

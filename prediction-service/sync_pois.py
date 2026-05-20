@@ -3,6 +3,7 @@ import json
 import psycopg2
 import logging
 from hashlib import md5
+from shapely.geometry import Polygon, MultiPoint
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("POISync")
@@ -29,7 +30,7 @@ def get_db_connection():
 def compute_centroid(geometry_str):
     """
     Parses a geometry string like '[[105.8, 21.0], [105.81, 21.01], ...]'
-    and returns (lat, lng) as the centroid.
+    and returns (lat, lng) as the centroid using shapely.
     Note: The input is [lng, lat].
     """
     try:
@@ -37,20 +38,21 @@ def compute_centroid(geometry_str):
         if not coords or not isinstance(coords, list):
             return None, None
         
-        sum_lng, sum_lat = 0.0, 0.0
-        count = 0
-        for pt in coords:
-            if isinstance(pt, list) and len(pt) >= 2:
-                sum_lng += pt[0]
-                sum_lat += pt[1]
-                count += 1
-                
-        if count == 0:
+        valid_coords = [pt for pt in coords if isinstance(pt, list) and len(pt) >= 2]
+        if not valid_coords:
             return None, None
             
-        return sum_lat / count, sum_lng / count
+        if len(valid_coords) >= 3:
+            # Create a Polygon (Shapely automatically closes the boundary if not already closed)
+            geom = Polygon(valid_coords)
+        else:
+            # Fallback to MultiPoint for 1 or 2 coordinate pairs
+            geom = MultiPoint(valid_coords)
+            
+        centroid = geom.centroid
+        return centroid.y, centroid.x  # returns (lat, lng)
     except Exception as e:
-        logger.error(f"Error parsing geometry: {e}")
+        logger.error(f"Error parsing geometry with shapely: {e}")
         return None, None
 
 def sync_pois():

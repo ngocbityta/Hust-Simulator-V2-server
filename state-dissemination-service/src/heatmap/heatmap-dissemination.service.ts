@@ -18,6 +18,7 @@ export class HeatmapDisseminationService
 
   /** Clients that have opted-in to receive heatmap updates */
   private subscribers = new Set<WebSocket>();
+  private predictiveSubscribers = new Set<WebSocket>();
 
   /** Dedicated Redis subscriber for the heatmap channel */
   private subClient: Redis;
@@ -41,14 +42,19 @@ export class HeatmapDisseminationService
       this.logger.error('Heatmap Redis subscriber error', err);
     });
 
-    // Subscribe to the heatmap channel
+    // Subscribe to the heatmap channels
     this.subClient.subscribe(RedisKey.HEATMAP_CHANNEL).catch((err) => {
       this.logger.error('Failed to subscribe to heatmap channel', err);
+    });
+    this.subClient.subscribe(RedisKey.HEATMAP_PREDICTIVE_CHANNEL).catch((err) => {
+      this.logger.error('Failed to subscribe to predictive heatmap channel', err);
     });
 
     this.subClient.on('message', (channel, message) => {
       if (channel === (RedisKey.HEATMAP_CHANNEL as string)) {
         this.broadcastHeatmap(message);
+      } else if (channel === (RedisKey.HEATMAP_PREDICTIVE_CHANNEL as string)) {
+        this.broadcastPredictiveHeatmap(message);
       }
     });
 
@@ -100,6 +106,50 @@ export class HeatmapDisseminationService
       );
     } catch (err) {
       this.logger.error('Failed to broadcast heatmap', err);
+    }
+  }
+
+  addPredictiveSubscriber(client: WebSocket) {
+    this.predictiveSubscribers.add(client);
+    this.logger.debug(
+      `Predictive Heatmap subscriber added. Total: ${this.predictiveSubscribers.size}`,
+    );
+  }
+
+  removePredictiveSubscriber(client: WebSocket) {
+    this.predictiveSubscribers.delete(client);
+  }
+
+  getPredictiveSubscriberCount(): number {
+    return this.predictiveSubscribers.size;
+  }
+
+  private broadcastPredictiveHeatmap(message: string) {
+    if (this.predictiveSubscribers.size === 0) return;
+
+    try {
+      const data = JSON.parse(message) as unknown;
+      const wsMessage = JSON.stringify({
+        event: WsEvent.PREDICTIVE_HEATMAP_UPDATE,
+        data,
+      });
+
+      let sentCount = 0;
+      for (const client of this.predictiveSubscribers) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(wsMessage);
+          sentCount++;
+        } else {
+          // Auto-cleanup stale connections
+          this.predictiveSubscribers.delete(client);
+        }
+      }
+
+      this.logger.debug(
+        `Predictive Heatmap broadcast to ${sentCount}/${this.predictiveSubscribers.size} subscribers`,
+      );
+    } catch (err) {
+      this.logger.error('Failed to broadcast predictive heatmap', err);
     }
   }
 }

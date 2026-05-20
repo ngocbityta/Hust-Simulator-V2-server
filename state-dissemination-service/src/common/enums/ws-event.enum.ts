@@ -18,4 +18,11 @@ export enum WsEvent {
   HEATMAP_SUBSCRIBED = 'heatmap:subscribed',
   HEATMAP_UNSUBSCRIBED = 'heatmap:unsubscribed',
   HEATMAP_UPDATE = 'heatmap:update',
+
+  // Predictive Heatmap
+  PREDICTIVE_HEATMAP_SUBSCRIBE = 'predictive_heatmap:subscribe',
+  PREDICTIVE_HEATMAP_UNSUBSCRIBE = 'predictive_heatmap:unsubscribe',
+  PREDICTIVE_HEATMAP_SUBSCRIBED = 'predictive_heatmap:subscribed',
+  PREDICTIVE_HEATMAP_UNSUBSCRIBED = 'predictive_heatmap:unsubscribed',
+  PREDICTIVE_HEATMAP_UPDATE = 'predictive_heatmap:update',
 }

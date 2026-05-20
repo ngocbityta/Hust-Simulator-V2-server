@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10prediction.proto\x12\nprediction\"I\n\x0fTrajectoryPoint\x12\x10\n\x08latitude\x18\x01 \x01(\x01\x12\x11\n\tlongitude\x18\x02 \x01(\x01\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\"w\n\x1aPredictNextLocationRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12/\n\ntrajectory\x18\x02 \x03(\x0b\x32\x1b.prediction.TrajectoryPoint\x12\x17\n\x0f\x63urrent_heading\x18\x03 \x01(\x01\"\xa4\x01\n\x1bPredictNextLocationResponse\x12\x18\n\x10predicted_poi_id\x18\x01 \x01(\t\x12\x1a\n\x12predicted_poi_name\x18\x02 \x01(\t\x12\x12\n\nconfidence\x18\x03 \x01(\x01\x12\x13\n\x0bintent_type\x18\x04 \x01(\t\x12\x12\n\ntarget_lat\x18\x05 \x01(\x01\x12\x12\n\ntarget_lng\x18\x06 \x01(\x01\x32{\n\x11PredictionService\x12\x66\n\x13PredictNextLocation\x12&.prediction.PredictNextLocationRequest\x1a\'.prediction.PredictNextLocationResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10prediction.proto\x12\nprediction\"I\n\x0fTrajectoryPoint\x12\x10\n\x08latitude\x18\x01 \x01(\x01\x12\x11\n\tlongitude\x18\x02 \x01(\x01\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\"w\n\x1aPredictNextLocationRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12/\n\ntrajectory\x18\x02 \x03(\x0b\x32\x1b.prediction.TrajectoryPoint\x12\x17\n\x0f\x63urrent_heading\x18\x03 \x01(\x01\"`\n\rPoiPrediction\x12\x0e\n\x06poi_id\x18\x01 \x01(\t\x12\x10\n\x08poi_name\x18\x02 \x01(\t\x12\x13\n\x0bprobability\x18\x03 \x01(\x01\x12\x0b\n\x03lat\x18\x04 \x01(\x01\x12\x0b\n\x03lng\x18\x05 \x01(\x01\"\xdf\x01\n\x1bPredictNextLocationResponse\x12\x18\n\x10predicted_poi_id\x18\x01 \x01(\t\x12\x1a\n\x12predicted_poi_name\x18\x02 \x01(\t\x12\x12\n\nconfidence\x18\x03 \x01(\x01\x12\x13\n\x0bintent_type\x18\x04 \x01(\t\x12\x12\n\ntarget_lat\x18\x05 \x01(\x01\x12\x12\n\ntarget_lng\x18\x06 \x01(\x01\x12\x39\n\x16\x63\x61ndidate_destinations\x18\x07 \x03(\x0b\x32\x19.prediction.PoiPrediction2{\n\x11PredictionService\x12\x66\n\x13PredictNextLocation\x12&.prediction.PredictNextLocationRequest\x1a\'.prediction.PredictNextLocationResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,8 +35,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_TRAJECTORYPOINT']._serialized_end=105
   _globals['_PREDICTNEXTLOCATIONREQUEST']._serialized_start=107
   _globals['_PREDICTNEXTLOCATIONREQUEST']._serialized_end=226
-  _globals['_PREDICTNEXTLOCATIONRESPONSE']._serialized_start=229
-  _globals['_PREDICTNEXTLOCATIONRESPONSE']._serialized_end=393
-  _globals['_PREDICTIONSERVICE']._serialized_start=395
-  _globals['_PREDICTIONSERVICE']._serialized_end=518
+  _globals['_POIPREDICTION']._serialized_start=228
+  _globals['_POIPREDICTION']._serialized_end=324
+  _globals['_PREDICTNEXTLOCATIONRESPONSE']._serialized_start=327
+  _globals['_PREDICTNEXTLOCATIONRESPONSE']._serialized_end=550
+  _globals['_PREDICTIONSERVICE']._serialized_start=552
+  _globals['_PREDICTIONSERVICE']._serialized_end=675
 # @@protoc_insertion_point(module_scope)

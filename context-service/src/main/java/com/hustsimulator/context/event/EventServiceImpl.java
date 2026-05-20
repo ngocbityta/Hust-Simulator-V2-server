@@ -41,6 +41,11 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    public List<Event> findActiveAt(java.time.LocalDateTime targetTime) {
+        return eventRepository.findActiveAt(targetTime);
+    }
+
+    @Override
     public List<Event> findByMapId(UUID mapId) {
         return eventRepository.findByMapId(mapId);
     }
@@ -87,6 +92,7 @@ public class EventServiceImpl implements EventService {
         event.setStatus(EventStatus.SCHEDULED);
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
+        event.setEstimatedParticipants(request.estimatedParticipants() != null ? request.estimatedParticipants() : 0);
 
         return event;
     }
@@ -101,6 +107,7 @@ public class EventServiceImpl implements EventService {
         event.setStatus(request.status());
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
+        event.setEstimatedParticipants(request.estimatedParticipants() != null ? request.estimatedParticipants() : 0);
 
         if (event instanceof IndoorEvent indoorEvent) {
             indoorEvent.setBuildingId(request.buildingId());

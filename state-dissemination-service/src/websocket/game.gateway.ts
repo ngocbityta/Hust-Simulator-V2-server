@@ -77,6 +77,7 @@ export class GameGateway
     this.aliveClients.delete(client);
     this.disseminationService.removeClient(client);
     this.heatmapService.removeSubscriber(client);
+    this.heatmapService.removePredictiveSubscriber(client);
     if (userId) {
       this.sessionService.removeSession(client);
 
@@ -264,5 +265,19 @@ export class GameGateway
     this.heatmapService.removeSubscriber(client);
     this.logger.debug('Client unsubscribed from heatmap');
     return { event: WsEvent.HEATMAP_UNSUBSCRIBED, data: { status: 'ok' } };
+  }
+
+  @SubscribeMessage(WsEvent.PREDICTIVE_HEATMAP_SUBSCRIBE)
+  handlePredictiveHeatmapSubscribe(@ConnectedSocket() client: WebSocket) {
+    this.heatmapService.addPredictiveSubscriber(client);
+    this.logger.debug('Client subscribed to predictive heatmap');
+    return { event: WsEvent.PREDICTIVE_HEATMAP_SUBSCRIBED, data: { status: 'ok' } };
+  }
+
+  @SubscribeMessage(WsEvent.PREDICTIVE_HEATMAP_UNSUBSCRIBE)
+  handlePredictiveHeatmapUnsubscribe(@ConnectedSocket() client: WebSocket) {
+    this.heatmapService.removePredictiveSubscriber(client);
+    this.logger.debug('Client unsubscribed from predictive heatmap');
+    return { event: WsEvent.PREDICTIVE_HEATMAP_UNSUBSCRIBED, data: { status: 'ok' } };
   }
 }
