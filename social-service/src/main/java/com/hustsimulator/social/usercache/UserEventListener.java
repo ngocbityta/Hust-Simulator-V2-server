@@ -4,6 +4,7 @@ import com.hustsimulator.social.entity.UserCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class UserEventListener {
     private final UserCacheRepository userCacheRepository;
 
     @RabbitListener(queues = "social.user.queue")
+    @CacheEvict(value = "users", key = "#event.userId")
     public void handleUserEvent(UserEvent event) {
         log.info("Received {} event for user {} (ID: {})",
                 event.getEventType(), event.getUsername(), event.getUserId());

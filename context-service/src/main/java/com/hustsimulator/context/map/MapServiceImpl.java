@@ -6,8 +6,9 @@ import com.hustsimulator.context.common.GeometryUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -20,28 +21,33 @@ public class MapServiceImpl implements MapService {
     private final ObjectMapper objectMapper;
 
     @Override
+    @Cacheable("maps_all")
     public List<Map> findAllMaps() {
         return mapRepository.findAll();
     }
 
     @Override
+    @Cacheable("maps_active")
     public List<Map> findActiveMaps() {
         return mapRepository.findByIsActiveTrue();
     }
 
     @Override
+    @Cacheable(value = "maps", key = "#id")
     public Map findMapById(UUID id) {
         return mapRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Map", id));
     }
 
     @Override
+    @CacheEvict(value = {"maps_all", "maps_active"}, allEntries = true)
     public Map createMap(Map map) {
         log.info("Creating new virtual map: {}", map.getName());
         return mapRepository.save(map);
     }
 
     @Override
+    @CacheEvict(value = {"maps", "maps_all", "maps_active"}, allEntries = true)
     public Map updateMap(UUID id, Map mapDetails) {
         Map map = findMapById(id);
         map.setName(mapDetails.getName());
@@ -53,6 +59,7 @@ public class MapServiceImpl implements MapService {
     }
 
     @Override
+    @CacheEvict(value = {"maps", "maps_all", "maps_active"}, allEntries = true)
     public void deleteMap(UUID id) {
         Map map = findMapById(id);
         mapRepository.delete(map);

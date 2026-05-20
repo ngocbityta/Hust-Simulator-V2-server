@@ -61,6 +61,12 @@ dependencies {
 
 	// Security removed as it's offloaded to API Gateway
 
+	// Socket.IO for Java (Netty based)
+	implementation 'com.corundumstudio.socketio:netty-socketio:2.0.12'
+
+	// Firebase Admin (for firebase storage provider)
+	implementation 'com.google.firebase:firebase-admin:9.2.0'
+
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.amqp:spring-rabbit-test'

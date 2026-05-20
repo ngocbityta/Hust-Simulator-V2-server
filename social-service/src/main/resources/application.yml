@@ -2,6 +2,11 @@ spring:
   application:
     name: social-service
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   # PostgreSQL + PostGIS
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
@@ -40,6 +45,21 @@ spring:
 server:
   port: ${SOCIAL_SERVICE_PORT:8083}
   forward-headers-strategy: framework
+
+hustsimulator:
+  storage:
+    provider: ${STORAGE_PROVIDER:local}
+    local:
+      upload-dir: ${STORAGE_LOCAL_DIR:./uploads}
+      # Update base-url port to match social service or api-gateway
+      base-url: ${STORAGE_LOCAL_URL:http://localhost:8083/uploads/}
+    firebase:
+      bucket: ${FIREBASE_STORAGE_BUCKET:}
+
+# Socket.IO
+socketio:
+  host: 0.0.0.0
+  port: 9092
 
 # Actuator, Tracing, Metrics
 management:

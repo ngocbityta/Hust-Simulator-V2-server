@@ -65,7 +65,6 @@ services:
     restart: unless-stopped
     depends_on:
       auth-service: { condition: service_started }
-      messaging-service: { condition: service_started }
       context-service: { condition: service_started }
     ports:
       - "80:80"
@@ -94,39 +93,14 @@ services:
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: 512M
 
-  # ─── Messaging Service ─────────────────────────────────────────────
-  messaging-service:
-    build:
-      context: .
-      dockerfile: messaging-service/Dockerfile
-    container_name: hustsim-messaging-service
-    restart: unless-stopped
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    # No host ports — accessed via API Gateway only
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=messaging&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      SPRING_FLYWAY_ENABLED: "true"
-      SPRING_FLYWAY_DEFAULT_SCHEMA: messaging
-      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
-      RABBITMQ_HOST: rabbitmq
-      JWT_SECRET: ${JWT_SECRET}
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: 512M
+
 
   # ─── Context Service ──────────────────────────────────
   context-service:
@@ -150,7 +124,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
     deploy:
       resources:
         limits:
@@ -181,7 +155,7 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
     deploy:
       resources:
         limits:
@@ -209,7 +183,7 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       LIVEKIT_URL: http://livekit:7880
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
     deploy:
       resources:
         limits:

@@ -7,8 +7,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -21,27 +22,32 @@ public class BuildingServiceImpl implements BuildingService {
     private final ObjectMapper objectMapper;
 
     @Override
+    @Cacheable("buildings_all")
     public List<Building> findAll() {
         return buildingRepository.findAll();
     }
 
     @Override
+    @Cacheable(value = "buildings_by_map", key = "#mapId")
     public List<Building> findByMapId(UUID mapId) {
         return buildingRepository.findByMapId(mapId);
     }
 
     @Override
+    @Cacheable("buildings_active")
     public List<Building> findActive() {
         return buildingRepository.findByIsActiveTrue();
     }
 
     @Override
+    @Cacheable(value = "buildings", key = "#id")
     public Building findById(UUID id) {
         return buildingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Building", id));
     }
 
     @Override
+    @CacheEvict(value = {"buildings_all", "buildings_active", "buildings_by_map"}, allEntries = true)
     public Building create(BuildingDTO.CreateBuildingRequest request) {
         log.info("Creating building '{}' on map {}", request.name(), request.mapId());
 
@@ -57,6 +63,7 @@ public class BuildingServiceImpl implements BuildingService {
     }
 
     @Override
+    @CacheEvict(value = {"buildings", "buildings_all", "buildings_active", "buildings_by_map"}, allEntries = true)
     public Building update(UUID id, BuildingDTO.UpdateBuildingRequest request) {
         Building building = findById(id);
         if (request.name() != null) {
@@ -70,6 +77,7 @@ public class BuildingServiceImpl implements BuildingService {
     }
 
     @Override
+    @CacheEvict(value = {"buildings", "buildings_all", "buildings_active", "buildings_by_map"}, allEntries = true)
     public void delete(UUID id) {
         Building building = findById(id);
         buildingRepository.delete(building);

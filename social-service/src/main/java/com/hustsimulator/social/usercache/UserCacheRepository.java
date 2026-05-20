@@ -6,6 +6,12 @@ import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
+import org.springframework.cache.annotation.Cacheable;
+import java.util.Optional;
+
 @Repository
 public interface UserCacheRepository extends JpaRepository<UserCache, UUID> {
+    @Override
+    @Cacheable(value = "users", key = "#id")
+    Optional<UserCache> findById(UUID id);
 }
