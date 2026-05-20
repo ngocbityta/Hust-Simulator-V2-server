@@ -2,6 +2,11 @@ package com.hustsimulator.social.comment;
 
 import com.hustsimulator.social.common.ResourceNotFoundException;
 import com.hustsimulator.social.entity.Comment;
+import com.hustsimulator.social.entity.UserCache;
+import com.hustsimulator.social.enums.NotificationType;
+import com.hustsimulator.social.notification.NotificationService;
+import com.hustsimulator.social.post.PostRepository;
+import com.hustsimulator.social.usercache.UserCacheRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -19,6 +24,9 @@ import java.util.UUID;
 public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
+    private final NotificationService notificationService;
+    private final PostRepository postRepository;
+    private final UserCacheRepository userCacheRepository;
 
     @Override
     public Page<Comment> findByPostId(UUID postId, Pageable pageable) {
@@ -45,7 +53,19 @@ public class CommentServiceImpl implements CommentService {
                 .postId(request.postId())
                 .content(request.content())
                 .build();
-        return commentRepository.save(comment);
+        Comment saved = commentRepository.save(comment);
+
+        // Notify the post owner
+        postRepository.findById(request.postId()).ifPresent(post -> {
+            String commenterName = userCacheRepository.findById(userId)
+                    .map(UserCache::getUsername)
+                    .orElse("Someone");
+            notificationService.createNotification(
+                    post.getUserId(), userId, NotificationType.COMMENT,
+                    request.postId(), commenterName + " đã bình luận bài viết của bạn");
+        });
+
+        return saved;
     }
 
     @Override

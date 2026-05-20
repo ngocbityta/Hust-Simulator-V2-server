@@ -1,6 +1,12 @@
 package com.hustsimulator.social.interaction;
 
 import com.hustsimulator.social.entity.Like;
+import com.hustsimulator.social.entity.Post;
+import com.hustsimulator.social.entity.UserCache;
+import com.hustsimulator.social.enums.NotificationType;
+import com.hustsimulator.social.notification.NotificationService;
+import com.hustsimulator.social.post.PostRepository;
+import com.hustsimulator.social.usercache.UserCacheRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,6 +20,9 @@ import java.util.UUID;
 public class InteractionServiceImpl implements InteractionService {
 
     private final InteractionRepository interactionRepository;
+    private final NotificationService notificationService;
+    private final PostRepository postRepository;
+    private final UserCacheRepository userCacheRepository;
 
     @Override
     @Transactional
@@ -25,6 +34,16 @@ public class InteractionServiceImpl implements InteractionService {
                     .postId(postId)
                     .build();
             interactionRepository.save(like);
+
+            // Notify the post owner
+            postRepository.findById(postId).ifPresent(post -> {
+                String likerName = userCacheRepository.findById(userId)
+                        .map(UserCache::getUsername)
+                        .orElse("Someone");
+                notificationService.createNotification(
+                        post.getUserId(), userId, NotificationType.LIKE,
+                        postId, likerName + " đã thích bài viết của bạn");
+            });
         }
     }
 

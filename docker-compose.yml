@@ -9,6 +9,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 64M
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hustsim_redis}", "ping" ]
@@ -29,9 +30,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 256M
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      test: ["CMD-SHELL", "nc -z localhost 5672 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -54,6 +56,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 128M
 
   api-gateway:
@@ -69,6 +72,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.25"
           memory: 64M
 
   auth-service:
@@ -90,10 +94,11 @@ services:
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 512M
 
   # ─── Messaging Service ─────────────────────────────────────────────
@@ -116,10 +121,11 @@ services:
       SPRING_FLYWAY_CREATE_SCHEMAS: "true"
       RABBITMQ_HOST: rabbitmq
       JWT_SECRET: ${JWT_SECRET}
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 512M
 
   # ─── Context Service ──────────────────────────────────
@@ -144,10 +150,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
     deploy:
       resources:
         limits:
+          cpus: "0.75"
           memory: 512M
 
   # ─── Social Service ────────────────────────────────────────────────
@@ -174,10 +181,11 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 512M
 
   streaming-service:
@@ -201,10 +209,11 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       LIVEKIT_URL: http://livekit:7880
-      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:+UseStringDeduplication"
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseParallelGC -XX:TieredStopAtLevel=1"
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 512M
 
   state-dissemination-service:
@@ -242,6 +251,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 128M
 
   state-computation-service:
@@ -277,6 +287,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.75"
           memory: 128M
 
   # ─── Interest Matcher Brokers (SPS multi-broker AOI) ─────────────────────
@@ -305,6 +316,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.25"
           memory: 64M
 
   interest-matcher-1:
@@ -329,6 +341,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.25"
           memory: 64M
 
   interest-matcher-2:
@@ -353,6 +366,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.25"
           memory: 64M
 
   prediction-service:
@@ -380,6 +394,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "1.00"
           memory: 1G
 
   # ─── Monitoring ──────────────────────────────────────────────────
@@ -395,6 +410,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.25"
           memory: 256M
 
   promtail:
@@ -408,6 +424,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.15"
           memory: 128M
 
   prometheus:
@@ -427,13 +444,14 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.50"
           memory: 512M
 
   grafana:
     image: grafana/grafana:10.0.3
     container_name: hustsim-grafana
     ports:
-      - "3000:3000"
+      - "3003:3003"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
@@ -447,6 +465,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.25"
           memory: 256M
 
 volumes:

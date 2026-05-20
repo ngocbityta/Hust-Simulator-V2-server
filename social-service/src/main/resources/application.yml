@@ -17,6 +17,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        default_schema: ${HIBERNATE_DEFAULT_SCHEMA:social}
   sql:
     init:
       mode: never

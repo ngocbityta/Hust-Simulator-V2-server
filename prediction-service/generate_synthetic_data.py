@@ -131,6 +131,8 @@ def generate_dataset(num_users, journeys_per_user, output_path):
 
             journey_id = str(uuid.uuid4())
             target_poi = checkins[-1][0]  # Final destination = training label
+            base_date = datetime.now() - timedelta(days=30)
+            journey_time = (base_date + timedelta(days=j, hours=random.randint(0, 23))).strftime('%Y-%m-%d %H:%M:%S')
 
             for step, (poi_id, hour_of_week) in enumerate(checkins):
                 records.append({
@@ -140,6 +142,7 @@ def generate_dataset(num_users, journeys_per_user, output_path):
                     'poi_id':       poi_id,
                     'hour_of_week': hour_of_week,
                     'target_poi':   target_poi,
+                    'journey_time': journey_time,
                 })
 
             journey_count += 1
@@ -148,7 +151,7 @@ def generate_dataset(num_users, journeys_per_user, output_path):
     os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else '.', exist_ok=True)
     with open(output_path, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=[
-            'journey_id', 'step', 'user_id', 'poi_id', 'hour_of_week', 'target_poi'
+            'journey_id', 'step', 'user_id', 'poi_id', 'hour_of_week', 'target_poi', 'journey_time'
         ])
         writer.writeheader()
         writer.writerows(records)
