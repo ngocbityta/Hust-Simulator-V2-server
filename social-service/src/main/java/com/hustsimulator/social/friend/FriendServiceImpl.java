@@ -172,11 +172,11 @@ public class FriendServiceImpl implements FriendService {
     // --- helpers ---
 
     private UUID smaller(UUID a, UUID b) {
-        return a.compareTo(b) < 0 ? a : b;
+        return a.toString().compareTo(b.toString()) < 0 ? a : b;
     }
 
     private UUID larger(UUID a, UUID b) {
-        return a.compareTo(b) < 0 ? b : a;
+        return a.toString().compareTo(b.toString()) < 0 ? b : a;
     }
 
     private FriendDTO.FriendResponse toFriendResponse(Friendship f) {
