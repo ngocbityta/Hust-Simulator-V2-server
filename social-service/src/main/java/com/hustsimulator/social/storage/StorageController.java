@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -25,7 +27,7 @@ public class StorageController {
     @Operation(summary = "Upload a file to the storage provider")
     public StoredFile uploadFile(
             @RequestParam("file") MultipartFile file,
-            @RequestHeader("X-User-Id") String userIdStr) throws IOException {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdStr) throws IOException {
 
         UUID userId = UUID.fromString(userIdStr);
 

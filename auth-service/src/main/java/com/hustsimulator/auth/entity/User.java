@@ -43,4 +43,9 @@ public class User extends BaseEntity {
     @Column(columnDefinition = "boolean default false")
     @Builder.Default
     private Boolean online = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    @Builder.Default
+    private com.hustsimulator.auth.enums.Role role = com.hustsimulator.auth.enums.Role.USER;
 }

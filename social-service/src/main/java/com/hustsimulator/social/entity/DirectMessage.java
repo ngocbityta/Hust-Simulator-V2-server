@@ -19,7 +19,7 @@ import java.util.UUID;
 @Builder
 public class DirectMessage extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "conversation_id", nullable = false)
     private Conversation conversation;
 

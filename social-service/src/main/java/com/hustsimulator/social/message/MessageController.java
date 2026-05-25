@@ -10,6 +10,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -44,7 +46,7 @@ public class MessageController {
     public Message sendMessage(
             @PathVariable UUID detailId,
             @Valid @RequestBody MessageRequest request,
-            @RequestHeader("X-User-Id") String userIdHeader) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
 
         UUID senderId = resolveUserId(userIdHeader);
         return messageService.save(
@@ -60,7 +62,7 @@ public class MessageController {
     @Operation(summary = "Get IDs of recurring events the current user has participated in")
     @GetMapping("/api/messages/participated-events")
     public List<UUID> getParticipatedEventIds(
-            @RequestHeader("X-User-Id") String userIdHeader) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return messageService.getParticipatedEventIds(userId);
     }

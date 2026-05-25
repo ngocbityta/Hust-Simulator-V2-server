@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
@@ -23,7 +25,7 @@ public class FollowController {
     @Operation(summary = "Follow a user")
     @PostMapping
     public Map<String, Object> follow(@RequestBody FollowDTO.FollowRequest request,
-                                      @RequestHeader("X-User-Id") String userIdHeader) {
+                                      @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         followService.follow(userId, request.targetUserId());
         return Map.of(
@@ -35,7 +37,7 @@ public class FollowController {
     @Operation(summary = "Unfollow a user")
     @DeleteMapping("/{targetUserId}")
     public Map<String, Object> unfollow(@PathVariable UUID targetUserId,
-                                        @RequestHeader("X-User-Id") String userIdHeader) {
+                                        @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         followService.unfollow(userId, targetUserId);
         return Map.of(
@@ -67,7 +69,7 @@ public class FollowController {
     @Operation(summary = "Check if the current user is following another user")
     @GetMapping("/is-following/{targetUserId}")
     public Map<String, Object> isFollowing(@PathVariable UUID targetUserId,
-                                           @RequestHeader("X-User-Id") String userIdHeader) {
+                                           @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return Map.of(
                 "targetUserId", targetUserId,

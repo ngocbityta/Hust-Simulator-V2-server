@@ -42,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
         // Generate opaque refresh token (stored in DB)
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
-        return new AuthDTO.AuthResponse(accessToken, refreshToken.getToken(), user.getId(), user.getPhonenumber(), user.getUsername());
+        return new AuthDTO.AuthResponse(accessToken, refreshToken.getToken(), user.getId(), user.getPhonenumber(), user.getUsername(), user.getRole());
     }
 
     @Transactional

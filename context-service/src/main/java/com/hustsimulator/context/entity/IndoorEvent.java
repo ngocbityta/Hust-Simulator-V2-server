@@ -26,7 +26,7 @@ public class IndoorEvent extends Event {
     @Column(name = "building_id")
     private UUID buildingId;
 
-    @ElementCollection(fetch = FetchType.LAZY)
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "event_rooms", joinColumns = @JoinColumn(name = "event_id"))
     @Column(name = "room_id")
     private List<UUID> roomIds;

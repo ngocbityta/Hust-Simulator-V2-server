@@ -12,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -27,7 +29,7 @@ public class DirectMessageController {
 
     @Operation(summary = "Get user's conversations list")
     @GetMapping("/conversations")
-    public List<ConversationDto> getUserConversations(@RequestHeader("X-User-Id") String userIdHeader) {
+    public List<ConversationDto> getUserConversations(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return directMessageService.getUserConversations(userId);
     }
@@ -35,7 +37,7 @@ public class DirectMessageController {
     @Operation(summary = "Get chat history with a partner")
     @GetMapping("/{partnerId}")
     public Page<DirectMessageDto> getHistory(
-            @RequestHeader("X-User-Id") String userIdHeader,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader,
             @PathVariable UUID partnerId,
             Pageable pageable) {
         UUID userId = resolveUserId(userIdHeader);
@@ -46,7 +48,7 @@ public class DirectMessageController {
     @PostMapping("/{partnerId}")
     @ResponseStatus(HttpStatus.CREATED)
     public DirectMessageDto sendMessage(
-            @RequestHeader("X-User-Id") String userIdHeader,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader,
             @PathVariable UUID partnerId,
             @Valid @RequestBody SendDirectMessageRequest request) {
         UUID senderId = resolveUserId(userIdHeader);

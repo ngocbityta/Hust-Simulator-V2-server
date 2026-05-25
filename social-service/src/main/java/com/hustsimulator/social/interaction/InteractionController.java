@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
@@ -22,7 +24,7 @@ public class InteractionController {
                description = "Idempotent: liking an already-liked post has no effect. Returns updated like count.")
     @PostMapping("/like")
     public Map<String, Object> like(@RequestBody InteractionDTO.LikeRequest request,
-                                    @RequestHeader("X-User-Id") String userIdHeader) {
+                                    @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         interactionService.likePost(request.postId(), userId);
         long likeCount = interactionService.countLikes(request.postId());
@@ -37,7 +39,7 @@ public class InteractionController {
                description = "Idempotent: unliking a post that was not liked has no effect. Returns updated like count.")
     @PostMapping("/unlike")
     public Map<String, Object> unlike(@RequestBody InteractionDTO.LikeRequest request,
-                                      @RequestHeader("X-User-Id") String userIdHeader) {
+                                      @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         interactionService.unlikePost(request.postId(), userId);
         long likeCount = interactionService.countLikes(request.postId());
@@ -60,7 +62,7 @@ public class InteractionController {
     @Operation(summary = "Check if the current user has liked a post")
     @GetMapping("/has-liked/{postId}")
     public Map<String, Object> hasLiked(@PathVariable UUID postId,
-                                        @RequestHeader("X-User-Id") String userIdHeader) {
+                                        @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return Map.of(
                 "postId", postId,

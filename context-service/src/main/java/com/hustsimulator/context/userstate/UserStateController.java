@@ -3,9 +3,12 @@ package com.hustsimulator.context.userstate;
 import com.hustsimulator.context.enums.UserActivityState;
 import com.hustsimulator.context.entity.UserState;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,66 +44,87 @@ public class UserStateController {
 
     // --- Map ---
 
-    @PutMapping("/{userId}/map")
+    @PutMapping("/map")
     @Operation(summary = "Change map", description = "Transfer a player to a different virtual map")
-    public UserState changeMap(@PathVariable UUID userId, @RequestBody UserStateDTO.ChangeMapRequest request) {
+    public UserState changeMap(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader, @RequestBody UserStateDTO.ChangeMapRequest request) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.changeMap(userId, request.mapId());
     }
 
-    @PutMapping("/{userId}/leave-map")
-    public UserState leaveMap(@PathVariable UUID userId) {
+    @PutMapping("/leave-map")
+    public UserState leaveMap(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.leaveMap(userId);
     }
 
     // --- Building ---
 
-    @PutMapping("/{userId}/building")
+    @PutMapping("/building")
     @Operation(summary = "Join building", description = "Update player state when entering a physical building area")
-    public UserState joinBuilding(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinBuildingRequest request) {
+    public UserState joinBuilding(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader, @RequestBody UserStateDTO.JoinBuildingRequest request) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.joinBuilding(userId, request.buildingId(), request.userX(), request.userY());
     }
 
-    @PutMapping("/{userId}/leave-building")
-    public UserState leaveBuilding(@PathVariable UUID userId) {
+    @PutMapping("/leave-building")
+    public UserState leaveBuilding(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.leaveBuilding(userId);
     }
 
     // --- Room ---
 
-    @PutMapping("/{userId}/room")
-    public UserState joinRoom(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinRoomRequest request) {
+    @PutMapping("/room")
+    public UserState joinRoom(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader, @RequestBody UserStateDTO.JoinRoomRequest request) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.joinRoom(userId, request.roomId());
     }
 
-    @PutMapping("/{userId}/leave-room")
-    public UserState leaveRoom(@PathVariable UUID userId) {
+    @PutMapping("/leave-room")
+    public UserState leaveRoom(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.leaveRoom(userId);
     }
 
     // --- Event ---
 
-    @PutMapping("/{userId}/event")
-    public UserState joinEvent(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinEventRequest request) {
+    @PutMapping("/event")
+    public UserState joinEvent(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader, @RequestBody UserStateDTO.JoinEventRequest request) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.joinEvent(userId, request.eventId(), request.buildingId(), request.userX(), request.userY());
     }
 
-    @PutMapping("/{userId}/leave-event")
-    public UserState leaveEvent(@PathVariable UUID userId) {
+    @PutMapping("/leave-event")
+    public UserState leaveEvent(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.leaveEvent(userId);
     }
 
     // --- Recurring Event ---
 
-    @PutMapping("/{userId}/recurring-event")
-    public UserState joinRecurringEvent(@PathVariable UUID userId, @RequestBody UserStateDTO.JoinRecurringEventRequest request) {
+    @PutMapping("/recurring-event")
+    public UserState joinRecurringEvent(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader, @RequestBody UserStateDTO.JoinRecurringEventRequest request) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.joinRecurringEvent(userId, request.eventId(), request.buildingId(), request.userX(), request.userY());
     }
 
     // --- Activity ---
 
-    @PutMapping("/{userId}/activity")
+    @PutMapping("/activity")
     @Operation(summary = "Update activity state", description = "Directly modify a user's activity state (ROAMING, SPECTATING, etc.)")
-    public UserState updateActivity(@PathVariable UUID userId, @RequestBody UserStateDTO.UpdateActivityRequest request) {
+    public UserState updateActivity(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader, @RequestBody UserStateDTO.UpdateActivityRequest request) {
+        UUID userId = resolveUserId(userIdHeader);
         return userStateService.updateActivity(userId, request.activityState(), request.sessionData());
+    }
+
+    private UUID resolveUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing X-User-Id header");
+        }
+        try {
+            return UUID.fromString(userIdHeader);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid X-User-Id format");
+        }
     }
 }

@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
@@ -23,7 +25,7 @@ public class NotificationController {
     @Operation(summary = "Get notifications for the current user (paginated)")
     @GetMapping
     public Page<NotificationDTO.NotificationResponse> getNotifications(
-            @RequestHeader("X-User-Id") String userIdHeader,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader,
             Pageable pageable) {
         UUID userId = resolveUserId(userIdHeader);
         return notificationService.getNotifications(userId, pageable);
@@ -31,7 +33,7 @@ public class NotificationController {
 
     @Operation(summary = "Get unread notification count")
     @GetMapping("/unread-count")
-    public Map<String, Object> getUnreadCount(@RequestHeader("X-User-Id") String userIdHeader) {
+    public Map<String, Object> getUnreadCount(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return Map.of("unreadCount", notificationService.getUnreadCount(userId));
     }
@@ -39,7 +41,7 @@ public class NotificationController {
     @Operation(summary = "Mark a notification as read")
     @PutMapping("/{id}/read")
     public Map<String, Object> markAsRead(@PathVariable UUID id,
-                                          @RequestHeader("X-User-Id") String userIdHeader) {
+                                          @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         notificationService.markAsRead(id, userId);
         return Map.of("id", id, "isRead", true);
@@ -47,7 +49,7 @@ public class NotificationController {
 
     @Operation(summary = "Mark all notifications as read")
     @PutMapping("/read-all")
-    public Map<String, Object> markAllAsRead(@RequestHeader("X-User-Id") String userIdHeader) {
+    public Map<String, Object> markAllAsRead(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         notificationService.markAllAsRead(userId);
         return Map.of("message", "All notifications marked as read");

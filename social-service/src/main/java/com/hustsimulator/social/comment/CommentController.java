@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
@@ -36,7 +38,7 @@ public class CommentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Comment create(@Valid @RequestBody CommentDTO.CreateCommentRequest request,
-                          @RequestHeader("X-User-Id") String userIdHeader) {
+                          @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return commentService.create(request, userId);
     }
@@ -44,7 +46,7 @@ public class CommentController {
     @PutMapping("/{id}")
     public Comment update(@PathVariable UUID id,
                           @Valid @RequestBody CommentDTO.UpdateCommentRequest request,
-                          @RequestHeader("X-User-Id") String userIdHeader) {
+                          @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return commentService.update(id, request, userId);
     }
@@ -52,7 +54,7 @@ public class CommentController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id,
-                       @RequestHeader("X-User-Id") String userIdHeader) {
+                       @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         commentService.delete(id, userId);
     }

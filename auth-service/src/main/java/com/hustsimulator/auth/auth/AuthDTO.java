@@ -22,7 +22,7 @@ public class AuthDTO {
         }
 
         public record AuthResponse(String accessToken, String refreshToken, UUID id, String phonenumber,
-                        String username) {
+                        String username, com.hustsimulator.auth.enums.Role role) {
         }
 
         public record RefreshTokenRequest(

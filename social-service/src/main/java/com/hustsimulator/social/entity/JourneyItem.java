@@ -20,7 +20,7 @@ import java.util.UUID;
 @Builder
 public class JourneyItem extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "journey_id", nullable = false)
     private Journey journey;
 

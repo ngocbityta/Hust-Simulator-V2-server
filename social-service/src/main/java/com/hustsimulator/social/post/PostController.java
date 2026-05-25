@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
@@ -51,7 +53,7 @@ public class PostController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Post create(@Valid @RequestBody PostDTO.CreatePostRequest request, 
-                        @RequestHeader("X-User-Id") String userIdHeader) {
+                        @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return postService.create(request, userId);
     }
@@ -59,7 +61,7 @@ public class PostController {
     @PutMapping("/{id}")
     public Post update(@PathVariable UUID id, 
                         @Valid @RequestBody PostDTO.UpdatePostRequest request,
-                        @RequestHeader("X-User-Id") String userIdHeader) {
+                        @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         return postService.update(id, request, userId);
     }
@@ -67,7 +69,7 @@ public class PostController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id,
-                       @RequestHeader("X-User-Id") String userIdHeader) {
+                       @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
         postService.delete(id, userId);
     }
