@@ -16,4 +16,7 @@ public interface RecurringEventDetailRepository extends JpaRepository<RecurringE
     Optional<RecurringEventDetail> findByRecurringEventIdAndScheduledAt(UUID recurringEventId, LocalDateTime scheduledAt);
 
     Optional<RecurringEventDetail> findFirstByRecurringEventIdAndStatus(UUID recurringEventId, RecurringEventDetailStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r.status, COUNT(r) FROM RecurringEventDetail r WHERE r.scheduledAt >= :startOfDay AND r.scheduledAt < :endOfDay GROUP BY r.status")
+    List<Object[]> countStatusByScheduledAtBetween(@org.springframework.data.repository.query.Param("startOfDay") LocalDateTime startOfDay, @org.springframework.data.repository.query.Param("endOfDay") LocalDateTime endOfDay);
 }

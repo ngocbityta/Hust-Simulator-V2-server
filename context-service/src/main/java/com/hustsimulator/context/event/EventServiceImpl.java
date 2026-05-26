@@ -173,4 +173,16 @@ public class EventServiceImpl implements EventService {
         eventEventPublisher.publish(event, EventEvent.EventType.DELETED);
         log.info("Deleted event: {}", id);
     }
+
+    @Override
+    public com.hustsimulator.context.common.PageResponse<Event> getEventsPaged(String search, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<Event> eventPage;
+        if (search != null && !search.trim().isEmpty()) {
+            eventPage = eventRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        } else {
+            eventPage = eventRepository.findAll(pageable);
+        }
+        return new com.hustsimulator.context.common.PageResponse<>(eventPage);
+    }
 }

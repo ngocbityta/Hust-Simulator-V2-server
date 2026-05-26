@@ -60,6 +60,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public com.hustsimulator.auth.common.PageResponse<User> getUsersPaged(String search, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<User> userPage;
+        if (search != null && !search.trim().isEmpty()) {
+            userPage = userRepository.findByUsernameContainingIgnoreCaseOrPhonenumberContainingIgnoreCase(search.trim(), search.trim(), pageable);
+        } else {
+            userPage = userRepository.findAll(pageable);
+        }
+        return new com.hustsimulator.auth.common.PageResponse<>(userPage);
+    }
+
+    @Override
     @org.springframework.transaction.annotation.Transactional
     public org.springframework.security.core.userdetails.UserDetails loadUserByUsername(String phonenumber)
             throws org.springframework.security.core.userdetails.UsernameNotFoundException {
@@ -73,5 +85,9 @@ public class UserServiceImpl implements UserService {
                 java.util.Collections.singletonList(
                         new org.springframework.security.core.authority.SimpleGrantedAuthority(
                                 "ROLE_USER")));
+    }
+
+    public UserRepository getRepository() {
+        return this.userRepository;
     }
 }

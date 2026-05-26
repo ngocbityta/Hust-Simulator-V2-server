@@ -65,4 +65,16 @@ public class RoomServiceImpl implements RoomService {
         roomRepository.delete(room);
         log.info("Deleted room: {}", id);
     }
+
+    @Override
+    public com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(String search, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<Room> roomPage;
+        if (search != null && !search.trim().isEmpty()) {
+            roomPage = roomRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        } else {
+            roomPage = roomRepository.findAll(pageable);
+        }
+        return new com.hustsimulator.context.common.PageResponse<>(roomPage);
+    }
 }

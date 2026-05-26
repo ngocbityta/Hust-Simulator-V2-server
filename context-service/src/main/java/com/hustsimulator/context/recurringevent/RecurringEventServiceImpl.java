@@ -166,4 +166,16 @@ public class RecurringEventServiceImpl implements RecurringEventService {
         recurringEventRepository.delete(recurringEvent);
         log.info("Deleted recurring event: {}", id);
     }
+
+    @Override
+    public com.hustsimulator.context.common.PageResponse<RecurringEvent> getRecurringEventsPaged(String search, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<RecurringEvent> eventPage;
+        if (search != null && !search.trim().isEmpty()) {
+            eventPage = recurringEventRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        } else {
+            eventPage = recurringEventRepository.findAll(pageable);
+        }
+        return new com.hustsimulator.context.common.PageResponse<>(eventPage);
+    }
 }

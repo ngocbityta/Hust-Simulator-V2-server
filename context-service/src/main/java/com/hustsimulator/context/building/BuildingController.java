@@ -71,4 +71,13 @@ public class BuildingController {
                                   @RequestParam double y) {
         return buildingService.isPointInsideBuilding(id, x, y);
     }
+
+    @GetMapping("/paged")
+    @Operation(summary = "Find buildings with pagination", description = "Retrieve a paginated list of buildings with optional search")
+    public com.hustsimulator.context.common.PageResponse<Building> getBuildingsPaged(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return buildingService.getBuildingsPaged(search, page, size);
+    }
 }

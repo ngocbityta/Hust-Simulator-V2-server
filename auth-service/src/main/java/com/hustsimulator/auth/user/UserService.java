@@ -11,4 +11,5 @@ public interface UserService extends UserDetailsService {
     User create(User user);
     User update(UUID id, User updated);
     void delete(UUID id);
+    com.hustsimulator.auth.common.PageResponse<User> getUsersPaged(String search, int page, int size);
 }

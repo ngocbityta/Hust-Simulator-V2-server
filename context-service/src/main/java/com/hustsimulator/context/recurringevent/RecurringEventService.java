@@ -16,4 +16,5 @@ public interface RecurringEventService {
     RecurringEvent create(RecurringEventDTO.CreateRecurringEventRequest request);
     RecurringEvent update(UUID id, RecurringEventDTO.UpdateRecurringEventRequest request);
     void delete(UUID id);
+    com.hustsimulator.context.common.PageResponse<RecurringEvent> getRecurringEventsPaged(String search, int page, int size);
 }

@@ -85,6 +85,18 @@ public class BuildingServiceImpl implements BuildingService {
     }
 
     @Override
+    public com.hustsimulator.context.common.PageResponse<Building> getBuildingsPaged(String search, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<Building> buildingPage;
+        if (search != null && !search.trim().isEmpty()) {
+            buildingPage = buildingRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        } else {
+            buildingPage = buildingRepository.findAll(pageable);
+        }
+        return new com.hustsimulator.context.common.PageResponse<>(buildingPage);
+    }
+
+    @Override
     public boolean isPointInsideBuilding(UUID buildingId, double x, double y) {
         Building building = findById(buildingId);
         return GeometryUtils.isPointInPolygonJson(building.getCoordinates(), x, y, objectMapper);

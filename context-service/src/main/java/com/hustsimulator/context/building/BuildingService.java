@@ -13,4 +13,5 @@ public interface BuildingService {
     Building update(UUID id, BuildingDTO.UpdateBuildingRequest request);
     void delete(UUID id);
     boolean isPointInsideBuilding(UUID buildingId, double x, double y);
+    com.hustsimulator.context.common.PageResponse<Building> getBuildingsPaged(String search, int page, int size);
 }

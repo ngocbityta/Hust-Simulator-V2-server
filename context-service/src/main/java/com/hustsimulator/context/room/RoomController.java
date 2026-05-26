@@ -53,4 +53,12 @@ public class RoomController {
     public void delete(@PathVariable UUID id) {
         roomService.delete(id);
     }
+
+    @GetMapping("/paged")
+    public com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return roomService.getRoomsPaged(search, page, size);
+    }
 }

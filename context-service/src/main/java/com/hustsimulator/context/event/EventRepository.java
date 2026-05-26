@@ -1,6 +1,8 @@
 package com.hustsimulator.context.event;
 
 import com.hustsimulator.context.entity.Event;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -15,4 +17,6 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     
     @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.startTime <= :targetTime AND e.endTime >= :targetTime")
     List<Event> findActiveAt(@org.springframework.data.repository.query.Param("targetTime") java.time.LocalDateTime targetTime);
+
+    Page<Event> findByNameContainingIgnoreCase(String name, Pageable pageable);
 }

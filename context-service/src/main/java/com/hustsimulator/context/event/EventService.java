@@ -13,4 +13,5 @@ public interface EventService {
     Event create(EventDTO.CreateEventRequest request);
     Event update(UUID id, EventDTO.UpdateEventRequest request);
     void delete(UUID id);
+    com.hustsimulator.context.common.PageResponse<Event> getEventsPaged(String search, int page, int size);
 }

@@ -57,4 +57,12 @@ public class RecurringEventController {
     public void delete(@PathVariable UUID id) {
         recurringEventService.delete(id);
     }
+
+    @GetMapping("/paged")
+    public com.hustsimulator.context.common.PageResponse<RecurringEvent> getRecurringEventsPaged(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return recurringEventService.getRecurringEventsPaged(search, page, size);
+    }
 }

@@ -72,4 +72,13 @@ public class EventController {
     public void delete(@PathVariable UUID id) {
         eventService.delete(id);
     }
+
+    @GetMapping("/paged")
+    @Operation(summary = "Find events with pagination", description = "Retrieve a paginated list of events with optional search")
+    public com.hustsimulator.context.common.PageResponse<Event> getEventsPaged(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return eventService.getEventsPaged(search, page, size);
+    }
 }

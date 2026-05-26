@@ -20,4 +20,6 @@ public interface RecurringEventRepository extends JpaRepository<RecurringEvent, 
      * Không còn query cross-service vào bảng messages_chat nữa.
      */
     List<RecurringEvent> findByIdIn(@Param("ids") Collection<UUID> ids);
+
+    org.springframework.data.domain.Page<RecurringEvent> findByNameContainingIgnoreCase(String name, org.springframework.data.domain.Pageable pageable);
 }
