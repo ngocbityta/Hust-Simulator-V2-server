@@ -50,7 +50,7 @@ services:
       - "7882:7882/udp"
       - "8320:8320"
     environment:
-      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
     deploy:
@@ -183,6 +183,9 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_CLIENT_URL: ${LIVEKIT_CLIENT_URL:-ws://localhost:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
       JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
     deploy:
       resources:
