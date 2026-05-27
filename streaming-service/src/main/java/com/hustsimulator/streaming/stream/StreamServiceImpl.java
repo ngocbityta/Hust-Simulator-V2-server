@@ -45,7 +45,8 @@ public class StreamServiceImpl implements StreamService {
         if (existingSession.isPresent()) {
             roomName = existingSession.get().getRoomName();
         } else {
-            roomName = request.getEntityType().name().toLowerCase() + "_stream_" + request.getEntityId();
+            // Append a short random UUID suffix to prevent duplicate room names with old ended sessions
+            roomName = request.getEntityType().name().toLowerCase() + "_stream_" + request.getEntityId() + "_" + UUID.randomUUID().toString().substring(0, 8);
 
             StreamSession newSession = StreamSession.builder()
                     .roomName(roomName)
