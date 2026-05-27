@@ -1,4 +1,3 @@
-import { Waypoint } from '../interfaces/heatmap.interface';
 import { getVietnamTimeComponents } from './time.util';
 
 export function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -14,35 +13,6 @@ export function getDistance(lat1: number, lng1: number, lat2: number, lng2: numb
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c;
-}
-
-export function findNearest(lat: number, lng: number, list: Waypoint[]): Waypoint {
-  let minD = Infinity;
-  let nearest = list[0];
-  for (const item of list) {
-    const d = getDistance(lat, lng, item.lat, item.lng);
-    if (d < minD) {
-      minD = d;
-      nearest = item;
-    }
-  }
-  return nearest;
-}
-
-export function interpolatePoints(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-  steps: number
-): Array<{ lat: number, lng: number }> {
-  const points: Array<{ lat: number, lng: number }> = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    points.push({
-      lat: lat1 + (lat2 - lat1) * t,
-      lng: lng1 + (lng2 - lng1) * t
-    });
-  }
-  return points;
 }
 
 export function getCampusPhase(targetTimestampMs?: number): { transitRatio: number, phase: string } {

@@ -10,5 +10,12 @@ public class BuildingDTO {
 
     public record CreateBuildingRequest(String name, UUID mapId, List<double[]> points) {}
 
-    public record UpdateBuildingRequest(String name, Boolean isActive) {}
+    public record UpdateBuildingRequest(
+            String name,
+            Boolean isActive,
+            String fillColor,
+            Double labelMinZoom,
+            Boolean isLabelVisible,
+            String category
+    ) {}
 }

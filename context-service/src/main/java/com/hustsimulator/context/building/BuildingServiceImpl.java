@@ -52,11 +52,14 @@ public class BuildingServiceImpl implements BuildingService {
         log.info("Creating building '{}' on map {}", request.name(), request.mapId());
 
         String coordinatesJson = serializePoints(request.points());
+        double[] centroid = GeometryUtils.getCentroid(coordinatesJson, objectMapper);
 
         Building building = Building.builder()
                 .name(request.name())
                 .mapId(request.mapId())
                 .coordinates(coordinatesJson)
+                .centroidLat(centroid[1])  // getCentroid returns [x(lng), y(lat)]
+                .centroidLng(centroid[0])
                 .build();
 
         return buildingRepository.save(building);
@@ -71,6 +74,18 @@ public class BuildingServiceImpl implements BuildingService {
         }
         if (request.isActive() != null) {
             building.setIsActive(request.isActive());
+        }
+        if (request.fillColor() != null) {
+            building.setFillColor(request.fillColor());
+        }
+        if (request.labelMinZoom() != null) {
+            building.setLabelMinZoom(request.labelMinZoom());
+        }
+        if (request.isLabelVisible() != null) {
+            building.setIsLabelVisible(request.isLabelVisible());
+        }
+        if (request.category() != null) {
+            building.setCategory(request.category());
         }
         log.info("Updating building: {}", id);
         return buildingRepository.save(building);

@@ -25,4 +25,5 @@ export interface Waypoint {
   lat: number;
   lng: number;
   name: string;
+  nodeType?: string;
 }

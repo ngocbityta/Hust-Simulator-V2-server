@@ -76,7 +76,7 @@ def hash_user_id(user_id_str: str) -> int:
     hash_int = int(hashlib.md5(str(user_id_str).encode('utf-8')).hexdigest(), 16)
     return (hash_int % NUM_USERS) + 1   # 0 is reserved for padding
 
-def gps_trajectory_to_checkins(trajectory_points, current_hour_of_week: int):
+def gps_trajectory_to_checkins(trajectory_points, fallback_hour_of_week: int):
     """
     Convert raw GPS trajectory to check-in sequence.
     Applies POI-snapping and deduplication (consecutive same POI removed).
@@ -87,7 +87,12 @@ def gps_trajectory_to_checkins(trajectory_points, current_hour_of_week: int):
     for pt in trajectory_points:
         poi_id, _ = snap_to_poi(pt.latitude, pt.longitude)
         if poi_id is not None and poi_id != last_poi:
-            checkins.append((poi_id, current_hour_of_week))
+            if hasattr(pt, 'timestamp') and pt.timestamp > 0:
+                ts_dt = datetime.fromtimestamp(pt.timestamp / 1000.0, tz=timezone.utc)
+                hw = ts_dt.weekday() * 24 + ts_dt.hour
+            else:
+                hw = fallback_hour_of_week
+            checkins.append((poi_id, hw))
             last_poi = poi_id
     return checkins
 
@@ -179,7 +184,7 @@ class STTFRecommender(nn.Module):
 
         # Scaled dot-product matching: (batch, d) x (d, P) → (batch, P)
         scores = torch.matmul(S, E_cand.T) / math.sqrt(self.d_model)
-        probs  = torch.softmax(scores, dim=-1)            # (batch, P)
+        probs  = torch.sigmoid(scores)                    # (batch, P)
         return probs
 
 

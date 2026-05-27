@@ -5,12 +5,10 @@ import { RedisService } from '../redis/redis.service';
 import { ISpatialService } from '../spatial/spatial.interface';
 import { RedisKey } from '../common/enums/redis-key.enum';
 import { IIntentService, IntentPrediction } from '../intent/intent.interface';
-import * as fs from 'fs';
-import * as path from 'path';
 
 import { PredictiveHeatmapCell, PredictiveHeatmapPayload, ActiveEvent, Waypoint } from '../common/interfaces/heatmap.interface';
-import { TRANSIT_GATES, PARKING_AREAS, CANTEEN_AREAS } from '../common/constants/transit.constant';
-import { findNearest, interpolatePoints, getCampusPhase, getDistance } from '../common/utils/geo.util';
+import { getCampusPhase } from '../common/utils/geo.util';
+import { PathfindingUtil } from '../common/utils/pathfinding.util';
 import { DEFAULT_WEEKDAY_PROFILE } from '../common/constants/activity-profile.constant';
 import { calculateActivityMultiplier } from '../common/utils/time.util';
 
@@ -31,28 +29,24 @@ export class PredictiveHeatmapService implements OnModuleInit {
     private readonly configService: ConfigService,
   ) { }
 
-  onModuleInit() {
+  async onModuleInit() {
+    // Initialize pathfinding graph from context-service DB
+    const host = this.configService.get<string>('CONTEXT_SERVICE_HOST', 'localhost');
+    const port = this.configService.get<number>('CONTEXT_SERVICE_REST_PORT', 8080);
+    const pathfinder = PathfindingUtil.getInstance(host, port);
+
     try {
-      const poisData = fs.readFileSync(path.join(process.cwd(), 'pois.json'), 'utf-8');
-      const rawMap = JSON.parse(poisData);
-      for (const key in rawMap) {
-        const poi = rawMap[key];
-        if (poi.db_uuid) {
-          this.poisMap.set(poi.db_uuid, {
-            name: poi.name,
-            lat: poi.lat,
-            lng: poi.lng,
-          });
-        }
-      }
-      this.logger.log(`Loaded ${this.poisMap.size} POIs into predictive heatmap service.`);
+      await pathfinder.initialize();
+      // Populate poisMap from the graph data (loaded from DB)
+      this.poisMap = pathfinder.getGraphData().poisMap;
+      this.logger.log(`Loaded ${this.poisMap.size} POIs from context-service DB.`);
     } catch (err) {
-      this.logger.warn(`Could not load pois.json: ${err}`);
+      this.logger.error(`Failed to initialize campus graph, will retry on next cycle: ${err}`);
     }
 
     const intervalMs = this.configService.get<number>(
       'HEATMAP_PREDICTIVE_INTERVAL_MS',
-      10000, // Aggregate every 10s by default
+      10000,
     );
     const interval = setInterval(() => {
       this.aggregatePredictiveHeatmap().catch((err) => {
@@ -136,6 +130,20 @@ export class PredictiveHeatmapService implements OnModuleInit {
 
       let totalOnline = 0;
       const predictionPromises = [];
+      const host = this.configService.get<string>('CONTEXT_SERVICE_HOST', 'localhost');
+      const port = this.configService.get<number>('CONTEXT_SERVICE_REST_PORT', 8080);
+      const pathfinder = PathfindingUtil.getInstance(host, port);
+
+      if (!pathfinder.isInitialized()) {
+        try {
+          await pathfinder.initialize();
+          this.poisMap = pathfinder.getGraphData().poisMap;
+        } catch (err) {
+          this.logger.warn(`Pathfinder not initialized, skipping transit distribution: ${err}`);
+        }
+      }
+
+      const graphData = pathfinder.getGraphData();
 
       for (let i = 0; i < userIds.length; i++) {
         const userId = userIds[i];
@@ -232,24 +240,27 @@ export class PredictiveHeatmapService implements OnModuleInit {
 
               // 2. Distribute transit weight along path waypoints if transitRatio > 0
               if (transitWeight > 0) {
-                let pathPoints: Array<{ lat: number, lng: number }> = [];
+                let pathPoints: Array<{ lat: number; lng: number; name?: string; nodeType?: string }> = [];
+
+                let startId = cand.poiId;
+                let endId = cand.poiId;
 
                 if (phase === 'ARRIVING') {
-                  const startNode = findNearest(cand.lat, cand.lng, [...TRANSIT_GATES, ...PARKING_AREAS]);
-                  const dist = getDistance(startNode.lat, startNode.lng, cand.lat, cand.lng);
-                  const steps = Math.max(2, Math.ceil(dist / 10));
-                  pathPoints = interpolatePoints(startNode.lat, startNode.lng, cand.lat, cand.lng, steps);
+                  startId = pathfinder.getNearestTransitNode(cand.lat, cand.lng, [...graphData.gates, ...graphData.parkingAreas]);
+                  endId = cand.poiId;
                 } else if (phase === 'DEPARTING') {
-                  const endNode = findNearest(cand.lat, cand.lng, [...TRANSIT_GATES, ...PARKING_AREAS]);
-                  const dist = getDistance(cand.lat, cand.lng, endNode.lat, endNode.lng);
-                  const steps = Math.max(2, Math.ceil(dist / 10));
-                  pathPoints = interpolatePoints(cand.lat, cand.lng, endNode.lat, endNode.lng, steps);
+                  startId = cand.poiId;
+                  endId = pathfinder.getNearestTransitNode(cand.lat, cand.lng, [...graphData.gates, ...graphData.parkingAreas]);
                 } else if (phase === 'LUNCH_BREAK') {
-                  const endNode = findNearest(cand.lat, cand.lng, CANTEEN_AREAS);
-                  const dist = getDistance(cand.lat, cand.lng, endNode.lat, endNode.lng);
-                  const steps = Math.max(2, Math.ceil(dist / 10));
-                  pathPoints = interpolatePoints(cand.lat, cand.lng, endNode.lat, endNode.lng, steps);
-                } else {
+                  startId = cand.poiId;
+                  endId = pathfinder.getNearestTransitNode(cand.lat, cand.lng, graphData.canteenAreas);
+                }
+
+                if (startId !== endId) {
+                  pathPoints = pathfinder.getPath(startId, endId);
+                }
+
+                if (pathPoints.length === 0) {
                   pathPoints = [
                     { lat: cand.lat, lng: cand.lng },
                     { lat: cand.lat + 0.0001, lng: cand.lng + 0.0001 },
@@ -257,36 +268,55 @@ export class PredictiveHeatmapService implements OnModuleInit {
                   ];
                 }
 
-                const weightPerPoint = transitWeight / pathPoints.length;
-                for (const pt of pathPoints) {
-                  const ptCell = this.spatialService.getGridCell(pt.lat, pt.lng);
-                  const ptKey = this.spatialService.getCellKey(ptCell);
-
-                  if (!cellMap.has(ptKey)) {
-                    cellMap.set(ptKey, {
-                      cellX: ptCell.x,
-                      cellY: ptCell.y,
-                      count: 0,
-                      intents: new Map<string, number>(),
-                    });
+                // Simplified localized smearing: pick a random node on the path
+                const randIdx = Math.floor(Math.random() * pathPoints.length);
+                const pt = pathPoints[randIdx];
+                
+                let congestionMultiplier = 1.0;
+                if (phase === 'DEPARTING') {
+                  if (pathfinder.isBottleneck(pt)) {
+                    congestionMultiplier = 3.0; // 3x congestion at bottlenecks
                   }
-
-                  const ptCellData = cellMap.get(ptKey)!;
-                  ptCellData.count += weightPerPoint;
-
-                  const intentStr = cand.poiName || 'UNKNOWN';
-                  ptCellData.intents.set(
-                    intentStr,
-                    (ptCellData.intents.get(intentStr) || 0) + weightPerPoint,
-                  );
+                } else if (phase === 'ARRIVING') {
+                  if (pathfinder.isBottleneck(pt)) {
+                    congestionMultiplier = 2.0; 
+                  }
                 }
+
+                const finalTransitWeight = transitWeight * congestionMultiplier;
+
+                const ptCell = this.spatialService.getGridCell(pt.lat, pt.lng);
+                const ptKey = this.spatialService.getCellKey(ptCell);
+
+                if (!cellMap.has(ptKey)) {
+                  cellMap.set(ptKey, {
+                    cellX: ptCell.x,
+                    cellY: ptCell.y,
+                    count: 0,
+                    intents: new Map<string, number>(),
+                  });
+                }
+
+                const ptCellData = cellMap.get(ptKey)!;
+                ptCellData.count += finalTransitWeight;
+
+                const intentStr = cand.poiName || 'UNKNOWN';
+                ptCellData.intents.set(
+                  intentStr,
+                  (ptCellData.intents.get(intentStr) || 0) + finalTransitWeight,
+                );
               }
             }
           })
         );
       }
 
-      await Promise.allSettled(predictionPromises);
+      // Batch promises to avoid memory spikes
+      const batchSize = 500;
+      for (let i = 0; i < predictionPromises.length; i += batchSize) {
+        const batch = predictionPromises.slice(i, i + batchSize);
+        await Promise.allSettled(batch);
+      }
 
       for (const phantom of phantomDensities) {
         const targetCell = this.spatialService.getGridCell(phantom.lat, phantom.lng);
