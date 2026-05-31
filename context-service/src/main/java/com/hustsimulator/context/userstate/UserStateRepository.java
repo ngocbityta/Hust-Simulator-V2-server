@@ -22,4 +22,7 @@ public interface UserStateRepository extends JpaRepository<UserState, UUID> {
 
     @org.springframework.data.jpa.repository.Query("SELECT us.eventId, COUNT(us) FROM UserState us WHERE us.eventId IN :eventIds GROUP BY us.eventId")
     List<Object[]> countUsersByEventIds(@org.springframework.data.repository.query.Param("eventIds") List<UUID> eventIds);
+
+    @org.springframework.data.jpa.repository.Query("SELECT us.buildingId, us.activityState, COUNT(us) FROM UserState us WHERE us.buildingId IS NOT NULL GROUP BY us.buildingId, us.activityState")
+    List<Object[]> countUsersByBuildingAndState();
 }

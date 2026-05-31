@@ -13,7 +13,7 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/stats")
-    public DashboardStatsDTO getStats() {
-        return dashboardService.getStats();
+    public DashboardStatsDTO getStats(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "1d") String timeRange) {
+        return dashboardService.getStats(timeRange);
     }
 }

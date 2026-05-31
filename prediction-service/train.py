@@ -24,7 +24,7 @@ import random
 from poi_config import POIS, NUM_POIS, POI_IDS_SORTED
 
 # ===================== Hyperparameters =====================
-NUM_USERS   = 10000
+NUM_USERS   = 100000
 TIME_BINS   = 168       # 7 days x 24 hours
 D_MODEL     = 64
 NUM_HEADS   = 8         # h = 8  (paper default)

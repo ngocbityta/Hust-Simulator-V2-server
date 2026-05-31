@@ -61,8 +61,10 @@ export class IntentService implements IIntentService {
       }
 
       // If AI prediction is highly confident, use it
-      if (aiPrediction && aiPrediction.confidence >= 0.15) {
-        this.logger.debug(`[Hybrid] Using AI Prediction for ${userId}: ${aiPrediction.predictedDestinationName}`);
+      const thresholdVal = this.configService.get('AI_CONFIDENCE_THRESHOLD');
+      const threshold = thresholdVal !== undefined ? parseFloat(thresholdVal) : 0.08;
+      if (aiPrediction && aiPrediction.confidence >= threshold) {
+        this.logger.debug(`[Hybrid] Using AI Prediction for ${userId}: ${aiPrediction.predictedDestinationName} (confidence: ${aiPrediction.confidence.toFixed(3)})`);
         return aiPrediction;
       }
 

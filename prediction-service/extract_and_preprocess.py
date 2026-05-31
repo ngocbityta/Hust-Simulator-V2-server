@@ -28,7 +28,7 @@ DB_SSLMODE  = os.environ.get('POSTGRES_SSL',      'disable')
 THRESHOLD      = 100          # Min new records before retraining
 LAST_SYNC_FILE = 'last_sync.txt'
 MIN_CHECKINS   = 3            # Paper: discard trajectories with < min check-ins
-CHECK_IN_RADIUS_M = 80        # Metres — GPS point must be this close to snap to POI
+CHECK_IN_RADIUS_M = 30        # Metres — GPS point must be this close to snap to POI
 
 # ===================== Spatial Utilities =====================
 def haversine_m(lat1, lng1, lat2, lng2):
@@ -166,26 +166,51 @@ def extract_and_preprocess(last_sync):
     records = []
     skipped = 0
     for journey_id, jdata in journeys.items():
-        checkins = gps_to_checkin_seq(jdata['points'], jdata['timestamps'])
-
-        # Paper: discard trajectories that are too short
-        if len(checkins) < MIN_CHECKINS:
-            skipped += 1
+        points = jdata['points']
+        timestamps = jdata['timestamps']
+        
+        if not points:
             continue
+            
+        # Segment trajectory if time gap > 120 minutes (7200 seconds)
+        segments = []
+        current_segment_pts = [points[0]]
+        current_segment_ts = [timestamps[0]]
+        
+        for i in range(1, len(points)):
+            gap = (timestamps[i] - timestamps[i-1]).total_seconds()
+            if gap > 7200:
+                segments.append((current_segment_pts, current_segment_ts))
+                current_segment_pts = []
+                current_segment_ts = []
+            current_segment_pts.append(points[i])
+            current_segment_ts.append(timestamps[i])
+            
+        if current_segment_pts:
+            segments.append((current_segment_pts, current_segment_ts))
+            
+        for seg_idx, (seg_pts, seg_ts) in enumerate(segments):
+            checkins = gps_to_checkin_seq(seg_pts, seg_ts)
 
-        journey_time = jdata['timestamps'][0].strftime('%Y-%m-%d %H:%M:%S')
-        target_poi = checkins[-1][0]   # Final destination = training label
+            # Paper: discard trajectories that are too short
+            if len(checkins) < MIN_CHECKINS:
+                skipped += 1
+                continue
 
-        for step, (poi_id, hour_of_week) in enumerate(checkins):
-            records.append({
-                'journey_id'   : journey_id,
-                'step'         : step,
-                'user_id'      : jdata['user_id'],
-                'poi_id'       : poi_id,
-                'hour_of_week' : hour_of_week,
-                'target_poi'   : target_poi,
-                'journey_time' : journey_time,
-            })
+            sub_journey_id = f"{journey_id}_{seg_idx}" if len(segments) > 1 else journey_id
+            journey_time = seg_ts[0].strftime('%Y-%m-%d %H:%M:%S')
+            target_poi = checkins[-1][0]   # Final destination = training label
+
+            for step, (poi_id, hour_of_week) in enumerate(checkins):
+                records.append({
+                    'journey_id'   : sub_journey_id,
+                    'step'         : step,
+                    'user_id'      : jdata['user_id'],
+                    'poi_id'       : poi_id,
+                    'hour_of_week' : hour_of_week,
+                    'target_poi'   : target_poi,
+                    'journey_time' : journey_time,
+                })
 
     if not records:
         print(f"No valid check-in sequences (skipped {skipped} short journeys).")

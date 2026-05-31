@@ -15,8 +15,8 @@ public record DashboardStatsDTO(
     long eventsOngoing,
     long totalRecurringEvents,
     long recurringEventsOngoing,
-    // Activity distribution (key = UserActivityState name, value = count)
-    Map<String, Long> userActivityDistribution,
+    // Activity distribution directly mapped for UI
+    List<BehaviorDistribution> studentBehaviorDistribution,
     // Room utilization (key = RoomStatus name, value = count)
     Map<String, Long> roomStatusDistribution,
     // Event status breakdown (key = EventStatus name, value = count)
@@ -25,21 +25,21 @@ public record DashboardStatsDTO(
     List<BuildingUserCount> usersPerBuilding,
     // Heatmap density over time (hourly, last 24h)
     List<HeatmapDensityPoint> heatmapDensityTimeline,
-    // Recent events
-    List<RecentEvent> recentEvents,
+    // Top 5 busiest nodes
+    List<TopNode> topNodes,
     // Upcoming/ongoing events timeline
     List<EventTimelineItem> eventsTimeline,
     // School Admin Specific Data
     List<RoomOccupancy> roomOccupancyByBuilding,
-    List<LiveClassAttendance> liveClassAttendance,
-    Map<String, Long> todayClassesStatus
+    List<LiveClassAttendance> liveClassAttendance
 ) {
     public record BuildingUserCount(String buildingId, String buildingName, long userCount) {}
     public record HeatmapDensityPoint(String time, long totalCount) {}
-    public record RecentEvent(String id, String name, String type, String status, String startTime) {}
     public record EventTimelineItem(String id, String name, String type, String status, String startTime, String endTime, int estimatedParticipants) {}
     
     // New Records for School Admin
     public record RoomOccupancy(String buildingName, long busyCount, long emptyCount) {}
     public record LiveClassAttendance(String className, String roomName, long actualParticipants, int estimatedParticipants) {}
+    public record BehaviorDistribution(String name, long value) {}
+    public record TopNode(String name, String time, long estimate) {}
 }

@@ -9,6 +9,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.hustsimulator.context.enums.EventStatus;
+import com.hustsimulator.context.enums.EventType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -58,6 +59,10 @@ public abstract class Event {
 
     @Column(name = "estimated_participants")
     private Integer estimatedParticipants;
+
+    @Column(name = "type", insertable = false, updatable = false)
+    @Enumerated(EnumType.STRING)
+    private EventType eventType;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

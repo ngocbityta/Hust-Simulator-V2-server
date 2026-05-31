@@ -3,7 +3,6 @@ import json
 import psycopg2
 import logging
 from hashlib import md5
-from shapely.geometry import Polygon, MultiPoint
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("POISync")
@@ -27,33 +26,6 @@ def get_db_connection():
         sslmode=DB_SSLMODE
     )
 
-def compute_centroid(geometry_str):
-    """
-    Parses a geometry string like '[[105.8, 21.0], [105.81, 21.01], ...]'
-    and returns (lat, lng) as the centroid using shapely.
-    Note: The input is [lng, lat].
-    """
-    try:
-        coords = json.loads(geometry_str)
-        if not coords or not isinstance(coords, list):
-            return None, None
-        
-        valid_coords = [pt for pt in coords if isinstance(pt, list) and len(pt) >= 2]
-        if not valid_coords:
-            return None, None
-            
-        if len(valid_coords) >= 3:
-            # Create a Polygon (Shapely automatically closes the boundary if not already closed)
-            geom = Polygon(valid_coords)
-        else:
-            # Fallback to MultiPoint for 1 or 2 coordinate pairs
-            geom = MultiPoint(valid_coords)
-            
-        centroid = geom.centroid
-        return centroid.y, centroid.x  # returns (lat, lng)
-    except Exception as e:
-        logger.error(f"Error parsing geometry with shapely: {e}")
-        return None, None
 
 def sync_pois():
     conn = get_db_connection()
@@ -61,7 +33,7 @@ def sync_pois():
     
     logger.info("Fetching active buildings from context.buildings...")
     cursor.execute("""
-        SELECT id, name, coordinates 
+        SELECT id, name, centroid_lat, centroid_lng, category 
         FROM context.buildings 
         WHERE is_active = true 
         ORDER BY id ASC
@@ -76,8 +48,7 @@ def sync_pois():
         
     new_pois = {}
     valid_count = 0
-    for b_id, b_name, coordinates in rows:
-        lat, lng = compute_centroid(coordinates)
+    for b_id, b_name, lat, lng, category in rows:
         if lat is None or lng is None:
             continue
             
@@ -85,7 +56,8 @@ def sync_pois():
             "db_uuid": str(b_id),
             "name": b_name,
             "lat": lat,
-            "lng": lng
+            "lng": lng,
+            "category": category or "CLASSROOM"
         }
         valid_count += 1
         

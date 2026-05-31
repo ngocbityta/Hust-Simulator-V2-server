@@ -1,4 +1,4 @@
-package com.hustsimulator.context.campusgraph;
+package com.hustsimulator.context.campusnode;
 
 import com.hustsimulator.context.entity.CampusNode;
 import org.springframework.data.jpa.repository.JpaRepository;

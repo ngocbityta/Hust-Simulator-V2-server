@@ -27,7 +27,7 @@ from poi_config import POIS, NUM_POIS, POI_IDS_SORTED
 
 # ===================== Model Hyperparameters =====================
 # Matching paper: ijgi-12-00079 (STTF-Recommender)
-NUM_USERS = 10000     # Max unique users for embedding lookup
+NUM_USERS = 100000     # Max unique users for embedding lookup
 TIME_BINS = 168       # 7 days x 24 hours — captures weekly periodicity
 D_MODEL = 64          # Embedding dimension d
 NUM_HEADS = 8         # Multi-Head Attention heads h = 8 (paper default)
@@ -36,7 +36,7 @@ DROPOUT = 0.1
 MAX_SEQ_LEN = 50      # Max check-in sequence length n
 
 # GPS → check-in conversion
-CHECK_IN_RADIUS_M = 80   # meters — snap GPS point to POI if within this radius
+CHECK_IN_RADIUS_M = 30   # meters — snap GPS point to POI if within this radius
 
 # ===================== Utility Functions =====================
 
@@ -184,7 +184,8 @@ class STTFRecommender(nn.Module):
 
         # Scaled dot-product matching: (batch, d) x (d, P) → (batch, P)
         scores = torch.matmul(S, E_cand.T) / math.sqrt(self.d_model)
-        probs  = torch.sigmoid(scores)                    # (batch, P)
+        TEMPERATURE = 0.5  # Sharper distribution — lower = more decisive
+        probs  = torch.softmax(scores / TEMPERATURE, dim=-1)
         return probs
 
 
@@ -234,6 +235,49 @@ def load_model_if_needed():
             logger.info(f"Loaded STTF-Recommender model successfully (NUM_POIS={NUM_POIS}).")
         except Exception as e:
             logger.error(f"Failed to load model: {e}. Keeping previous model.")
+
+
+# ---- POI Time-Aware Weights ----
+
+def get_time_weight(poi_category: str, hour: float) -> float:
+    """Return multiplier [0.05, 2.0] for a POI category at given hour of day (local time)."""
+    weights = {
+        'CLASSROOM': {
+            # Active during class hours, closed at night
+            (7, 11.5): 1.0, (13, 17): 1.0, (17, 21): 0.4,
+            'default': 0.05
+        },
+        'CANTEEN': {
+            # Peak at lunch and dinner
+            (6, 7.5): 0.5, (11, 13): 2.0, (17, 19): 1.5,
+            'default': 0.15
+        },
+        'LIBRARY': {
+            # Open 7-22, peak evening study
+            (7, 17): 0.8, (17, 22): 1.5,
+            'default': 0.05
+        },
+        'DORM': {
+            # Active at night, early morning
+            (0, 7): 1.5, (21, 24): 1.5, (7, 17): 0.2,
+            'default': 0.3
+        },
+        'SPORTS': {
+            # Afternoon/evening
+            (16, 21): 1.2,
+            'default': 0.1
+        },
+        'LAB': {
+            # Extended hours
+            (8, 22): 0.8,
+            'default': 0.05
+        },
+    }
+    cat_weights = weights.get(poi_category, weights['CLASSROOM'])
+    for (start, end), mult in cat_weights.items():
+        if isinstance(start, (int, float)) and start <= hour < end:
+            return mult
+    return cat_weights.get('default', 0.1)
 
 
 # ===================== gRPC Service =====================
@@ -295,6 +339,20 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                     )  # (1, num_pois)
                     probs_np = probs[0].numpy()
                     
+                    # Apply time-aware POI scoring post-processing (using Vietnam local hour)
+                    local_hour = (hour_of_week % 24 + 7) % 24
+                    for idx in range(len(probs_np)):
+                        poi_id = POI_IDS_SORTED[idx]
+                        poi = POIS[poi_id]
+                        category = str(poi.get('category') or 'CLASSROOM').upper()
+                        time_weight = get_time_weight(category, local_hour)
+                        probs_np[idx] *= time_weight
+
+                    # Re-normalize
+                    total = probs_np.sum()
+                    if total > 0:
+                        probs_np /= total
+                    
                     top_k = 10
                     top_indices = np.argsort(probs_np)[-top_k:][::-1]
                     
@@ -305,7 +363,7 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                     candidate_destinations = []
                     for idx in top_indices:
                         prob = float(probs_np[idx])
-                        if prob > 0.01:
+                        if prob > 0.005:  # lower threshold slightly for softmax candidates
                             c_poi_id = POI_IDS_SORTED[idx]
                             c_poi = POIS[c_poi_id]
                             candidate_destinations.append(

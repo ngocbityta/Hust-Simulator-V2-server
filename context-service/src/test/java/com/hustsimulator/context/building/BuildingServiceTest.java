@@ -85,8 +85,6 @@ class BuildingServiceTest {
         assertThat(buildingService.isPointInsideBuilding(id, 5, 5)).isTrue();
         // Outside
         assertThat(buildingService.isPointInsideBuilding(id, 15, 15)).isFalse();
-        // On edge (isPointInPolygon logic dependent, usually true or false depending on cross-number implementation)
-        // Our GeometryUtils uses Ray Casting which usually handles edges.
         assertThat(buildingService.isPointInsideBuilding(id, 0, 0)).isTrue();
     }
 }
