@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiProperty } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { HeatmapService } from './heatmap.service';
 import { PredictiveHeatmapService } from './predictive-heatmap.service';
 
@@ -65,6 +65,17 @@ export class PredictiveHeatmapPayloadDto {
 
   @ApiProperty({ description: 'Array of projected predictive heatmap cells', type: [PredictiveHeatmapCellDto] })
   cells: PredictiveHeatmapCellDto[];
+
+  @ApiPropertyOptional({ description: 'Global factors explaining the prediction', type: [String] })
+  globalReasons?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Map of POI name to list of specific reasons',
+    example: { 'C1': ['Sự kiện ca nhạc sắp diễn ra'] },
+    type: 'object',
+    additionalProperties: { type: 'array', items: { type: 'string' } }
+  })
+  poiReasons?: Record<string, string[]>;
 }
 
 @ApiTags('Heatmap')

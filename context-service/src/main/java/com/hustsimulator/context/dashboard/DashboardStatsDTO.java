@@ -35,7 +35,7 @@ public record DashboardStatsDTO(
 ) {
     public record BuildingUserCount(String buildingId, String buildingName, long userCount) {}
     public record HeatmapDensityPoint(String time, long totalCount) {}
-    public record EventTimelineItem(String id, String name, String type, String status, String startTime, String endTime, int estimatedParticipants) {}
+    public record EventTimelineItem(String id, String name, String type, String status, String startTime, String endTime, int estimatedParticipants, String buildingId) {}
     
     // New Records for School Admin
     public record RoomOccupancy(String buildingName, long busyCount, long emptyCount) {}

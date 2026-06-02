@@ -35,33 +35,76 @@ export function getCampusPhase(targetTimestampMs?: number): CampusPhaseInfo {
     };
   }
 
-  if (hour >= 6.0 && hour < 7.0) {
+  // 6:00 - 6:45 (6.0 - 6.75) Arriving for morning shifts
+  if (hour >= 6.0 && hour < 6.75) {
     return { transitRatio: 0.75, phase: 'ARRIVING', nodeHotspots: ['GATE', 'PARKING'], wayDensityMultiplier: 1.5 };
   }
-  if (hour >= 7.0 && hour < 7.5) {
-    return { transitRatio: 0.25, phase: 'SETTLING', nodeHotspots: ['GATE', 'PARKING'], wayDensityMultiplier: 1.2 };
+  
+  // Ca 1: 6:45 - 8:20 (6.75 - 8.33)
+  if (hour >= 6.75 && hour < 8.33) {
+    return { transitRatio: 0.05, phase: 'IN_CLASS_CA1', nodeHotspots: [], wayDensityMultiplier: 0.3 };
   }
-  if (hour >= 7.5 && hour < 11.5) {
-    return { transitRatio: 0.05, phase: 'IN_CLASS', nodeHotspots: [], wayDensityMultiplier: 0.3 };
+  
+  // Shift change 1-2: 8:20 - 8:25 (8.33 - 8.41)
+  if (hour >= 8.33 && hour < 8.41) {
+    return { transitRatio: 0.65, phase: 'SHIFT_CHANGE_1_2', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 1.5 };
   }
-  if (hour >= 11.5 && hour < 12.0) {
+
+  // Ca 2: 8:25 - 10:00 (8.41 - 10.00)
+  if (hour >= 8.41 && hour < 10.00) {
+    return { transitRatio: 0.05, phase: 'IN_CLASS_CA2', nodeHotspots: [], wayDensityMultiplier: 0.3 };
+  }
+
+  // Shift change 2-3: 10:00 - 10:05 (10.00 - 10.08)
+  if (hour >= 10.00 && hour < 10.08) {
+    return { transitRatio: 0.65, phase: 'SHIFT_CHANGE_2_3', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 1.5 };
+  }
+
+  // Ca 3: 10:05 - 11:40 (10.08 - 11.66)
+  if (hour >= 10.08 && hour < 11.66) {
+    return { transitRatio: 0.05, phase: 'IN_CLASS_CA3', nodeHotspots: [], wayDensityMultiplier: 0.3 };
+  }
+
+  // Lunch Rush: 11:40 - 12:15 (11.66 - 12.25)
+  if (hour >= 11.66 && hour < 12.25) {
     return { transitRatio: 0.70, phase: 'LUNCH_RUSH', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 1.2 };
   }
-  if (hour >= 12.0 && hour < 12.75) { // 12:00 - 12:45
-    return { transitRatio: 0.15, phase: 'LUNCH_STAY', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 0.8 };
+
+  // Arriving/Settling for afternoon classes: 12:15 - 12:30 (12.25 - 12.50)
+  if (hour >= 12.25 && hour < 12.50) {
+    return { transitRatio: 0.40, phase: 'LUNCH_STAY_AND_ARRIVING', nodeHotspots: ['GATE', 'PARKING', 'CANTEEN'], wayDensityMultiplier: 0.8 };
   }
-  if (hour >= 12.75 && hour < 13.5) { // 12:45 - 13:30
-    return { transitRatio: 0.45, phase: 'POST_LUNCH', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 1.0 };
+
+  // Ca 4: 12:30 - 14:05 (12.50 - 14.08)
+  if (hour >= 12.50 && hour < 14.08) {
+    return { transitRatio: 0.05, phase: 'IN_CLASS_CA4', nodeHotspots: [], wayDensityMultiplier: 0.3 };
   }
-  if (hour >= 13.5 && hour < 17.0) {
-    return { transitRatio: 0.05, phase: 'IN_CLASS', nodeHotspots: [], wayDensityMultiplier: 0.3 };
+
+  // Shift change 4-5: 14:05 - 14:10 (14.08 - 14.16)
+  if (hour >= 14.08 && hour < 14.16) {
+    return { transitRatio: 0.65, phase: 'SHIFT_CHANGE_4_5', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 1.5 };
   }
-  if (hour >= 17.0 && hour < 17.5) { // 17:00 - 17:30
+
+  // Ca 5: 14:10 - 15:45 (14.16 - 15.75)
+  if (hour >= 14.16 && hour < 15.75) {
+    return { transitRatio: 0.05, phase: 'IN_CLASS_CA5', nodeHotspots: [], wayDensityMultiplier: 0.3 };
+  }
+
+  // Shift change 5-6: 15:45 - 15:50 (15.75 - 15.83)
+  if (hour >= 15.75 && hour < 15.83) {
+    return { transitRatio: 0.65, phase: 'SHIFT_CHANGE_5_6', nodeHotspots: ['CANTEEN'], wayDensityMultiplier: 1.5 };
+  }
+
+  // Ca 6: 15:50 - 17:25 (15.83 - 17.41)
+  if (hour >= 15.83 && hour < 17.41) {
+    return { transitRatio: 0.05, phase: 'IN_CLASS_CA6', nodeHotspots: [], wayDensityMultiplier: 0.3 };
+  }
+
+  // Departing: 17:25 - 18:00 (17.41 - 18.00)
+  if (hour >= 17.41 && hour < 18.00) {
     return { transitRatio: 0.80, phase: 'DEPARTING', nodeHotspots: ['GATE', 'PARKING'], wayDensityMultiplier: 2.0 };
   }
-  if (hour >= 17.5 && hour < 18.0) { // 17:30 - 18:00
-    return { transitRatio: 0.55, phase: 'LATE_DEPART', nodeHotspots: ['GATE', 'PARKING'], wayDensityMultiplier: 1.5 };
-  }
+
   if (hour >= 18.0 && hour < 21.0) {
     return { transitRatio: 0.20, phase: 'EVENING', nodeHotspots: [], wayDensityMultiplier: 0.6 };
   }
@@ -174,11 +217,20 @@ export function getPolygonCellsWithGaussian(
   }
 
   // 4. Normalize weights to sum to 1.0
-  if (totalWeight > 0) {
-    for (const cell of cells) {
-      cell.weight /= totalWeight;
+  // First, limit to top 15 cells to prevent massive JSON payload for large buildings
+  cells.sort((a, b) => b.weight - a.weight);
+  const topCells = cells.slice(0, 15);
+  
+  let newTotal = 0;
+  for (const cell of topCells) {
+    newTotal += cell.weight;
+  }
+
+  if (newTotal > 0) {
+    for (const cell of topCells) {
+      cell.weight /= newTotal;
     }
   }
 
-  return cells;
+  return topCells;
 }

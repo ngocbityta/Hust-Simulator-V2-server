@@ -7,6 +7,10 @@ import { IntentPrediction } from '../intent/intent.interface';
 import { RedisKey } from '../common/enums/redis-key.enum';
 import { getCampusPhase, getDistance, getPolygonCellsWithGaussian, interpolatePolyline } from '../common/utils/geo.util';
 import { CampusDataUtil } from '../common/utils/campus-data.util';
+import { WeatherService } from './services/weather.service';
+import { ContextApiService, Poi } from './services/context-api.service';
+import { HeatmapMultiplierService } from './services/heatmap-multiplier.service';
+import { distributeFlockingWeight } from './utils/flocking.util';
 
 export interface PredictiveHeatmapCell {
   cellX: number;
@@ -21,12 +25,14 @@ export interface PredictiveHeatmapPayload {
   timestamp: number;
   totalOnline: number;
   cells: PredictiveHeatmapCell[];
+  globalReasons?: string[];
+  poiReasons?: Record<string, string[]>;
 }
 
 @Injectable()
 export class PredictiveHeatmapService implements OnModuleInit {
   private readonly logger = new Logger(PredictiveHeatmapService.name);
-  private poisMap = new Map<string, { name: string; lat: number; lng: number }>();
+  private poisMap = new Map<string, Poi>();
   private userIntentCache = new Map<string, { prediction: IntentPrediction; timestamp: number; lat: number; lng: number }>();
   private latestHeatmap: PredictiveHeatmapPayload | null = null;
   private isGenerating = false;
@@ -36,6 +42,9 @@ export class PredictiveHeatmapService implements OnModuleInit {
     @Inject(ISpatialService) private spatialService: ISpatialService,
     @Inject(IIntentService) private intentService: IIntentService,
     private redisService: RedisService,
+    private weatherService: WeatherService,
+    private contextApiService: ContextApiService,
+    private heatmapMultiplierService: HeatmapMultiplierService,
   ) {}
 
   async onModuleInit() {
@@ -57,50 +66,8 @@ export class PredictiveHeatmapService implements OnModuleInit {
     this.logger.log(`Predictive heatmap interval set to ${intervalMs}ms`);
   }
 
-  private async loadPois() {
-    const host = this.configService.get<string>('CONTEXT_SERVICE_HOST', 'localhost');
-    const port = this.configService.get<number>('CONTEXT_SERVICE_REST_PORT', 8080);
-    try {
-      this.logger.log(`Fetching buildings to populate POIs map...`);
-      const buildingsRes = await fetch(`http://${host}:${port}/api/buildings/active`);
-      if (buildingsRes.ok) {
-        const buildings = await buildingsRes.json();
-        for (const b of buildings) {
-          this.poisMap.set(b.id, { name: b.name, lat: b.latitude, lng: b.longitude });
-        }
-        this.logger.log(`Loaded ${this.poisMap.size} buildings for POIs.`);
-      }
-    } catch(err) {
-       this.logger.warn("Could not load buildings for POI map: " + err);
-    }
-  }
-
   async aggregatePredictiveHeatmap(): Promise<void> {
     await this.generateHeatmap();
-  }
-
-  private getActivityMultiplier(targetTimestampMs?: number): number {
-    if (!targetTimestampMs) return 1.0;
-    const date = new Date(targetTimestampMs);
-    const hour = date.getHours() + date.getMinutes() / 60.0;
-    if (hour >= 2.0 && hour < 5.0) return 0.2;
-    if (hour >= 6.0 && hour < 7.0) return 1.5;
-    if (hour >= 11.5 && hour < 12.5) return 1.2;
-    if (hour >= 17.0 && hour < 18.0) return 1.8;
-    return 1.0;
-  }
-
-  private async fetchActiveEvents(targetTimestampMs: number): Promise<any[]> {
-    const host = this.configService.get<string>('CONTEXT_SERVICE_HOST', 'localhost');
-    const port = this.configService.get<number>('CONTEXT_SERVICE_REST_PORT', 8080);
-    try {
-      const res = await fetch(`http://${host}:${port}/api/dashboard/stats?timeRange=24h`);
-      if (res.ok) {
-        const data = await res.json();
-        return data.events || [];
-      }
-    } catch(err) {}
-    return [];
   }
 
   async generateHeatmap(targetTimestampMs?: number): Promise<PredictiveHeatmapPayload | null> {
@@ -108,7 +75,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
     this.isGenerating = true;
 
     if (this.poisMap.size === 0) {
-      await this.loadPois();
+      this.poisMap = await this.contextApiService.loadPois();
     }
 
     const startTime = Date.now();
@@ -118,10 +85,25 @@ export class PredictiveHeatmapService implements OnModuleInit {
       const metersPerLng = this.spatialService.getMetersPerLng();
       const CACHE_TTL_MS = this.configService.get<number>('INTENT_CACHE_TTL_MS', 30000);
 
-      const phaseInfo = getCampusPhase(targetTimestampMs);
+      // Prevent memory leak by pruning expired cache entries
+      const now = Date.now();
+      for (const [key, val] of this.userIntentCache.entries()) {
+         if (now - val.timestamp > CACHE_TTL_MS) {
+            this.userIntentCache.delete(key);
+         }
+      }
+
+      let phaseInfo = getCampusPhase(targetTimestampMs);
+      const weather = await this.weatherService.fetchWeather();
+      phaseInfo = this.heatmapMultiplierService.adjustTransitPhase(phaseInfo, weather);
+
+      const globalReasons = this.heatmapMultiplierService.getMultiplierReasons(targetTimestampMs, weather);
+      const poiReasons: Record<string, string[]> = {};
+
       const { transitRatio, nodeHotspots, wayDensityMultiplier } = phaseInfo;
 
       const userIds = await this.redisService.client.zrange(RedisKey.PLAYER_GEO_KEY, 0, -1);
+      this.logger.debug(`[PredictiveHeatmapService] Fetched ${userIds.length} users from GEO_KEY`);
       if (userIds.length === 0) return null;
 
       const coords = await this.redisService.client.geopos(RedisKey.PLAYER_GEO_KEY, ...userIds);
@@ -130,12 +112,30 @@ export class PredictiveHeatmapService implements OnModuleInit {
       const eventMultipliers = new Map<string, number>();
       const phantomDensities: Array<{ lat: number, lng: number, count: number, name: string }> = [];
 
-      if (targetTimestampMs) {
-        const activeEvents = await this.fetchActiveEvents(targetTimestampMs);
+      if (targetTimestampMs || true) { // Run in both live and predictive mode to fetch events
+        const activeEvents = await this.contextApiService.fetchActiveEvents(targetTimestampMs || Date.now());
+        const checkTimeMs = targetTimestampMs || Date.now();
+        
         for (const ev of activeEvents) {
+          if (ev.startTime && ev.endTime) {
+            // Append +07:00 to correctly parse Vietnam time (GMT+7)
+            const startStr = ev.startTime.replace(' ', 'T') + '+07:00';
+            const endStr = ev.endTime.replace(' ', 'T') + '+07:00';
+            const startMs = new Date(startStr).getTime();
+            const endMs = new Date(endStr).getTime();
+            
+            // Allow events that start within 1 hour from checkTime, up to their endTime
+            if (checkTimeMs < startMs - 3600000 || checkTimeMs > endMs) {
+              continue;
+            }
+          }
+
           if (ev.buildingId && this.poisMap.has(ev.buildingId)) {
             const poi = this.poisMap.get(ev.buildingId);
             if (poi) {
+              if (!poiReasons[poi.name]) poiReasons[poi.name] = [];
+              poiReasons[poi.name].push(`Sự kiện "${ev.name}" dự kiến diễn ra`);
+
               const participants = ev.estimatedParticipants || 0;
               const multi = 1 + (participants / 20.0);
               eventMultipliers.set(ev.buildingId, multi);
@@ -144,7 +144,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
                 phantomDensities.push({
                   lat: poi.lat,
                   lng: poi.lng,
-                  count: participants * this.getActivityMultiplier(targetTimestampMs) * 0.5,
+                  count: participants * this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs, weather) * 0.5,
                   name: `[Event|${poi.name}] ${ev.name}`
                 });
               }
@@ -167,15 +167,23 @@ export class PredictiveHeatmapService implements OnModuleInit {
       }
 
       const predictionTasks: (() => Promise<void>)[] = [];
+      let nullCoords = 0;
+      let nanCoords = 0;
 
       for (let i = 0; i < userIds.length; i++) {
         const userId = userIds[i];
         const coord = coords[i];
-        if (!coord) continue;
+        if (!coord) {
+            nullCoords++;
+            continue;
+        }
 
         const lng = parseFloat(coord[0] as unknown as string);
         const lat = parseFloat(coord[1] as unknown as string);
-        if (isNaN(lat) || isNaN(lng)) continue;
+        if (isNaN(lat) || isNaN(lng)) {
+            nanCoords++;
+            continue;
+        }
         
         totalOnline++;
 
@@ -202,18 +210,36 @@ export class PredictiveHeatmapService implements OnModuleInit {
             }
           }
 
-          if (!prediction) {
-             const userCell = this.spatialService.getGridCell(lat, lng);
-             const cellKey = this.spatialService.getCellKey(userCell);
-             if (!cellMap.has(cellKey)) {
-               cellMap.set(cellKey, { cellX: userCell.x, cellY: userCell.y, count: 0, intents: new Map<string, number>() });
-             }
-             cellMap.get(cellKey)!.count += 1;
-             return;
+          // ── Always place some weight at the bot's CURRENT position ──
+          // This ensures bots walking on roads are visible on the heatmap
+          const currentPosWeight = 0.3; // 30% weight stays at current position
+          const userCell = this.spatialService.getGridCell(lat, lng);
+          const cellKey = this.spatialService.getCellKey(userCell);
+          if (!cellMap.has(cellKey)) {
+            cellMap.set(cellKey, { cellX: userCell.x, cellY: userCell.y, count: 0, intents: new Map<string, number>() });
           }
+          const currentCellData = cellMap.get(cellKey)!;
+          currentCellData.count += currentPosWeight;
+          currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + currentPosWeight);
 
-          const activityMultiplier = this.getActivityMultiplier(targetTimestampMs);
-          const candidates = prediction.candidateDestinations?.slice(0, 3) || [];
+          if (!prediction) {
+             // No prediction — remaining 70% also stays at current position
+             currentCellData.count += (1 - currentPosWeight);
+             currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + (1 - currentPosWeight));
+             return;
+           }
+
+          const activityMultiplier = this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs, weather);
+          let candidates = prediction.candidateDestinations?.slice(0, 3) || [];
+          if (candidates.length === 0 && prediction.predictedDestinationId) {
+            candidates = [{
+              poiId: prediction.predictedDestinationId,
+              poiName: prediction.predictedDestinationName || '',
+              lat: prediction.targetLat || 0,
+              lng: prediction.targetLng || 0,
+              probability: prediction.confidence || 1,
+            }];
+          }
           
           let totalProb = 0;
           for (const cand of candidates) {
@@ -230,8 +256,10 @@ export class PredictiveHeatmapService implements OnModuleInit {
           
           for (const cand of candidates) {
             const scaledProb = (cand.probability || 1) * activityMultiplier;
-            const buildingWeight = scaledProb * (1 - transitRatio);
-            const transitWeight = scaledProb * transitRatio;
+             // Remaining 70% goes to predicted destination (building + transit)
+             const destWeight = scaledProb * (1 - currentPosWeight);
+             const buildingWeight = destWeight * (1 - transitRatio);
+             const transitWeight = destWeight * transitRatio;
 
             if (transitWeight > 0) {
                globalTransitWeight += transitWeight;
@@ -291,7 +319,9 @@ export class PredictiveHeatmapService implements OnModuleInit {
       if (globalTransitWeight > 0 && campusDataUtil.isInitialized()) {
          const campusData = campusDataUtil.getData();
          const hotspotWeight = globalTransitWeight * 0.3;
-         const wayWeight = globalTransitWeight * 0.7 * wayDensityMultiplier;
+         // wayDensityMultiplier already adjusts transitRatio via adjustTransitPhase,
+         // don't multiply it again here — it was making roads invisible
+         const wayWeight = globalTransitWeight * 0.7;
 
          this.logger.log(`[Transit Debug] phase=${phaseInfo.phase}, transitRatio=${transitRatio}, globalTransitWeight=${globalTransitWeight.toFixed(2)}, wayWeight=${wayWeight.toFixed(2)}, wayDensityMultiplier=${wayDensityMultiplier}, waysCount=${campusData.ways.length}`);
 
@@ -324,32 +354,32 @@ export class PredictiveHeatmapService implements OnModuleInit {
                return { way, score };
             });
 
+            // Sort by score descending so main roads are processed first
+            waysWithScore.sort((a, b) => b.score - a.score);
+
             let wayCellsAdded = 0;
             let waysSkipped = 0;
-             for (const { way, score } of waysWithScore) {
-                const weightForThisWay = wayWeight * (score / totalWayScore);
-                // Lowered threshold from 0.1 to 0.0001 so roads are not skipped when user count is low
-                if (weightForThisWay < 0.0001 || way.coordinates.length === 0) { waysSkipped++; continue; }
-
-                // Interpolate points along the road so density stretches evenly
-                const interpolatedCoords = interpolatePolyline(way.coordinates, cellSize * 0.5);
-                const weightPerPoint = weightForThisWay / interpolatedCoords.length;
-                for (const coord of interpolatedCoords) {
-                   const lng = coord[0];
-                   const lat = coord[1];
-                   const targetCell = this.spatialService.getGridCell(lat, lng);
-                   const cellKey = this.spatialService.getCellKey(targetCell);
-
-                   if (!cellMap.has(cellKey)) {
-                      cellMap.set(cellKey, { cellX: targetCell.x, cellY: targetCell.y, count: 0, intents: new Map<string, number>() });
-                   }
-
-                   const cellData = cellMap.get(cellKey)!;
-                   cellData.count += weightPerPoint;
-                   cellData.intents.set('[Transit] Trên đường', (cellData.intents.get('[Transit] Trên đường') || 0) + weightPerPoint);
-                   wayCellsAdded++;
-                }
-             }
+            const MAX_WAY_CELLS = 2500; // Cap total road cells to prevent payload bloat, increased to 2500 to cover campus
+            for (const { way, score } of waysWithScore) {
+               if (wayCellsAdded >= MAX_WAY_CELLS) break;
+               const weightForThisWay = wayWeight * (score / totalWayScore);
+               // Threshold lowered: with 440 roads, each gets ~wayWeight/440 share
+               if (weightForThisWay < 0.001 || way.coordinates.length === 0) {
+                   waysSkipped++;
+                   continue;
+               }
+               // Interpolate points along the road
+               const interpolatedCoords = interpolatePolyline(way.coordinates, cellSize * 0.5);
+               
+               // Phân bổ bầy đàn (Flocking)
+               wayCellsAdded += distributeFlockingWeight(
+                 interpolatedCoords,
+                 weightForThisWay,
+                 targetTimestampMs,
+                 this.spatialService,
+                 cellMap
+               );
+            }
             this.logger.log(`[Transit Debug] waysProcessed=${waysWithScore.length - waysSkipped}, waysSkipped=${waysSkipped}, wayCellsAdded=${wayCellsAdded}, totalWayScore=${totalWayScore.toFixed(1)}`);
          }
       } else {
@@ -386,6 +416,8 @@ export class PredictiveHeatmapService implements OnModuleInit {
         timestamp: targetTimestampMs || Date.now(),
         totalOnline: Math.round(totalOnline),
         cells,
+        globalReasons,
+        poiReasons,
       };
 
       if (!targetTimestampMs) {

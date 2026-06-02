@@ -240,6 +240,14 @@ public class DashboardServiceImpl implements DashboardService {
         
         for (Event event : timelineEvents.stream().limit(20).toList()) {
             String type = event.getEventType() != null ? event.getEventType().name() : "UNKNOWN";
+            String buildingId = null;
+            if (event instanceof com.hustsimulator.context.entity.IndoorEvent) {
+                java.util.UUID bId = ((com.hustsimulator.context.entity.IndoorEvent) event).getBuildingId();
+                if (bId != null) {
+                    buildingId = bId.toString();
+                }
+            }
+
             eventsTimeline.add(new DashboardStatsDTO.EventTimelineItem(
                     event.getId().toString(),
                     event.getName(),
@@ -247,7 +255,8 @@ public class DashboardServiceImpl implements DashboardService {
                     event.getStatus().name(),
                     event.getStartTime().format(fmt),
                     event.getEndTime().format(fmt),
-                    event.getEstimatedParticipants() != null ? event.getEstimatedParticipants() : 0
+                    event.getEstimatedParticipants() != null ? event.getEstimatedParticipants() : 0,
+                    buildingId
             ));
         }
         return eventsTimeline;

@@ -31,7 +31,7 @@
     "@nestjs/swagger": "^11.2.6",
     "@turf/turf": "^7.3.5",
     "@willsoto/nestjs-prometheus": "^6.1.0",
-    "ioredis": "^5.10.0",
+    "ioredis": "^5.11.0",
     "nest-winston": "^1.10.2",
     "prom-client": "^15.1.3",
     "reflect-metadata": "^0.2.2",
