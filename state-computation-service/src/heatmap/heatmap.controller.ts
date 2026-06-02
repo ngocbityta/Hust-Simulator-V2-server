@@ -1,7 +1,7 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { HeatmapService } from './heatmap.service';
-import { PredictiveHeatmapService } from './predictive-heatmap.service';
+import { PredictiveHeatmapService, SimulationParams } from './predictive-heatmap.service';
 
 export class HeatmapCellDto {
   @ApiProperty({ description: 'Cell X index', example: 45 })
@@ -122,6 +122,29 @@ export class HeatmapController {
         totalOnline: 0,
         cells: [],
         message: 'No data yet'
+      };
+    }
+    return data;
+  }
+
+  @Post('simulate')
+  @ApiOperation({ summary: 'Run a what-if simulation with custom parameters' })
+  @ApiResponse({ status: 200, description: 'Return simulated heatmap data with applied overrides' })
+  async simulateHeatmap(
+    @Body() body: { targetTime: number; simulation: SimulationParams },
+  ) {
+    const targetTimeMs = body.targetTime || Date.now();
+    const data = await this.predictiveHeatmapService.generateSimulatedHeatmap(
+      targetTimeMs,
+      body.simulation || {},
+    );
+    if (!data) {
+      return {
+        timestamp: targetTimeMs,
+        totalOnline: 0,
+        cells: [],
+        simulationApplied: true,
+        simulationReasons: ['Simulation failed — no data generated'],
       };
     }
     return data;
