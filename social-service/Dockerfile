@@ -25,6 +25,11 @@ WORKDIR /app
 
 # Use a non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Create uploads directory and grant ownership BEFORE switching user
+# This ensures the spring user can write even when Docker mounts a volume here
+RUN mkdir -p /app/uploads && chown -R spring:spring /app/uploads
+
 USER spring:spring
 
 COPY --from=extract /app/extracted ./
@@ -32,3 +37,4 @@ COPY --from=extract /app/extracted ./
 EXPOSE 8083
 
 ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]
+
