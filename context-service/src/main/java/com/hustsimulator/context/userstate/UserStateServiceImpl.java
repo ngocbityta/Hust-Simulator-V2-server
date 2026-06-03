@@ -3,6 +3,8 @@ package com.hustsimulator.context.userstate;
 import com.hustsimulator.context.building.BuildingService;
 import com.hustsimulator.context.enums.UserActivityState;
 import com.hustsimulator.context.entity.UserState;
+import com.hustsimulator.context.entity.BuildingAttendance;
+import com.hustsimulator.context.entity.EventAttendance;
 import com.hustsimulator.context.map.MapService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,8 @@ public class UserStateServiceImpl implements UserStateService {
     private final UserStateRepository userStateRepository;
     private final BuildingService buildingService;
     private final MapService mapService;
+    private final BuildingAttendanceRepository buildingAttendanceRepository;
+    private final EventAttendanceRepository eventAttendanceRepository;
 
     @Override
     public UserState findByUserId(UUID userId) {
@@ -90,6 +94,15 @@ public class UserStateServiceImpl implements UserStateService {
         state.setActivityState(isInside ? UserActivityState.IN_BUILDING : UserActivityState.SPECTATING_BUILDING);
         state.setEnteredAt(LocalDateTime.now());
 
+        if (isInside) {
+            BuildingAttendance attendance = BuildingAttendance.builder()
+                    .buildingId(buildingId)
+                    .userId(userId)
+                    .joinedAt(LocalDateTime.now())
+                    .build();
+            buildingAttendanceRepository.save(attendance);
+        }
+
         log.info("User {} {} building {}", userId, isInside ? "entered" : "spectating", buildingId);
         return userStateRepository.save(state);
     }
@@ -97,6 +110,15 @@ public class UserStateServiceImpl implements UserStateService {
     @Override
     public UserState leaveBuilding(UUID userId) {
         UserState state = findByUserId(userId);
+        
+        if (state.getBuildingId() != null && state.getActivityState() == UserActivityState.IN_BUILDING) {
+            buildingAttendanceRepository.findTopByUserIdAndBuildingIdAndLeftAtIsNullOrderByJoinedAtDesc(userId, state.getBuildingId())
+                    .ifPresent(attendance -> {
+                        attendance.setLeftAt(LocalDateTime.now());
+                        buildingAttendanceRepository.save(attendance);
+                    });
+        }
+
         state.setBuildingId(null);
         state.setRoomId(null);
         state.setEventId(null);
@@ -140,6 +162,15 @@ public class UserStateServiceImpl implements UserStateService {
         state.setActivityState(isInside ? UserActivityState.IN_EVENT : UserActivityState.SPECTATING_EVENT);
         state.setEnteredAt(LocalDateTime.now());
 
+        if (isInside) {
+            EventAttendance attendance = EventAttendance.builder()
+                    .eventId(eventId)
+                    .userId(userId)
+                    .joinedAt(LocalDateTime.now())
+                    .build();
+            eventAttendanceRepository.save(attendance);
+        }
+
         log.info("User {} {} event {}", userId, isInside ? "joining" : "spectating", eventId);
         return userStateRepository.save(state);
     }
@@ -147,6 +178,16 @@ public class UserStateServiceImpl implements UserStateService {
     @Override
     public UserState leaveEvent(UUID userId) {
         UserState state = findByUserId(userId);
+        
+        if (state.getEventId() != null && 
+            (state.getActivityState() == UserActivityState.IN_EVENT || state.getActivityState() == UserActivityState.IN_RECURRING_EVENT)) {
+            eventAttendanceRepository.findTopByUserIdAndEventIdAndLeftAtIsNullOrderByJoinedAtDesc(userId, state.getEventId())
+                    .ifPresent(attendance -> {
+                        attendance.setLeftAt(LocalDateTime.now());
+                        eventAttendanceRepository.save(attendance);
+                    });
+        }
+
         state.setEventId(null);
 
         if (state.getRoomId() != null) {
@@ -170,6 +211,15 @@ public class UserStateServiceImpl implements UserStateService {
         state.setEventId(eventId);
         state.setActivityState(isInside ? UserActivityState.IN_RECURRING_EVENT : UserActivityState.SPECTATING_RECURRING_EVENT);
         state.setEnteredAt(LocalDateTime.now());
+
+        if (isInside) {
+            EventAttendance attendance = EventAttendance.builder()
+                    .eventId(eventId)
+                    .userId(userId)
+                    .joinedAt(LocalDateTime.now())
+                    .build();
+            eventAttendanceRepository.save(attendance);
+        }
 
         log.info("User {} {} recurring event {}", userId, isInside ? "joining" : "spectating", eventId);
         return userStateRepository.save(state);

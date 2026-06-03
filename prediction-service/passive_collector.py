@@ -24,7 +24,7 @@ DB_PORT     = os.environ.get('POSTGRES_PORT',     '5432')
 DB_SSLMODE  = os.environ.get('POSTGRES_SSL',      'disable')
 
 # Stay Point Parameters
-DIST_THRESHOLD_M = 50.0  # Maximum radius of stay cluster
+DIST_THRESHOLD_M = 30.0  # Maximum radius of stay cluster
 TIME_THRESHOLD_S = 300.0  # Minimum stay duration (5 minutes)
 POI_SNAP_RADIUS_M = 30.0  # Snapping radius to a building
 

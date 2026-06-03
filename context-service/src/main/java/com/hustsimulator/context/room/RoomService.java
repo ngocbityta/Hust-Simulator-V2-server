@@ -12,5 +12,5 @@ public interface RoomService {
     Room create(RoomDTO.CreateRoomRequest request);
     Room update(UUID id, RoomDTO.UpdateRoomRequest request);
     void delete(UUID id);
-    com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(String search, int page, int size);
+    com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(UUID buildingId, Integer floorNum, String type, String search, int page, int size);
 }

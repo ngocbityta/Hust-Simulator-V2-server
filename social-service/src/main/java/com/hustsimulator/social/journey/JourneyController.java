@@ -10,6 +10,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @RestController
@@ -19,10 +22,15 @@ public class JourneyController {
 
     private final JourneyService journeyService;
 
-    @GetMapping("/today/preview")
-    public JourneyDTO.JourneyResponse getPreviewForToday(@Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
+    @GetMapping("/generate")
+    public JourneyDTO.JourneyResponse generateJourneyDraft(
+            @RequestParam(required = false) LocalDateTime startTime,
+            @RequestParam(required = false) LocalDateTime endTime,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
-        return journeyService.getPreviewForToday(userId);
+        if (startTime == null) startTime = LocalDate.now().atStartOfDay();
+        if (endTime == null) endTime = LocalDate.now().atTime(LocalTime.MAX);
+        return journeyService.generateJourneyDraft(userId, startTime, endTime);
     }
 
     @GetMapping("/user/{targetUserId}")

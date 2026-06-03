@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface JourneyService {
-    JourneyDTO.JourneyResponse getPreviewForToday(UUID userId);
+    JourneyDTO.JourneyResponse generateJourneyDraft(UUID userId, java.time.LocalDateTime startTime, java.time.LocalDateTime endTime);
     Page<JourneyDTO.JourneyResponse> getUserJourneys(UUID userId, Pageable pageable);
     JourneyDTO.JourneyResponse getJourneyById(UUID id, UUID userId);
     JourneyDTO.JourneyResponse createJourney(JourneyDTO.CreateJourneyRequest request, UUID userId);

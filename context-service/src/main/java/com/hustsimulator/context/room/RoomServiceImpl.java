@@ -67,13 +67,18 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(String search, int page, int size) {
+    public com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(UUID buildingId, Integer floorNum, String type, String search, int page, int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         org.springframework.data.domain.Page<Room> roomPage;
-        if (search != null && !search.trim().isEmpty()) {
-            roomPage = roomRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        
+        if (buildingId != null || floorNum != null || type != null) {
+            roomPage = roomRepository.findRoomsWithFilters(buildingId, floorNum, type, search, pageable);
         } else {
-            roomPage = roomRepository.findAll(pageable);
+            if (search != null && !search.trim().isEmpty()) {
+                roomPage = roomRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+            } else {
+                roomPage = roomRepository.findAll(pageable);
+            }
         }
         return new com.hustsimulator.context.common.PageResponse<>(roomPage);
     }

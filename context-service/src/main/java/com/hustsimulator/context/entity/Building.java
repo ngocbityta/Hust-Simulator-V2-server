@@ -51,4 +51,14 @@ public class Building extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @org.hibernate.annotations.Formula("(SELECT COUNT(r.id) FROM context.rooms r WHERE r.building_id = id)")
+    private Integer roomCount;
+
+    @org.hibernate.annotations.Formula("(SELECT COALESCE(MAX(r.floor_num), 0) FROM context.rooms r WHERE r.building_id = id)")
+    private Integer floorCount;
+
+    @jakarta.persistence.Transient
+    private Integer population24h;
+
 }

@@ -1,6 +1,5 @@
 package com.hustsimulator.social.journey;
 
-import com.hustsimulator.social.enums.JourneyItemType;
 import com.hustsimulator.social.enums.JourneyStatus;
 import com.hustsimulator.social.enums.JourneyVisibility;
 
@@ -10,6 +9,12 @@ import java.util.List;
 import java.util.UUID;
 
 public class JourneyDTO {
+
+    public record LocationPoint(
+            Double latitude,
+            Double longitude,
+            LocalDateTime timestamp
+    ) {}
 
     public record JourneyResponse(
             UUID id,
@@ -23,47 +28,64 @@ public class JourneyDTO {
             JourneyStatus status,
             JourneyVisibility visibility,
             List<JourneyItemResponse> items,
+            List<LocationPoint> pathCoordinates,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {}
 
     public record JourneyItemResponse(
             UUID id,
-            JourneyItemType type,
             UUID referenceId,
             String mediaUrl,
             String content,
             LocalDateTime timestamp,
             Integer sortOrder,
-            String metadata
+            String metadata,
+            Double latitude,
+            Double longitude,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            UUID eventId,
+            List<UUID> postIds
     ) {}
 
     public record CreateJourneyRequest(
             String title,
             String description,
             LocalDate journeyDate,
+            String videoUrl,
             String musicUrl,
             String templateId,
             JourneyVisibility visibility,
-            List<CreateJourneyItemRequest> items
+            List<CreateJourneyItemRequest> items,
+            List<LocationPoint> pathCoordinates
     ) {}
 
     public record CreateJourneyItemRequest(
-            JourneyItemType type,
             UUID referenceId,
             String mediaUrl,
             String content,
             LocalDateTime timestamp,
             Integer sortOrder,
-            String metadata
+            String metadata,
+            Double latitude,
+            Double longitude,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            UUID eventId,
+            List<UUID> postIds
     ) {}
 
     public record UpdateJourneyRequest(
             String title,
             String description,
+            LocalDate journeyDate,
+            String videoUrl,
             String musicUrl,
             String templateId,
+            JourneyStatus status,
             JourneyVisibility visibility,
-            List<CreateJourneyItemRequest> items
+            List<CreateJourneyItemRequest> items,
+            List<LocationPoint> pathCoordinates
     ) {}
 }

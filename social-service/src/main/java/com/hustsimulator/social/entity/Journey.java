@@ -51,4 +51,8 @@ public class Journey extends BaseEntity {
     @OneToMany(mappedBy = "journey", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<JourneyItem> items = new ArrayList<>();
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "path_coordinates", columnDefinition = "jsonb")
+    private String pathCoordinates;
 }

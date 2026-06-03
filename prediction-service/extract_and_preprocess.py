@@ -88,7 +88,7 @@ def check_new_data():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 
-            (SELECT COUNT(*) FROM social.journey_items WHERE created_at > %s AND type = 'CHECKIN') +
+            (SELECT COUNT(*) FROM social.journey_items WHERE created_at > %s) +
             (SELECT COUNT(*) FROM prediction.checkin_sequences WHERE created_at > %s)
     """, (last_sync, last_sync))
     count = cursor.fetchone()[0]
@@ -110,17 +110,21 @@ def extract_and_preprocess(last_sync):
         SELECT j.id::text       AS journey_id,
                j.user_id::text  AS user_id,
                ji.metadata::text,
+               ji.latitude,
+               ji.longitude,
                ji.timestamp,
                ji.created_at
         FROM   social.journey_items ji
         JOIN   social.journeys j ON ji.journey_id = j.id
-        WHERE  ji.type = 'CHECKIN' AND ji.created_at > %s
+        WHERE  ji.created_at > %s AND ji.reference_id IS NOT NULL
 
         UNION ALL
 
         SELECT md5(user_id::text || timestamp::date::text)::uuid::text AS journey_id,
                user_id::text,
                poi_id::text AS metadata,
+               0.0 AS latitude,
+               0.0 AS longitude,
                timestamp,
                created_at
         FROM   prediction.checkin_sequences
@@ -136,19 +140,24 @@ def extract_and_preprocess(last_sync):
         print("No rows found.")
         return False
 
-    max_created_at = max(row[4] for row in rows)
+    max_created_at = max(row[6] for row in rows)
 
     # Group GPS points by journey
     journeys = {}   # journey_id → {user_id, gps_points, timestamps}
-    for journey_id, user_id, metadata, ts, _ in rows:
-        lat, lng = 0.0, 0.0
-        if metadata:
+    for journey_id, user_id, metadata, sql_lat, sql_lng, ts, _ in rows:
+        lat, lng = float(sql_lat or 0), float(sql_lng or 0)
+        
+        # If lat/lng is 0 (like for prediction.checkin_sequences), try to get from metadata
+        if lat == 0 and lng == 0 and metadata:
             try:
-                # Try to parse as JSON first (active checkin)
+                # Try to parse as JSON first (active checkin legacy)
                 meta_json = json.loads(metadata)
                 lat = float(meta_json.get('lat', meta_json.get('latitude', 0)))
                 lng = float(meta_json.get('lng', meta_json.get('longitude', 0)))
             except (json.JSONDecodeError, TypeError):
+                pass
+                
+            if lat == 0 and lng == 0:
                 # If not JSON, it's a POI UUID (passive checkin stay point)
                 if metadata in UUID_TO_COORDS:
                     lat = UUID_TO_COORDS[metadata]['lat']
@@ -219,10 +228,23 @@ def extract_and_preprocess(last_sync):
     df = pd.DataFrame(records)
     os.makedirs('data', exist_ok=True)
     out_path = 'data/checkin_sequences.csv'
+    
+    if os.path.exists(out_path):
+        try:
+            old_df = pd.read_csv(out_path)
+            # Remove old versions of the journeys we just extracted
+            new_journey_ids = set(df['journey_id'])
+            old_df = old_df[~old_df['journey_id'].isin(new_journey_ids)]
+            df = pd.concat([old_df, df], ignore_index=True)
+        except Exception as e:
+            print(f"Warning: Failed to merge with existing CSV: {e}")
+            
     df.to_csv(out_path, index=False)
-    print(f"Saved {len(journeys) - skipped} journeys "
+    
+    num_saved_journeys = len(set(r['journey_id'] for r in records))
+    print(f"Saved {num_saved_journeys} journeys "
           f"({len(records)} check-in records) → {out_path}")
-    print(f"Skipped {skipped} journeys with < {MIN_CHECKINS} check-ins.")
+    print(f"Skipped {skipped} short journey segments with < {MIN_CHECKINS} check-ins.")
 
     # Update sync timestamp
     with open(LAST_SYNC_FILE, 'w') as f:

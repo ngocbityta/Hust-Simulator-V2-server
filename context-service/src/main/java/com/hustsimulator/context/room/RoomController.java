@@ -56,9 +56,12 @@ public class RoomController {
 
     @GetMapping("/paged")
     public com.hustsimulator.context.common.PageResponse<Room> getRoomsPaged(
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) Integer floorNum,
+            @RequestParam(required = false) String type,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return roomService.getRoomsPaged(search, page, size);
+        return roomService.getRoomsPaged(buildingId, floorNum, type, search, page, size);
     }
 }

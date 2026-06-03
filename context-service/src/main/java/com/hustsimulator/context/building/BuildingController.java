@@ -72,12 +72,26 @@ public class BuildingController {
         return buildingService.isPointInsideBuilding(id, x, y);
     }
 
+    @GetMapping("/nearest")
+    @Operation(summary = "Find nearest building", description = "Finds the closest active building within a specified radius")
+    public Building findNearestBuilding(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "30.0") double radius) {
+        Building nearest = buildingService.findNearestBuilding(lat, lng, radius);
+        if (nearest == null) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "No building found nearby");
+        }
+        return nearest;
+    }
+
     @GetMapping("/paged")
     @Operation(summary = "Find buildings with pagination", description = "Retrieve a paginated list of buildings with optional search")
     public com.hustsimulator.context.common.PageResponse<Building> getBuildingsPaged(
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return buildingService.getBuildingsPaged(search, page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "roomCount,desc") String sort) {
+        return buildingService.getBuildingsPaged(search, page, size, sort);
     }
 }
