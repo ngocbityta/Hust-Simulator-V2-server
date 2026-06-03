@@ -19,6 +19,11 @@ public class RealTimeConfig {
         Configuration config = new Configuration();
         config.setHostname(host);
         config.setPort(port);
+        
+        // Add support for Java 8 Date/Time API (LocalDateTime) in Socket.IO JSON serialization
+        com.fasterxml.jackson.datatype.jsr310.JavaTimeModule javaTimeModule = new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule();
+        config.setJsonSupport(new com.corundumstudio.socketio.protocol.JacksonJsonSupport(javaTimeModule));
+        
         return new SocketIOServer(config);
     }
 }
