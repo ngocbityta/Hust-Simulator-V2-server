@@ -23,8 +23,13 @@ public class Post extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "video_url")
-    private String videoUrl;
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Builder.Default
+    private java.util.Set<PostImage> images = new java.util.LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Builder.Default
+    private java.util.Set<PostVideo> videos = new java.util.LinkedHashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

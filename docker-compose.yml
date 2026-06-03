@@ -144,6 +144,12 @@ services:
       rabbitmq:
         condition: service_healthy
     # No host ports — accessed via API Gateway only
+    # Dev: expose 9092 (Socket.IO) and 8083 (REST) directly for Postman testing
+    ports:
+      - "9092:9092"
+      - "8083:8083"
+    volumes:
+      - social_uploads:/app/uploads
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=social&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -155,12 +161,16 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-hustsim_redis}
       RABBITMQ_HOST: rabbitmq
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/app/uploads}
+      STORAGE_LOCAL_URL: ${STORAGE_LOCAL_URL:-http://localhost/uploads/}
       JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
     deploy:
       resources:
         limits:
           cpus: "0.50"
           memory: 512M
+
 
   streaming-service:
     build:
@@ -451,3 +461,5 @@ volumes:
   loki_data:
   prometheus_data:
   grafana_data:
+  social_uploads:
+

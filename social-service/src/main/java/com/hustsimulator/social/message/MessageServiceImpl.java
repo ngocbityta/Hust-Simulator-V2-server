@@ -26,6 +26,10 @@ public class MessageServiceImpl implements MessageService {
                 .fileId(fileId)
                 .build();
         message = messageRepository.save(message);
+        
+        // Reload to fetch the @ManyToOne fileInfo relationship
+        message = messageRepository.findById(message.getId()).orElse(message);
+        
         log.info("Saved {} message '{}' for event '{}'", type, message.getId(), eventId);
         return message;
     }

@@ -33,9 +33,23 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public User update(@PathVariable UUID id, @Valid @RequestBody User user) {
+    public User update(@PathVariable UUID id, @RequestBody UpdateUserRequest request) {
+        User user = new User();
+        user.setUsername(request.username());
+        user.setAvatar(request.avatar());
+        user.setCoverImage(request.coverImage());
+        user.setDescription(request.description());
         return userService.update(id, user);
     }
+
+    public record UpdateUserRequest(
+            String id,
+            String phonenumber,
+            String username,
+            String avatar,
+            String coverImage,
+            String description
+    ) {}
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

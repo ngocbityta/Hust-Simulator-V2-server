@@ -20,5 +20,5 @@ public interface FriendService {
 
     Page<FriendDTO.FriendResponse> getPendingRequests(UUID userId, Pageable pageable);
 
-    FriendshipStatus getFriendshipStatus(UUID currentUser, UUID targetUser);
+    FriendDTO.FriendshipStatusResponse getFriendshipStatus(UUID currentUser, UUID targetUser);
 }
