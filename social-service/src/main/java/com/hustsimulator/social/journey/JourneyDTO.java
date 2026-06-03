@@ -4,6 +4,7 @@ import com.hustsimulator.social.enums.JourneyItemType;
 import com.hustsimulator.social.enums.JourneyStatus;
 import com.hustsimulator.social.enums.JourneyVisibility;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +26,7 @@ public class JourneyDTO {
             List<JourneyItemResponse> items,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
-    ) {}
+    ) implements Serializable {}
 
     public record JourneyItemResponse(
             UUID id,
@@ -36,7 +37,7 @@ public class JourneyDTO {
             LocalDateTime timestamp,
             Integer sortOrder,
             String metadata
-    ) {}
+    ) implements Serializable {}
 
     public record CreateJourneyRequest(
             String title,
