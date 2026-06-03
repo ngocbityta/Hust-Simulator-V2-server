@@ -156,17 +156,22 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
-    public FriendshipStatus getFriendshipStatus(UUID currentUser, UUID targetUser) {
+    public FriendDTO.FriendshipStatusResponse getFriendshipStatus(UUID currentUser, UUID targetUser) {
         if (currentUser.equals(targetUser)) {
-            return null;
+            return new FriendDTO.FriendshipStatusResponse(targetUser, "NONE", null, null);
         }
 
         UUID smallerId = smaller(currentUser, targetUser);
         UUID largerId = larger(currentUser, targetUser);
 
         return friendshipRepository.findByUserIdAndFriendId(smallerId, largerId)
-                .map(Friendship::getStatus)
-                .orElse(null);
+                .map(friendship -> new FriendDTO.FriendshipStatusResponse(
+                        targetUser,
+                        friendship.getStatus().name(),
+                        friendship.getId(),
+                        friendship.getRequesterId()
+                ))
+                .orElse(new FriendDTO.FriendshipStatusResponse(targetUser, "NONE", null, null));
     }
 
     // --- helpers ---
