@@ -68,7 +68,7 @@ public class DirectMessageServiceImpl implements DirectMessageService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<DirectMessageDto> getConversationHistory(UUID userId, UUID partnerId, Pageable pageable) {
         Optional<Conversation> conversationOpt = conversationRepository.findByPartners(userId, partnerId);
         
@@ -76,7 +76,12 @@ public class DirectMessageServiceImpl implements DirectMessageService {
             return Page.empty();
         }
 
-        return directMessageRepository.findByConversationIdOrderByCreatedAtDesc(conversationOpt.get().getId(), pageable)
+        UUID conversationId = conversationOpt.get().getId();
+
+        // Đánh dấu đã đọc các tin nhắn gửi đến user này
+        directMessageRepository.markAsReadByConversationIdAndReceiverId(conversationId, userId);
+
+        return directMessageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable)
                 .map(this::mapToDto);
     }
 
