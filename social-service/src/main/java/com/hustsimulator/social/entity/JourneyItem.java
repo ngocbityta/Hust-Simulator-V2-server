@@ -23,9 +23,8 @@ public class JourneyItem extends BaseEntity {
     @JoinColumn(name = "journey_id", nullable = false)
     private Journey journey;
 
-
-    @Column(name = "reference_id")
-    private UUID referenceId;
+    @Column(name = "building_id")
+    private UUID buildingId;
 
     @Column(name = "media_url", columnDefinition = "TEXT")
     private String mediaUrl;
@@ -38,10 +37,6 @@ public class JourneyItem extends BaseEntity {
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    private String metadata;
 
     @Column(name = "latitude")
     private Double latitude;

@@ -36,12 +36,11 @@ public class JourneyDTO {
 
     public record JourneyItemResponse(
             UUID id,
-            UUID referenceId,
+            UUID buildingId,
             String mediaUrl,
             String content,
             LocalDateTime timestamp,
             Integer sortOrder,
-            String metadata,
             Double latitude,
             Double longitude,
             LocalDateTime startTime,
@@ -63,12 +62,11 @@ public class JourneyDTO {
     ) {}
 
     public record CreateJourneyItemRequest(
-            UUID referenceId,
+            UUID buildingId,
             String mediaUrl,
             String content,
             LocalDateTime timestamp,
             Integer sortOrder,
-            String metadata,
             Double latitude,
             Double longitude,
             LocalDateTime startTime,

@@ -57,7 +57,7 @@ public class JourneyServiceImpl implements JourneyService {
                 ContextServiceClient.BuildingDTO b = contextServiceClient.getNearestBuilding(firstLoc.getLatitude(), firstLoc.getLongitude(), STOP_DISTANCE_THRESHOLD_METERS);
                 String content = b != null ? "Khởi hành từ " + b.getName() : "Khởi hành";
                 itemResponses.add(0, new JourneyDTO.JourneyItemResponse(
-                        null, b != null ? b.getId() : null, null, content, firstLoc.getTimestamp(), 0, "{}",
+                        null, b != null ? b.getId() : null, null, content, firstLoc.getTimestamp(), 0,
                         firstLoc.getLatitude(), firstLoc.getLongitude(), firstLoc.getTimestamp(), firstLoc.getTimestamp(),
                         null, null
                 ));
@@ -66,8 +66,8 @@ public class JourneyServiceImpl implements JourneyService {
                 JourneyDTO.JourneyItemResponse first = itemResponses.get(0);
                 String content = first.content().replace("Ghé thăm", "Khởi hành từ").replace("Dừng chân", "Khởi hành");
                 itemResponses.set(0, new JourneyDTO.JourneyItemResponse(
-                        first.id(), first.referenceId(), first.mediaUrl(), content, first.timestamp(), first.sortOrder(),
-                        first.metadata(), first.latitude(), first.longitude(), first.startTime(), first.endTime(),
+                        first.id(), first.buildingId(), first.mediaUrl(), content, first.timestamp(), first.sortOrder(),
+                        first.latitude(), first.longitude(), first.startTime(), first.endTime(),
                         first.eventId(), first.postIds()
                 ));
             }
@@ -77,7 +77,7 @@ public class JourneyServiceImpl implements JourneyService {
                 ContextServiceClient.BuildingDTO b = contextServiceClient.getNearestBuilding(lastLoc.getLatitude(), lastLoc.getLongitude(), STOP_DISTANCE_THRESHOLD_METERS);
                 String content = b != null ? "Điểm đến " + b.getName() : "Điểm kết thúc";
                 itemResponses.add(new JourneyDTO.JourneyItemResponse(
-                        null, b != null ? b.getId() : null, null, content, lastLoc.getTimestamp(), 0, "{}",
+                        null, b != null ? b.getId() : null, null, content, lastLoc.getTimestamp(), 0,
                         lastLoc.getLatitude(), lastLoc.getLongitude(), lastLoc.getTimestamp(), lastLoc.getTimestamp(),
                         null, null
                 ));
@@ -86,8 +86,8 @@ public class JourneyServiceImpl implements JourneyService {
                 JourneyDTO.JourneyItemResponse last = itemResponses.get(itemResponses.size() - 1);
                 String content = last.content().replace("Ghé thăm", "Điểm đến ").replace("Dừng chân", "Điểm kết thúc");
                 itemResponses.set(itemResponses.size() - 1, new JourneyDTO.JourneyItemResponse(
-                        last.id(), last.referenceId(), last.mediaUrl(), content, last.timestamp(), last.sortOrder(),
-                        last.metadata(), last.latitude(), last.longitude(), last.startTime(), last.endTime(),
+                        last.id(), last.buildingId(), last.mediaUrl(), content, last.timestamp(), last.sortOrder(),
+                        last.latitude(), last.longitude(), last.startTime(), last.endTime(),
                         last.eventId(), last.postIds()
                 ));
             }
@@ -96,8 +96,8 @@ public class JourneyServiceImpl implements JourneyService {
             for (int i = 0; i < itemResponses.size(); i++) {
                 JourneyDTO.JourneyItemResponse old = itemResponses.get(i);
                 itemResponses.set(i, new JourneyDTO.JourneyItemResponse(
-                        old.id(), old.referenceId(), old.mediaUrl(), old.content(), old.timestamp(), i,
-                        old.metadata(), old.latitude(), old.longitude(), old.startTime(), old.endTime(),
+                        old.id(), old.buildingId(), old.mediaUrl(), old.content(), old.timestamp(), i,
+                        old.latitude(), old.longitude(), old.startTime(), old.endTime(),
                         old.eventId(), old.postIds()
                 ));
             }
@@ -151,48 +151,111 @@ public class JourneyServiceImpl implements JourneyService {
 
         while (i < n) {
             int j = i + 1;
+            int lastValidJ = i;
+            
             while (j < n) {
                 double distance = GeometryUtils.calculateDistance(
                         locations.get(i).getLatitude(), locations.get(i).getLongitude(),
                         locations.get(j).getLatitude(), locations.get(j).getLongitude()
                 );
-                if (distance > STOP_DISTANCE_THRESHOLD_METERS) {
-                    break;
+                
+                if (distance <= STOP_DISTANCE_THRESHOLD_METERS) {
+                    lastValidJ = j;
+                } else {
+                    // Xử lý nhiễu GPS: nhìn trước tối đa 10 điểm tiếp theo
+                    boolean isNoise = false;
+                    for (int k = j + 1; k < Math.min(n, j + 10); k++) {
+                        double distK = GeometryUtils.calculateDistance(
+                                locations.get(i).getLatitude(), locations.get(i).getLongitude(),
+                                locations.get(k).getLatitude(), locations.get(k).getLongitude()
+                        );
+                        if (distK <= STOP_DISTANCE_THRESHOLD_METERS) {
+                            isNoise = true;
+                            break;
+                        }
+                    }
+                    if (!isNoise) {
+                        break; // Đã thực sự rời đi
+                    }
                 }
                 j++;
             }
+            
+            j = lastValidJ + 1;
 
             long durationMinutes = java.time.Duration.between(locations.get(i).getTimestamp(), locations.get(j - 1).getTimestamp()).toMinutes();
             
             if (durationMinutes >= STOP_TIME_THRESHOLD_MINUTES) {
                 double sumLat = 0;
                 double sumLng = 0;
+                int validCount = 0;
+                
                 for (int k = i; k < j; k++) {
-                    sumLat += locations.get(k).getLatitude();
-                    sumLng += locations.get(k).getLongitude();
+                    if (GeometryUtils.calculateDistance(
+                            locations.get(i).getLatitude(), locations.get(i).getLongitude(),
+                            locations.get(k).getLatitude(), locations.get(k).getLongitude()
+                    ) <= STOP_DISTANCE_THRESHOLD_METERS) {
+                        sumLat += locations.get(k).getLatitude();
+                        sumLng += locations.get(k).getLongitude();
+                        validCount++;
+                    }
                 }
-                double meanLat = sumLat / (j - i);
-                double meanLng = sumLng / (j - i);
+                
+                double meanLat = validCount > 0 ? sumLat / validCount : locations.get(i).getLatitude();
+                double meanLng = validCount > 0 ? sumLng / validCount : locations.get(i).getLongitude();
 
                 ContextServiceClient.BuildingDTO building = contextServiceClient.getNearestBuilding(meanLat, meanLng, STOP_DISTANCE_THRESHOLD_METERS);
-                UUID referenceId = building != null ? building.getId() : null;
+                UUID buildingId = building != null ? building.getId() : null;
                 String content = building != null ? "Ghé thăm " + building.getName() : "Dừng chân";
 
-                stops.add(new JourneyDTO.JourneyItemResponse(
-                        null,
-                        referenceId,
-                        null,
-                        content,
-                        locations.get(i).getTimestamp(),
-                        sortOrder++,
-                        "{}",
-                        meanLat,
-                        meanLng,
-                        locations.get(i).getTimestamp(),
-                        locations.get(j - 1).getTimestamp(),
-                        null,
-                        null
-                ));
+                LocalDateTime newStartTime = locations.get(i).getTimestamp();
+                LocalDateTime newEndTime = locations.get(j - 1).getTimestamp();
+
+                boolean merged = false;
+                if (!stops.isEmpty()) {
+                    JourneyDTO.JourneyItemResponse lastStop = stops.get(stops.size() - 1);
+                    
+                    boolean sameBuilding = (buildingId != null && buildingId.equals(lastStop.buildingId()));
+                    boolean bothNullAndClose = (buildingId == null && lastStop.buildingId() == null &&
+                            GeometryUtils.calculateDistance(lastStop.latitude(), lastStop.longitude(), meanLat, meanLng) <= STOP_DISTANCE_THRESHOLD_METERS);
+                    
+                    // Gộp nếu liền kề và cùng building (hoặc cùng không có building nhưng sát nhau)
+                    if (sameBuilding || bothNullAndClose) {
+                        JourneyDTO.JourneyItemResponse updatedStop = new JourneyDTO.JourneyItemResponse(
+                                lastStop.id(),
+                                lastStop.buildingId(),
+                                lastStop.mediaUrl(),
+                                lastStop.content(),
+                                lastStop.timestamp(),
+                                lastStop.sortOrder(),
+                                lastStop.latitude(), 
+                                lastStop.longitude(),
+                                lastStop.startTime(),
+                                newEndTime, // Nới rộng thời gian kết thúc
+                                lastStop.eventId(),
+                                lastStop.postIds()
+                        );
+                        stops.set(stops.size() - 1, updatedStop);
+                        merged = true;
+                    }
+                }
+
+                if (!merged) {
+                    stops.add(new JourneyDTO.JourneyItemResponse(
+                            null,
+                            buildingId,
+                            null,
+                            content,
+                            newStartTime,
+                            sortOrder++,
+                            meanLat,
+                            meanLng,
+                            newStartTime,
+                            newEndTime,
+                            null,
+                            null
+                    ));
+                }
                 i = j;
             } else {
                 i++;
@@ -247,12 +310,11 @@ public class JourneyServiceImpl implements JourneyService {
             List<JourneyItem> items = request.items().stream()
                     .map(itemReq -> JourneyItem.builder()
                             .journey(savedJourney)
-                            .referenceId(itemReq.referenceId())
+                            .buildingId(itemReq.buildingId())
                             .mediaUrl(itemReq.mediaUrl())
                             .content(itemReq.content())
                             .timestamp(itemReq.timestamp())
                             .sortOrder(itemReq.sortOrder())
-                            .metadata(itemReq.metadata() != null ? itemReq.metadata() : "{}")
                             .latitude(itemReq.latitude())
                             .longitude(itemReq.longitude())
                             .startTime(itemReq.startTime())
@@ -294,12 +356,11 @@ public class JourneyServiceImpl implements JourneyService {
             List<JourneyItem> newItems = request.items().stream()
                     .map(itemReq -> JourneyItem.builder()
                             .journey(journey)
-                            .referenceId(itemReq.referenceId())
+                            .buildingId(itemReq.buildingId())
                             .mediaUrl(itemReq.mediaUrl())
                             .content(itemReq.content())
                             .timestamp(itemReq.timestamp())
                             .sortOrder(itemReq.sortOrder())
-                            .metadata(itemReq.metadata() != null ? itemReq.metadata() : "{}")
                             .latitude(itemReq.latitude())
                             .longitude(itemReq.longitude())
                             .startTime(itemReq.startTime())
@@ -352,12 +413,11 @@ public class JourneyServiceImpl implements JourneyService {
         List<JourneyDTO.JourneyItemResponse> itemResponses = journey.getItems().stream()
                 .map(item -> new JourneyDTO.JourneyItemResponse(
                         item.getId(),
-                        item.getReferenceId(),
+                        item.getBuildingId(),
                         item.getMediaUrl(),
                         item.getContent(),
                         item.getTimestamp(),
                         item.getSortOrder(),
-                        item.getMetadata(),
                         item.getLatitude(),
                         item.getLongitude(),
                         item.getStartTime(),
