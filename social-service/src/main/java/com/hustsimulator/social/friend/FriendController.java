@@ -77,14 +77,10 @@ public class FriendController {
 
     @Operation(summary = "Check friendship status with another user")
     @GetMapping("/status/{targetUserId}")
-    public Map<String, Object> getFriendshipStatus(@PathVariable UUID targetUserId,
+    public FriendDTO.FriendshipStatusResponse getFriendshipStatus(@PathVariable UUID targetUserId,
                                                     @Parameter(hidden = true) @RequestHeader("X-User-Id") String userIdHeader) {
         UUID userId = resolveUserId(userIdHeader);
-        FriendshipStatus status = friendService.getFriendshipStatus(userId, targetUserId);
-        return Map.of(
-                "targetUserId", targetUserId,
-                "status", status != null ? status.name() : "NONE"
-        );
+        return friendService.getFriendshipStatus(userId, targetUserId);
     }
 
     private UUID resolveUserId(String userIdHeader) {

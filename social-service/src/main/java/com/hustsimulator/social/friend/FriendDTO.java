@@ -26,4 +26,11 @@ public class FriendDTO {
             String username,
             String avatar
     ) {}
+
+    public record FriendshipStatusResponse(
+            UUID targetUserId,
+            String status,
+            UUID friendshipId,
+            UUID requesterId
+    ) {}
 }

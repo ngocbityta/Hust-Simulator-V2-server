@@ -10,7 +10,8 @@ public class PostDTO {
 
     public record CreatePostRequest(
             String content,
-            String videoUrl,
+            java.util.List<String> imageUrls,
+            java.util.List<String> videoUrls,
             Double latitude,
             Double longitude,
             UUID eventId,
@@ -20,7 +21,8 @@ public class PostDTO {
 
     public record UpdatePostRequest(
             String content,
-            String videoUrl,
+            java.util.List<String> imageUrls,
+            java.util.List<String> videoUrls,
             PostStatus status,
             String canEdit,
             String canComment
