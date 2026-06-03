@@ -45,11 +45,19 @@ public class JourneyServiceImpl implements JourneyService {
         List<JourneyDTO.JourneyItemResponse> itemResponses = todaysPosts.stream()
                 .map(post -> {
                     JourneyItemType type = determineType(post);
+                    
+                    String mediaUrl = null;
+                    if (post.getVideos() != null && !post.getVideos().isEmpty()) {
+                        mediaUrl = post.getVideos().iterator().next().getUrl();
+                    } else if (post.getImages() != null && !post.getImages().isEmpty()) {
+                        mediaUrl = post.getImages().iterator().next().getUrl();
+                    }
+
                     return new JourneyDTO.JourneyItemResponse(
                             null, // Not saved yet
                             type,
                             post.getId(),
-                            post.getVideoUrl(), // Can be used for mediaUrl
+                            mediaUrl, // Can be used for mediaUrl
                             post.getContent(),
                             post.getCreatedAt(),
                             0, // Sort order will be assigned dynamically or by client

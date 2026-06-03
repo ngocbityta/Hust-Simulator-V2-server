@@ -3,6 +3,8 @@ package com.hustsimulator.social.post;
 import com.hustsimulator.social.common.GeometryUtils;
 import com.hustsimulator.social.common.ResourceNotFoundException;
 import com.hustsimulator.social.entity.Post;
+import com.hustsimulator.social.entity.PostImage;
+import com.hustsimulator.social.entity.PostVideo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -62,7 +64,6 @@ public class PostServiceImpl implements PostService {
         Post post = Post.builder()
                 .userId(userId)
                 .content(request.content())
-                .videoUrl(request.videoUrl())
                 .location(GeometryUtils.createPoint(request.latitude(), request.longitude()))
                 .eventId(request.eventId())
                 .buildingId(request.buildingId())
@@ -72,6 +73,18 @@ public class PostServiceImpl implements PostService {
                 .canComment("1")
                 .banned("0")
                 .build();
+                
+        if (request.imageUrls() != null && !request.imageUrls().isEmpty()) {
+            request.imageUrls().forEach(url -> {
+                post.getImages().add(PostImage.builder().post(post).url(url).build());
+            });
+        }
+        
+        if (request.videoUrls() != null && !request.videoUrls().isEmpty()) {
+            request.videoUrls().forEach(url -> {
+                post.getVideos().add(PostVideo.builder().post(post).url(url).build());
+            });
+        }
         return postRepository.save(post);
     }
 
@@ -85,10 +98,23 @@ public class PostServiceImpl implements PostService {
         }
 
         if (request.content() != null) post.setContent(request.content());
-        if (request.videoUrl() != null) post.setVideoUrl(request.videoUrl());
         if (request.status() != null) post.setStatus(request.status());
         if (request.canEdit() != null) post.setCanEdit(request.canEdit());
         if (request.canComment() != null) post.setCanComment(request.canComment());
+
+        if (request.imageUrls() != null) {
+            post.getImages().clear();
+            request.imageUrls().forEach(url -> {
+                post.getImages().add(PostImage.builder().post(post).url(url).build());
+            });
+        }
+
+        if (request.videoUrls() != null) {
+            post.getVideos().clear();
+            request.videoUrls().forEach(url -> {
+                post.getVideos().add(PostVideo.builder().post(post).url(url).build());
+            });
+        }
 
         log.info("Updating post: {}", id);
         return postRepository.save(post);
