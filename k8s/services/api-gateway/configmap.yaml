@@ -1,0 +1,471 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: hustsim
+  labels:
+    app: api-gateway
+data:
+  nginx.conf: |
+    worker_processes auto;
+
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        # Map để detect OPTIONS preflight request
+        map $request_method $is_options {
+            default 0;
+            OPTIONS 1;
+        }
+
+        # ─── Rate Limiting Zones ───────────────────────────────────────────────
+        limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=5r/s;
+
+        # ─── Upstream definitions (K8s Service DNS) ────────────────────────────
+        upstream auth_service {
+            server auth-service:8081;
+        }
+
+        upstream messaging_service {
+            server social-service:8083;
+        }
+
+        upstream context_service {
+            server context-service:8080;
+        }
+
+        upstream computation_service {
+            server state-computation-service:3003;
+        }
+
+        upstream streaming_service {
+            server streaming-service:8084;
+        }
+
+        upstream social_service {
+            server social-service:8083;
+        }
+
+        upstream dissemination_service {
+            server state-dissemination-service:3002;
+        }
+
+        upstream messaging_socketio {
+            server social-service:9092;
+        }
+
+        # ─── Server block ─────────────────────────────────────────────────────
+        server {
+            listen 80;
+            server_name _;
+
+            # ─── CORS headers ─────────────────────────────────────────────────
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept, X-User-Id' always;
+
+            proxy_hide_header 'Access-Control-Allow-Origin';
+            proxy_hide_header 'Access-Control-Allow-Methods';
+            proxy_hide_header 'Access-Control-Allow-Headers';
+
+            # ─── Security Headers ─────────────────────────────────────────────
+            add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header X-Frame-Options "DENY" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+
+            # Preflight requests
+            location / {
+                if ($is_options) {
+                    add_header 'Access-Control-Allow-Origin' '*';
+                    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                    add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept, X-User-Id';
+                    return 204;
+                }
+
+                proxy_pass http://context_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_connect_timeout 5s;
+                proxy_read_timeout 60s;
+            }
+
+            # ─── Auth Validation ──────────────────────────────────────────────
+            location = /auth-check {
+                internal;
+                client_max_body_size 0;
+                proxy_pass http://auth_service/api/auth/validate;
+                proxy_pass_request_body off;
+                proxy_set_header Content-Length "";
+                proxy_set_header X-Original-URI $request_uri;
+                proxy_set_header Host $host;
+            }
+
+            # ─── Health check ─────────────────────────────────────────────────
+            location = /health {
+                add_header Content-Type application/json always;
+                return 200 '{"status":"UP","service":"api-gateway"}';
+            }
+
+            # ─── Auth Service Swagger ──────────────────────────────────────────
+            location /auth/swagger-ui/ {
+                proxy_pass http://auth_service/swagger-ui/;
+                proxy_redirect /swagger-ui/ /auth/swagger-ui/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Prefix /auth;
+            }
+            location /auth/v3/api-docs {
+                proxy_pass http://auth_service/v3/api-docs;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Prefix /auth;
+            }
+
+            # ─── Messaging Service Swagger ─────────────────────────────────────
+            location /messaging/swagger-ui/ {
+                proxy_pass http://messaging_service/swagger-ui/;
+                proxy_redirect /swagger-ui/ /messaging/swagger-ui/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Prefix /messaging;
+            }
+            location /messaging/v3/api-docs {
+                proxy_pass http://messaging_service/v3/api-docs;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Prefix /messaging;
+            }
+
+            # ─── Social Service Swagger ────────────────────────────────────────
+            location /social/swagger-ui/ {
+                proxy_pass http://social_service/swagger-ui/;
+                proxy_redirect /swagger-ui/ /social/swagger-ui/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Prefix /social;
+            }
+            location /social/v3/api-docs {
+                proxy_pass http://social_service/v3/api-docs;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Prefix /social;
+            }
+
+            # ─── Streaming Service Swagger ─────────────────────────────────────
+            location /streaming/swagger-ui/ {
+                proxy_pass http://streaming_service/swagger-ui/;
+                proxy_redirect /swagger-ui/ /streaming/swagger-ui/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Prefix /streaming;
+            }
+            location /streaming/v3/api-docs {
+                proxy_pass http://streaming_service/v3/api-docs;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Prefix /streaming;
+            }
+
+            # ─── Computation Service Swagger ───────────────────────────────────
+            location /computation/swagger-ui/ {
+                proxy_pass http://computation_service/swagger-ui/;
+                proxy_redirect /swagger-ui/ /computation/swagger-ui/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Prefix /computation;
+            }
+            location /computation/v3/api-docs {
+                proxy_pass http://computation_service/v3/api-docs;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-Prefix /computation;
+            }
+
+            # ─── Auth Service routes ───────────────────────────────────────────
+            location /api/auth/login {
+                limit_req zone=auth_limit burst=10 nodelay;
+                proxy_pass http://auth_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /api/auth/register {
+                limit_req zone=auth_limit burst=10 nodelay;
+                proxy_pass http://auth_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /api/auth {
+                proxy_pass http://auth_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /api/users {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://auth_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            # ─── Social Service routes ─────────────────────────────────────────
+            location /api/posts {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/comments {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/interactions {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/journeys {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/v1/locations {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/friends {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/follows {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/notifications {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://social_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            # ─── Streaming Service routes ──────────────────────────────────────
+            location /api/streams {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://streaming_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            # ─── Computation Service routes ────────────────────────────────────
+            location /api/heatmap {
+                proxy_pass http://computation_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_hide_header 'Access-Control-Allow-Origin';
+                proxy_hide_header 'Access-Control-Allow-Methods';
+                proxy_hide_header 'Access-Control-Allow-Headers';
+            }
+
+            location /api/prediction {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://computation_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            # ─── Messaging Service routes ─────────────────────────────────────
+            location /api/recurring-event-details {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://messaging_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/messages {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://messaging_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+
+            location /api/storage {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://messaging_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+                client_max_body_size 50m;
+            }
+
+            location /uploads/ {
+                proxy_pass http://messaging_service;
+                proxy_set_header Host $host;
+            }
+
+            # ─── WebSocket (State Dissemination) ─────────────────────────────
+            location /ws {
+                proxy_pass http://dissemination_service;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_read_timeout 86400;
+            }
+
+            # ─── Socket.IO (Messaging Service) ───────────────────────────────
+            location /socket.io/ {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://messaging_socketio;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+                proxy_read_timeout 86400;
+            }
+
+            # ─── Context Service actuator/swagger ─────────────────────────────
+            location /swagger-ui/ {
+                proxy_pass http://context_service/swagger-ui/;
+                proxy_set_header Host $host;
+            }
+            location /v3/api-docs {
+                proxy_pass http://context_service/v3/api-docs;
+                proxy_set_header Host $host;
+            }
+            location /actuator/ {
+                deny all;
+                return 403;
+            }
+
+            # ─── Context Service (fallback) ───────────────────────────────────
+            location /api/ {
+                auth_request /auth-check;
+                auth_request_set $user_id $upstream_http_x_user_id;
+                auth_request_set $user_role $upstream_http_x_user_role;
+                proxy_pass http://context_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+        }
+    }

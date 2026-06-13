@@ -5,6 +5,7 @@ import com.hustsimulator.social.common.ResourceNotFoundException;
 import com.hustsimulator.social.entity.Post;
 import com.hustsimulator.social.entity.PostImage;
 import com.hustsimulator.social.entity.PostVideo;
+import com.hustsimulator.social.outbox.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import com.hustsimulator.social.enums.PostStatus;
 public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
+    private final OutboxService outboxService;
 
     @Override
     public Page<Post> findAll(Pageable pageable) {
@@ -85,7 +87,9 @@ public class PostServiceImpl implements PostService {
                 post.getVideos().add(PostVideo.builder().post(post).url(url).build());
             });
         }
-        return postRepository.save(post);
+        Post savedPost = postRepository.save(post);
+        outboxService.createEvent("Post", savedPost.getId().toString(), "POST_CREATED", savedPost);
+        return savedPost;
     }
 
     @Override

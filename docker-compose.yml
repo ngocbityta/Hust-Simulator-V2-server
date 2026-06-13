@@ -50,7 +50,7 @@ services:
       - "7882:7882/udp"
       - "8320:8320"
     environment:
-      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}"
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
     deploy:

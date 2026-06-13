@@ -1,0 +1,27 @@
+# LiveKit cần NodePort để client bên ngoài cluster kết nối WebRTC
+apiVersion: v1
+kind: Service
+metadata:
+  name: livekit
+  namespace: hustsim
+  labels:
+    app: livekit
+    app.kubernetes.io/part-of: hustsimulator
+spec:
+  type: NodePort
+  selector:
+    app: livekit
+  ports:
+    - port: 7880
+      targetPort: 7880
+      nodePort: 30880
+      name: http
+    - port: 7881
+      targetPort: 7881
+      nodePort: 30881
+      name: rtc-tcp
+    - port: 7882
+      targetPort: 7882
+      nodePort: 30882
+      protocol: UDP
+      name: rtc-udp

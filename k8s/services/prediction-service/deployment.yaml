@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prediction-service
+  namespace: hustsim
+  labels:
+    app: prediction-service
+    app.kubernetes.io/part-of: hustsimulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prediction-service
+  template:
+    metadata:
+      labels:
+        app: prediction-service
+    spec:
+      containers:
+        - name: prediction-service
+          image: hustsim/prediction-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 50055
+              name: grpc
+          envFrom:
+            - configMapRef:
+                name: hustsim-config
+            - secretRef:
+                name: hustsim-secrets
+          env:
+            # Giới hạn threads cho ML — tránh tranh chấp CPU
+            - name: OMP_NUM_THREADS
+              value: "1"
+            - name: MKL_NUM_THREADS
+              value: "1"
+            - name: OPENBLAS_NUM_THREADS
+              value: "1"
+            - name: VECLIB_MAXIMUM_THREADS
+              value: "1"
+            - name: NUMEXPR_NUM_THREADS
+              value: "1"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          readinessProbe:
+            tcpSocket:
+              port: 50055
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: 50055
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: model-storage
+              mountPath: /app/model
+            - name: data-storage
+              mountPath: /app/data
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: prediction-model
+        - name: data-storage
+          persistentVolumeClaim:
+            claimName: prediction-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prediction-model
+  namespace: hustsim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prediction-data
+  namespace: hustsim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

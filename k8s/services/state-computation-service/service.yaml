@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: state-computation-service
+  namespace: hustsim
+  labels:
+    app: state-computation-service
+    app.kubernetes.io/part-of: hustsimulator
+spec:
+  type: ClusterIP
+  selector:
+    app: state-computation-service
+  ports:
+    - port: 3003
+      targetPort: 3003
+      name: http

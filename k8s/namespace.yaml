@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hustsim
+  labels:
+    app.kubernetes.io/part-of: hustsimulator
+---
+# Giới hạn tổng tài nguyên cho namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: hustsim-quota
+  namespace: hustsim
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 8Gi
+    limits.cpu: "10"
+    limits.memory: 12Gi
+    pods: "30"
+    persistentvolumeclaims: "10"
+---
+# Default resource requests/limits cho mọi container trong namespace
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: hustsim-limits
+  namespace: hustsim
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      type: Container

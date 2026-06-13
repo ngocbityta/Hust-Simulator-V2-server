@@ -80,10 +80,9 @@ dependencies {
 
 	// Observability & Tracing
 	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+	implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
 
-	// Circuit Breaker (Resilience4j)
-	implementation 'org.springframework.boot:spring-boot-starter-aop'
-	implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

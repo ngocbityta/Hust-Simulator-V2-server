@@ -1,3 +1,4 @@
+import './tracing'; // Must be the first import
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';

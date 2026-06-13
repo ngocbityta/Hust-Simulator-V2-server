@@ -58,6 +58,8 @@ dependencies {
 
 	// Observability & Tracing
 	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+	implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
 
 	// Security removed as it's offloaded to API Gateway
 

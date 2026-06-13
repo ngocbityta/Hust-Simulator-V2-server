@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: hustsim
+  labels:
+    app: rabbitmq
+data:
+  rabbitmq.conf: |
+    vm_memory_high_watermark.relative = 0.6

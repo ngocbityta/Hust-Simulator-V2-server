@@ -1,0 +1,18 @@
+# Headless Service (clusterIP: None) cho StatefulSet
+# Mỗi pod có DNS riêng: interest-matcher-{i}.interest-matcher.hustsim.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: interest-matcher
+  namespace: hustsim
+  labels:
+    app: interest-matcher
+    app.kubernetes.io/part-of: hustsimulator
+spec:
+  clusterIP: None
+  selector:
+    app: interest-matcher
+  ports:
+    - port: 4000
+      targetPort: 4000
+      name: grpc

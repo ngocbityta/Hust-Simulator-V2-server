@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: social-service
+  namespace: hustsim
+  labels:
+    app: social-service
+    app.kubernetes.io/part-of: hustsimulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: social-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: social-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8083"
+    spec:
+      containers:
+        - name: social-service
+          image: hustsim/social-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8083
+              name: http
+            - containerPort: 9092
+              name: socketio
+          envFrom:
+            - configMapRef:
+                name: hustsim-config
+            - secretRef:
+                name: hustsim-secrets
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?currentSchema=social&sslmode=$(POSTGRES_SSL)&channel_binding=$(POSTGRES_CHANNEL_BINDING)"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: hustsim-secrets
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hustsim-secrets
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_FLYWAY_DEFAULT_SCHEMA
+              value: "social"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 15
+          volumeMounts:
+            - name: social-uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: social-uploads
+          persistentVolumeClaim:
+            claimName: social-uploads
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: social-uploads
+  namespace: hustsim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

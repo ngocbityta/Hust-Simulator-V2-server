@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hustsim-config
+  namespace: hustsim
+  labels:
+    app.kubernetes.io/part-of: hustsimulator
+data:
+  # ─── PostgreSQL (Neon Cloud) ──────────────────────────────────
+  POSTGRES_HOST: "ep-aged-cloud-a1lkicvq-pooler.ap-southeast-1.aws.neon.tech"
+  POSTGRES_DB: "neondb"
+  POSTGRES_PORT: "5432"
+  POSTGRES_SSL: "require"
+  POSTGRES_CHANNEL_BINDING: "prefer"
+
+  # ─── Redis ────────────────────────────────────────────────────
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # ─── RabbitMQ ─────────────────────────────────────────────────
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+
+  # ─── Service Ports (Explicitly override K8s injected tcp:// variables) ──
+  GAME_SERVER_PORT: "3002"
+  AUTH_SERVICE_PORT: "8081"
+  CONTEXT_SERVICE_PORT: "8080"
+  SOCIAL_SERVICE_PORT: "8083"
+  STREAMING_SERVICE_PORT: "8084"
+  CONTEXT_SERVICE_HOST: "context-service"
+  COMPUTATION_SERVICE_HOST: "state-computation-service"
+
+  # ─── Interest Matcher / Spatial Config ────────────────────────
+  IM_BASE_PORT: "4000"
+  IM_NUM_ZONES: "3"
+  ZONE_1_LNG: "105.84"
+  ZONE_2_LNG: "105.85"
+  GRID_CELL_SIZE: "10"
+  MAP_CENTER_LAT: "21.003"
+
+  # ─── Interest Matcher Hosts (K8s StatefulSet DNS) ─────────────
+  IM_ZONE_0_HOST: "interest-matcher-0.interest-matcher"
+  IM_ZONE_1_HOST: "interest-matcher-1.interest-matcher"
+  IM_ZONE_2_HOST: "interest-matcher-2.interest-matcher"
+
+  # ─── LiveKit ──────────────────────────────────────────────────
+  LIVEKIT_URL: "http://livekit:7880"
+  LIVEKIT_CLIENT_URL: "ws://localhost:7880"
+
+  # ─── Spring Boot Common ──────────────────────────────────────
+  SPRING_FLYWAY_ENABLED: "true"
+  SPRING_FLYWAY_CREATE_SCHEMAS: "true"
+
+  # ─── Java / Node Tuning ──────────────────────────────────────
+  JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
+  NODE_OPTIONS: "--max-old-space-size=256"
+
+  # ─── Storage ─────────────────────────────────────────────────
+  STORAGE_PROVIDER: "local"
+  STORAGE_LOCAL_DIR: "/app/uploads"
+  STORAGE_LOCAL_URL: "http://localhost/uploads/"
+
+  # ─── Testing ─────────────────────────────────────────────────
+  USE_HEURISTIC_ONLY: "false"
+  LOG_LEVEL: "debug"

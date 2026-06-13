@@ -1,3 +1,4 @@
+import './tracing'; // Must be the first import
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';

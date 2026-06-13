@@ -15,6 +15,75 @@ export function getDistance(lat1: number, lng1: number, lat2: number, lng2: numb
   return R * c;
 }
 
+/**
+ * Tính khoảng cách ngắn nhất (mét) từ điểm (lat, lng) đến đoạn thẳng AB.
+ * Sử dụng phép chiếu vuông góc phẳng (planar projection) do khoảng cách nhỏ.
+ */
+export function distancePointToSegment(
+  lat: number, lng: number,
+  latA: number, lngA: number,
+  latB: number, lngB: number
+): number {
+  // Đổi sang mét để tính trên hệ phẳng (Hà Nội: lat ~ 21 độ)
+  const METERS_PER_LAT = 111000;
+  const METERS_PER_LNG = 111000 * Math.cos((21.003 * Math.PI) / 180);
+
+  const x = lng * METERS_PER_LNG;
+  const y = lat * METERS_PER_LAT;
+  const xA = lngA * METERS_PER_LNG;
+  const yA = latA * METERS_PER_LAT;
+  const xB = lngB * METERS_PER_LNG;
+  const yB = latB * METERS_PER_LAT;
+
+  const dx = xB - xA;
+  const dy = yB - yA;
+  const len2 = dx * dx + dy * dy;
+
+  if (len2 === 0) {
+    // A và B trùng nhau
+    const dx2 = x - xA;
+    const dy2 = y - yA;
+    return Math.sqrt(dx2 * dx2 + dy2 * dy2);
+  }
+
+  // Tỷ lệ hình chiếu của điểm lên đường thẳng chứa đoạn AB
+  let t = ((x - xA) * dx + (y - yA) * dy) / len2;
+  t = Math.max(0, Math.min(1, t)); // Giới hạn t trong đoạn [0, 1]
+
+  // Tìm điểm gần nhất trên đoạn AB
+  const pX = xA + t * dx;
+  const pY = yA + t * dy;
+
+  const dx2 = x - pX;
+  const dy2 = y - pY;
+  return Math.sqrt(dx2 * dx2 + dy2 * dy2);
+}
+
+/**
+ * Tính khoảng cách ngắn nhất (mét) từ điểm đến polyline.
+ * polyline: mảng các [lng, lat]
+ */
+export function distancePointToPolyline(
+  lat: number, lng: number,
+  polyline: number[][]
+): number {
+  if (!polyline || polyline.length === 0) return Infinity;
+  if (polyline.length === 1) {
+    return getDistance(lat, lng, polyline[0][1], polyline[0][0]);
+  }
+
+  let minDist = Infinity;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const d = distancePointToSegment(
+      lat, lng,
+      polyline[i][1], polyline[i][0],
+      polyline[i+1][1], polyline[i+1][0]
+    );
+    if (d < minDist) minDist = d;
+  }
+  return minDist;
+}
+
 export interface CampusPhaseInfo {
   transitRatio: number;
   phase: string;
@@ -217,9 +286,9 @@ export function getPolygonCellsWithGaussian(
   }
 
   // 4. Normalize weights to sum to 1.0
-  // First, limit to top 15 cells to prevent massive JSON payload for large buildings
   cells.sort((a, b) => b.weight - a.weight);
-  const topCells = cells.slice(0, 15);
+  const maxCells = Math.min(50, Math.max(15, cells.length));
+  const topCells = cells.slice(0, maxCells);
   
   let newTotal = 0;
   for (const cell of topCells) {

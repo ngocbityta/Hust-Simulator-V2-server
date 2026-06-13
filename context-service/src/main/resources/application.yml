@@ -54,15 +54,13 @@ management:
     web:
       exposure:
         include: health,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
-# Circuit Breaker Config
-resilience4j.circuitbreaker:
-  instances:
-    messagingService:
-      slidingWindowSize: 5
-      failureRateThreshold: 50
-      waitDurationInOpenState: 10000
-      permittedNumberOfCallsInHalfOpenState: 3
 
 # Swagger/OpenAPI
 springdoc:

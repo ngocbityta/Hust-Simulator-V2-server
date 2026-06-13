@@ -234,22 +234,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
             }
           }
 
-          // ── Always place some weight at the bot's CURRENT position ──
-          // This ensures bots walking on roads are visible on the heatmap
-          const currentPosWeight = 0.3; // 30% weight stays at current position
-          const userCell = this.spatialService.getGridCell(lat, lng);
-          const cellKey = this.spatialService.getCellKey(userCell);
-          if (!cellMap.has(cellKey)) {
-            cellMap.set(cellKey, { cellX: userCell.x, cellY: userCell.y, count: 0, intents: new Map<string, number>() });
-          }
-          const currentCellData = cellMap.get(cellKey)!;
-          currentCellData.count += currentPosWeight;
-          currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + currentPosWeight);
-
           if (!prediction) {
-             // No prediction — remaining 70% also stays at current position
-             currentCellData.count += (1 - currentPosWeight);
-             currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + (1 - currentPosWeight));
              return;
            }
 
@@ -280,8 +265,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
           
           for (const cand of candidates) {
             const scaledProb = (cand.probability || 1) * activityMultiplier;
-             // Remaining 70% goes to predicted destination (building + transit)
-             const destWeight = scaledProb * (1 - currentPosWeight);
+             const destWeight = scaledProb * 1.0;
              const buildingWeight = destWeight * (1 - transitRatio);
              const transitWeight = destWeight * transitRatio;
 
@@ -652,20 +636,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
             }
           }
 
-          // Current position weight
-          const currentPosWeight = 0.3;
-          const userCell = this.spatialService.getGridCell(lat, lng);
-          const cellKey = this.spatialService.getCellKey(userCell);
-          if (!cellMap.has(cellKey)) {
-            cellMap.set(cellKey, { cellX: userCell.x, cellY: userCell.y, count: 0, intents: new Map<string, number>() });
-          }
-          const currentCellData = cellMap.get(cellKey)!;
-          currentCellData.count += currentPosWeight;
-          currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + currentPosWeight);
-
           if (!prediction) {
-            currentCellData.count += (1 - currentPosWeight);
-            currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + (1 - currentPosWeight));
             return;
           }
 
@@ -700,15 +671,13 @@ export class PredictiveHeatmapService implements OnModuleInit {
           }
 
           if (candidates.length === 0) {
-            // All destinations closed — weight stays at current position
-            currentCellData.count += (1 - currentPosWeight);
-            currentCellData.intents.set('[Current] Vị trí hiện tại', (currentCellData.intents.get('[Current] Vị trí hiện tại') || 0) + (1 - currentPosWeight));
+            // All destinations closed — ignore user
             return;
           }
 
           for (const cand of candidates) {
             const scaledProb = (cand.probability || 1) * activityMultiplier;
-            const destWeight = scaledProb * (1 - currentPosWeight);
+            const destWeight = scaledProb * 1.0;
             const buildingWeight = destWeight * (1 - transitRatio);
             const transitWeight = destWeight * transitRatio;
 

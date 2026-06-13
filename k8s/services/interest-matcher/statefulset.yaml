@@ -1,0 +1,85 @@
+# Interest Matcher — StatefulSet
+# Mỗi pod có hostname cố định: interest-matcher-{0,1,2}
+# ZONE_ID được tự động trích xuất từ ordinal index trong hostname
+# Peer discovery qua headless service DNS:
+#   interest-matcher-0.interest-matcher.hustsim.svc.cluster.local
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: interest-matcher
+  namespace: hustsim
+  labels:
+    app: interest-matcher
+    app.kubernetes.io/part-of: hustsimulator
+spec:
+  serviceName: interest-matcher
+  replicas: 3
+  selector:
+    matchLabels:
+      app: interest-matcher
+  template:
+    metadata:
+      labels:
+        app: interest-matcher
+    spec:
+      containers:
+        - name: interest-matcher
+          image: hustsim/interest-matcher-service:latest
+          imagePullPolicy: Never          # Tự tính ZONE_ID từ hostname ordinal + cấu hình NEIGHBOR_BROKERS
+          command:
+            - sh
+            - -c
+            - |
+              # Extract ordinal: interest-matcher-0 → 0
+              export ZONE_ID=${HOSTNAME##*-}
+              
+              # Tính port cho zone này (cùng port 4000 trên các Pod khác nhau là an toàn vì mỗi pod có IP riêng)
+              export IM_PORT=4000
+              export IM_BASE_PORT=$((4000 - ZONE_ID))
+              
+              # Xây dựng NEIGHBOR_BROKERS dựa trên ZONE_ID
+              TOTAL_ZONES=3
+              NEIGHBORS=""
+              for i in $(seq 0 $((TOTAL_ZONES - 1))); do
+                if [ "$i" != "$ZONE_ID" ]; then
+                  PEER_PORT=4000
+                  PEER_HOST="interest-matcher-${i}.interest-matcher"
+                  if [ -n "$NEIGHBORS" ]; then
+                    NEIGHBORS="${NEIGHBORS},"
+                  fi
+                  # Chỉ thêm neighbor liền kề (zone ±1)
+                  DIFF=$((ZONE_ID - i))
+                  if [ "$DIFF" = "1" ] || [ "$DIFF" = "-1" ]; then
+                    NEIGHBORS="${NEIGHBORS}${PEER_HOST}:${PEER_PORT}:${i}"
+                  fi
+                fi
+              done
+              export NEIGHBOR_BROKERS="$NEIGHBORS"
+              
+              echo "Starting Interest Matcher: ZONE_ID=$ZONE_ID PORT=$IM_PORT NEIGHBORS=$NEIGHBOR_BROKERS"
+              exec node dist/main
+          ports:
+            - containerPort: 4000
+              name: grpc
+          envFrom:
+            - configMapRef:
+                name: hustsim-config
+            - secretRef:
+                name: hustsim-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "32Mi"
+            limits:
+              cpu: "250m"
+              memory: "64Mi"
+          readinessProbe:
+            tcpSocket:
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 15

@@ -1,7 +1,8 @@
 import { ISpatialService } from '../../spatial/spatial.interface';
 
 /**
- * Phân bổ trọng số của những người di chuyển trên đường theo hiệu ứng Perlin-Noise 1D
+ * Phân bổ trọng số của những người di chuyển trên đường theo hiệu ứng Harmonic Noise 1-chiều
+ * (tổng hợp 2 sóng sin với tần số khác nhau, khuếch đại bậc 3).
  * Điều này tạo ra từng cụm tụ tập (moving clusters/flocking).
  */
 export function distributeFlockingWeight(

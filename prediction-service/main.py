@@ -240,37 +240,43 @@ def load_model_if_needed():
 # ---- POI Time-Aware Weights ----
 
 def get_time_weight(poi_category: str, hour: float) -> float:
-    """Return multiplier [0.05, 2.0] for a POI category at given hour of day (local time)."""
+    """Return multiplier [0.4, 1.5] for a POI category at given hour of day (local time).
+    
+    NOTE: These weights are intentionally softened (range [0.4, 1.5]) to avoid
+    overpowering the STTF model's learned temporal patterns. The model already
+    receives hour_of_week as input, so these weights serve as gentle nudges
+    rather than hard overrides, preserving personalization.
+    """
     weights = {
         'CLASSROOM': {
-            # Active during class hours, closed at night
-            (7, 11.5): 1.0, (13, 17): 1.0, (17, 21): 0.4,
-            'default': 0.05
+            # Active during class hours, less likely at night
+            (7, 11.5): 1.0, (13, 17): 1.0, (17, 21): 0.7,
+            'default': 0.5
         },
         'CANTEEN': {
             # Peak at lunch and dinner
-            (6, 7.5): 0.5, (11, 13): 2.0, (17, 19): 1.5,
-            'default': 0.15
+            (6, 7.5): 0.7, (11, 13): 1.5, (17, 19): 1.3,
+            'default': 0.5
         },
         'LIBRARY': {
             # Open 7-22, peak evening study
-            (7, 17): 0.8, (17, 22): 1.5,
-            'default': 0.05
+            (7, 17): 0.9, (17, 22): 1.3,
+            'default': 0.5
         },
         'DORM': {
             # Active at night, early morning
-            (0, 7): 1.5, (21, 24): 1.5, (7, 17): 0.2,
-            'default': 0.3
+            (0, 7): 1.3, (21, 24): 1.3, (7, 17): 0.5,
+            'default': 0.6
         },
         'SPORTS': {
             # Afternoon/evening
             (16, 21): 1.2,
-            'default': 0.1
+            'default': 0.4
         },
         'LAB': {
             # Extended hours
-            (8, 22): 0.8,
-            'default': 0.05
+            (8, 22): 0.9,
+            'default': 0.4
         },
     }
     cat_weights = weights.get(poi_category, weights['CLASSROOM'])
@@ -301,15 +307,17 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
         # --- Fallback: Heuristic Predictor ---
         # Used when: model not ready OR check-in sequence too short
         if model is None or len(checkins) < 2:
-            confidence = 0.4
-            # Simple heuristic: pick POI closest to last GPS point
+            # Heuristic fallback: pick POI closest to last GPS point
+            # Confidence is inversely proportional to distance (closer = more confident)
             if len(request.trajectory) > 0:
                 last_pt = request.trajectory[-1]
-                best_id, _ = snap_to_poi(last_pt.latitude, last_pt.longitude)
+                best_id, best_dist = snap_to_poi(last_pt.latitude, last_pt.longitude)
                 predicted_class = best_id if best_id is not None else random.choice(POI_IDS_SORTED)
+                confidence = max(0.2, min(0.7, 1.0 - best_dist / CHECK_IN_RADIUS_M))
             else:
                 predicted_class = random.choice(POI_IDS_SORTED)
-            logger.info(f"Heuristic fallback → POI class {predicted_class}")
+                confidence = 0.2
+            logger.info(f"Heuristic fallback → POI class {predicted_class} (dist-based conf={confidence:.2f})")
         else:
             # --- AI Predictor: STTF-Recommender Inference ---
             try:
@@ -416,7 +424,17 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
         return response
 
 
+def run_fastapi():
+    import uvicorn
+    from api import app
+    logger.info("Starting FastAPI HTTP Server on port 50056 for prediction-data")
+    uvicorn.run(app, host="0.0.0.0", port=50056, log_level="warning")
+
 def serve():
+    import threading
+    fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
+    fastapi_thread.start()
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     prediction_pb2_grpc.add_PredictionServiceServicer_to_server(
         PredictionServiceServicer(), server
