@@ -24,8 +24,8 @@ spec:
     spec:
       containers:
         - name: interest-matcher
-          image: hustsim/interest-matcher-service:latest
-          imagePullPolicy: Never          # Tự tính ZONE_ID từ hostname ordinal + cấu hình NEIGHBOR_BROKERS
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/interest-matcher-service:latest
+          imagePullPolicy: Always         # Tự tính ZONE_ID từ hostname ordinal + cấu hình NEIGHBOR_BROKERS
           command:
             - sh
             - -c

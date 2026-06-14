@@ -1,0 +1,135 @@
+name: Build and Deploy to GKE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api-gateway/**'
+      - 'auth-service/**'
+      - 'context-service/**'
+      - 'social-service/**'
+      - 'streaming-service/**'
+      - 'state-dissemination-service/**'
+      - 'state-computation-service/**'
+      - 'interest-matcher-service/**'
+      - 'prediction-service/**'
+      - 'proto/**'
+      - 'k8s/**'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: hustsimulator
+  GAR_LOCATION: asia-southeast1
+  REPOSITORY: hustsim-repo
+  CLUSTER_NAME: hustsim-cluster
+  CLUSTER_ZONE: asia-southeast1
+  NAMESPACE: hustsim
+
+jobs:
+  build-and-deploy:
+    name: Build, Push, and Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # ── Xác thực với Google Cloud ──
+    - id: auth
+      name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for Artifact Registry
+      run: |-
+        gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
+
+    # ── Lấy credentials để điều khiển K8s cluster ──
+    - name: Get GKE Credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ env.CLUSTER_NAME }}
+        location: ${{ env.CLUSTER_ZONE }}
+
+    # ── Build và Push toàn bộ Docker Images ──
+    - name: Build and Push Docker Images
+      run: |-
+        REGISTRY="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}"
+
+        SERVICES=(
+          "api-gateway"
+          "auth-service"
+          "context-service"
+          "social-service"
+          "streaming-service"
+          "state-dissemination-service"
+          "state-computation-service"
+          "interest-matcher-service"
+          "prediction-service"
+        )
+
+        for svc in "${SERVICES[@]}"; do
+          echo "============================================"
+          echo "  Building: $svc"
+          echo "============================================"
+          IMAGE_NAME="$REGISTRY/$svc:latest"
+
+          # api-gateway dùng build context là chính thư mục của nó
+          # Các service khác cần build context ở root vì Dockerfile tham chiếu proto/, v.v.
+          if [ "$svc" = "api-gateway" ]; then
+            BUILD_CONTEXT="./api-gateway"
+          else
+            BUILD_CONTEXT="."
+          fi
+
+          docker build -t "$IMAGE_NAME" -f "$svc/Dockerfile" "$BUILD_CONTEXT"
+          docker push "$IMAGE_NAME"
+          echo "✅ Pushed $IMAGE_NAME"
+        done
+
+    # ── Apply K8s manifests (cập nhật configmap, secrets nếu có thay đổi) ──
+    - name: Apply K8s Manifests
+      run: |-
+        kubectl apply -f k8s/configmap.yaml
+        kubectl apply -R -f k8s/services/
+
+    # ── Rollout restart để kéo image mới nhất ──
+    - name: Rollout Restart Deployments
+      run: |-
+        DEPLOYMENTS=(
+          "api-gateway"
+          "auth-service"
+          "context-service"
+          "social-service"
+          "streaming-service"
+          "state-dissemination-service"
+          "state-computation-service"
+          "prediction-service"
+        )
+
+        for dep in "${DEPLOYMENTS[@]}"; do
+          kubectl rollout restart deployment "$dep" -n ${{ env.NAMESPACE }}
+        done
+
+        # StatefulSet riêng
+        kubectl rollout restart statefulset interest-matcher -n ${{ env.NAMESPACE }}
+
+    # ── Chờ rollout hoàn tất ──
+    - name: Wait for Rollout to Complete
+      run: |-
+        echo "⏳ Waiting for api-gateway..."
+        kubectl rollout status deployment api-gateway -n ${{ env.NAMESPACE }} --timeout=300s
+
+        echo "⏳ Waiting for auth-service..."
+        kubectl rollout status deployment auth-service -n ${{ env.NAMESPACE }} --timeout=300s
+
+        echo "✅ Core services deployed successfully!"

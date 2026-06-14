@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: hustsim/auth-service:latest
-          imagePullPolicy: Never
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/auth-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8081
               name: http

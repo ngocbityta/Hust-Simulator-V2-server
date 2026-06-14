@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: streaming-service
-          image: hustsim/streaming-service:latest
-          imagePullPolicy: Never
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/streaming-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8084
               name: http

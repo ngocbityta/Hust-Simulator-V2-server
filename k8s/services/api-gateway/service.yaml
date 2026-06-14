@@ -8,11 +8,10 @@ metadata:
     app: api-gateway
     app.kubernetes.io/part-of: hustsimulator
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: api-gateway
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30080
       name: http

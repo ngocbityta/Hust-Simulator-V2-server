@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: social-service
-          image: hustsim/social-service:latest
-          imagePullPolicy: Never
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/social-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8083
               name: http
@@ -40,6 +40,8 @@ spec:
             - secretRef:
                 name: hustsim-secrets
           env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/etc/firebase/service-account.json"
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?currentSchema=social&sslmode=$(POSTGRES_SSL)&channel_binding=$(POSTGRES_CHANNEL_BINDING)"
             - name: SPRING_DATASOURCE_USERNAME
@@ -82,9 +84,15 @@ spec:
             periodSeconds: 10
             failureThreshold: 15
           volumeMounts:
+            - name: firebase-credentials
+              mountPath: /etc/firebase
+              readOnly: true
             - name: social-uploads
               mountPath: /app/uploads
       volumes:
+        - name: firebase-credentials
+          secret:
+            secretName: firebase-credentials
         - name: social-uploads
           persistentVolumeClaim:
             claimName: social-uploads

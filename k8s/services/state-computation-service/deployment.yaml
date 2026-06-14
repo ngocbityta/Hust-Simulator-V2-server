@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: state-computation-service
-          image: hustsim/state-computation-service:latest
-          imagePullPolicy: Never
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/state-computation-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3003
               name: http

@@ -18,8 +18,8 @@ spec:
     spec:
       containers:
         - name: prediction-service
-          image: hustsim/prediction-service:latest
-          imagePullPolicy: Never
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/prediction-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 50055
               name: grpc

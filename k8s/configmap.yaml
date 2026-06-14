@@ -56,7 +56,8 @@ data:
   NODE_OPTIONS: "--max-old-space-size=256"
 
   # ─── Storage ─────────────────────────────────────────────────
-  STORAGE_PROVIDER: "local"
+  STORAGE_PROVIDER: "firebase"
+  FIREBASE_STORAGE_BUCKET: "your-firebase-project-id.appspot.com" # TODO: Thay bằng bucket của bạn
   STORAGE_LOCAL_DIR: "/app/uploads"
   STORAGE_LOCAL_URL: "http://localhost/uploads/"
 

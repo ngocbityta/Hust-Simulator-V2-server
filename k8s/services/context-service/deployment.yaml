@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: context-service
-          image: hustsim/context-service:latest
-          imagePullPolicy: Never
+          image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/context-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
