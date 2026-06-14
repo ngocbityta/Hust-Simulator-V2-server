@@ -16,6 +16,9 @@ spec:
       labels:
         app: grafana
     spec:
+      securityContext:
+        fsGroup: 472
+        runAsUser: 472
       containers:
         - name: grafana
           image: grafana/grafana:10.0.3
@@ -31,11 +34,11 @@ spec:
               value: "3000"
           resources:
             requests:
+              cpu: "10m"
+              memory: "64Mi"
+            limits:
               cpu: "100m"
               memory: "128Mi"
-            limits:
-              cpu: "250m"
-              memory: "256Mi"
           livenessProbe:
             httpGet:
               path: /api/health

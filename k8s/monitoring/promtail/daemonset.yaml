@@ -76,7 +76,7 @@ spec:
               mountPath: /var/log/pods
               readOnly: true
             - name: containers-log
-              mountPath: /var/lib/docker/containers
+              mountPath: /var/log/containers
               readOnly: true
       volumes:
         - name: config
@@ -87,7 +87,7 @@ spec:
             path: /var/log/pods
         - name: containers-log
           hostPath:
-            path: /var/lib/docker/containers
+            path: /var/log/containers
 ---
 apiVersion: v1
 kind: ServiceAccount
