@@ -7,8 +7,10 @@ metadata:
   labels:
     app: api-gateway
     app.kubernetes.io/part-of: hustsimulator
+  annotations:
+    cloud.google.com/backend-config: '{"default": "api-gateway-backendconfig"}'
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: api-gateway
   ports:

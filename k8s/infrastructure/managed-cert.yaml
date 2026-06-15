@@ -1,0 +1,9 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: hustsimulator-cert-v2
+  namespace: hustsim
+spec:
+  domains:
+    - hustsimulator.id.vn
+    - www.hustsimulator.id.vn
