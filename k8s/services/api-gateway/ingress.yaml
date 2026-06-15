@@ -9,6 +9,17 @@ metadata:
     networking.gke.io/managed-certificates: "hustsimulator-cert-v2"
     networking.gke.io/v1beta1.FrontendConfig: "http-to-https"
 spec:
+  rules:
+    - host: admin.hustsimulator.id.vn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-ui
+                port:
+                  number: 80
   defaultBackend:
     service:
       name: api-gateway
