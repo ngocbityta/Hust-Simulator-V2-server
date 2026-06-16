@@ -51,3 +51,7 @@ data:
           - source_labels: [__meta_kubernetes_pod_label_app]
             action: replace
             target_label: app
+          # Add application label for Grafana dashboards compatibility
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: replace
+            target_label: application
