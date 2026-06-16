@@ -4,6 +4,7 @@ metadata:
   name: api-gateway-backendconfig
   namespace: hustsim
 spec:
+  timeoutSec: 86400
   healthCheck:
     checkIntervalSec: 15
     timeoutSec: 5

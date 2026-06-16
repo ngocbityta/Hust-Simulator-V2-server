@@ -37,6 +37,9 @@ spec:
                 name: hustsim-config
             - secretRef:
                 name: hustsim-secrets
+          env:
+            - name: OTLP_ENDPOINT
+              value: "http://jaeger:4318/v1/traces"
           resources:
             requests:
               cpu: "50m"

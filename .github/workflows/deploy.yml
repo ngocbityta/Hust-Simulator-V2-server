@@ -100,6 +100,7 @@ jobs:
     - name: Apply K8s Manifests
       run: |-
         kubectl apply -f k8s/configmap.yaml
+        kubectl apply -R -f k8s/infrastructure/
         kubectl apply -R -f k8s/services/
         kubectl apply -R -f k8s/monitoring/
 

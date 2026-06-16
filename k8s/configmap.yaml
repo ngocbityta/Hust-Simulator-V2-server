@@ -52,7 +52,7 @@ data:
   SPRING_FLYWAY_CREATE_SCHEMAS: "true"
 
   # ─── Java / Node Tuning ──────────────────────────────────────
-  JAVA_OPTS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
   NODE_OPTIONS: "--max-old-space-size=256"
 
   # ─── Storage ─────────────────────────────────────────────────

@@ -64,7 +64,7 @@ data:
             # ─── CORS headers ─────────────────────────────────────────────────
             add_header 'Access-Control-Allow-Origin' '*' always;
             add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS' always;
-            add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept, X-User-Id' always;
+            add_header 'Access-Control-Allow-Headers' '*' always;
 
             proxy_hide_header 'Access-Control-Allow-Origin';
             proxy_hide_header 'Access-Control-Allow-Methods';
@@ -76,14 +76,17 @@ data:
             add_header X-Frame-Options "DENY" always;
             add_header X-XSS-Protection "1; mode=block" always;
 
-            # Preflight requests
+            # Preflight requests globally
+            if ($is_options) {
+                add_header 'Access-Control-Allow-Origin' '*';
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                add_header 'Access-Control-Allow-Headers' '*';
+                add_header 'Content-Length' 0;
+                add_header 'Content-Type' 'text/plain charset=UTF-8';
+                return 204;
+            }
+
             location / {
-                if ($is_options) {
-                    add_header 'Access-Control-Allow-Origin' '*';
-                    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
-                    add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept, X-User-Id';
-                    return 204;
-                }
 
                 proxy_pass http://context_service;
                 proxy_set_header Host $host;
@@ -103,6 +106,13 @@ data:
                 proxy_set_header Content-Length "";
                 proxy_set_header X-Original-URI $request_uri;
                 proxy_set_header Host $host;
+
+                # Bơm token từ query param vào header Authorization nếu client là Socket.IO
+                set $auth_token $http_authorization;
+                if ($arg_token) {
+                    set $auth_token "Bearer $arg_token";
+                }
+                proxy_set_header Authorization $auth_token;
             }
 
             # ─── Health check ─────────────────────────────────────────────────

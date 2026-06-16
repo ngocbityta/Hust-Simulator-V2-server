@@ -52,6 +52,8 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: SPRING_FLYWAY_DEFAULT_SCHEMA
               value: "streaming"
+            - name: OTLP_ENDPOINT
+              value: "http://jaeger:4318/v1/traces"
           resources:
             requests:
               cpu: "100m"
@@ -63,14 +65,14 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: 8084
-            initialDelaySeconds: 90
+            initialDelaySeconds: 10
             periodSeconds: 15
             failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8084
-            initialDelaySeconds: 60
+            initialDelaySeconds: 10
             periodSeconds: 10
           startupProbe:
             httpGet:
