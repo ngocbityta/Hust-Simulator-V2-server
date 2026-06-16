@@ -38,11 +38,11 @@ spec:
               name: management
           resources:
             requests:
-              cpu: "200m"
-              memory: "128Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
               cpu: "500m"
-              memory: "256Mi"
+              memory: "512Mi"
           readinessProbe:
             exec:
               command:

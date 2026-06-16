@@ -39,10 +39,10 @@ spec:
                 name: hustsim-secrets
           resources:
             requests:
-              cpu: "250m"
+              cpu: "50m"
               memory: "64Mi"
             limits:
-              cpu: "750m"
+              cpu: "200m"
               memory: "128Mi"
           livenessProbe:
             httpGet:

@@ -7,6 +7,8 @@ metadata:
   labels:
     app: livekit
     app.kubernetes.io/part-of: hustsimulator
+  annotations:
+    cloud.google.com/backend-config: '{"default": "livekit-backendconfig"}'
 spec:
   type: NodePort
   selector:

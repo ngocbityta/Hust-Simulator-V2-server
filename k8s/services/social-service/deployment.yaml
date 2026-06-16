@@ -56,13 +56,15 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: SPRING_FLYWAY_DEFAULT_SCHEMA
               value: "social"
+            - name: OTLP_ENDPOINT
+              value: "http://jaeger:4318/v1/traces"
           resources:
             requests:
-              cpu: "200m"
-              memory: "256Mi"
+              cpu: "100m"
+              memory: "512Mi"
             limits:
               cpu: "500m"
-              memory: "512Mi"
+              memory: "768Mi"
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -87,24 +89,7 @@ spec:
             - name: firebase-credentials
               mountPath: /etc/firebase
               readOnly: true
-            - name: social-uploads
-              mountPath: /app/uploads
       volumes:
         - name: firebase-credentials
           secret:
             secretName: firebase-credentials
-        - name: social-uploads
-          persistentVolumeClaim:
-            claimName: social-uploads
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: social-uploads
-  namespace: hustsim
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi

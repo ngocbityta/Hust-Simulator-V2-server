@@ -45,7 +45,7 @@ data:
 
   # ─── LiveKit ──────────────────────────────────────────────────
   LIVEKIT_URL: "http://livekit:7880"
-  LIVEKIT_CLIENT_URL: "ws://localhost:7880"
+  LIVEKIT_CLIENT_URL: "wss://live.hustsimulator.id.vn"
 
   # ─── Spring Boot Common ──────────────────────────────────────
   SPRING_FLYWAY_ENABLED: "true"
@@ -57,10 +57,13 @@ data:
 
   # ─── Storage ─────────────────────────────────────────────────
   STORAGE_PROVIDER: "firebase"
-  FIREBASE_STORAGE_BUCKET: "your-firebase-project-id.appspot.com" # TODO: Thay bằng bucket của bạn
+  FIREBASE_STORAGE_BUCKET: "hustsimulator-storage"
   STORAGE_LOCAL_DIR: "/app/uploads"
-  STORAGE_LOCAL_URL: "http://localhost/uploads/"
+  STORAGE_LOCAL_URL: "https://hustsimulator.id.vn/uploads/"
 
   # ─── Testing ─────────────────────────────────────────────────
   USE_HEURISTIC_ONLY: "false"
   LOG_LEVEL: "debug"
+
+  # ─── Tracing ─────────────────────────────────────────────────
+  OTLP_ENDPOINT: "http://jaeger:4317"

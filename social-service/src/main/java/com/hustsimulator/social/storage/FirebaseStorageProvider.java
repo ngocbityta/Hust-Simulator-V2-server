@@ -73,7 +73,7 @@ public class FirebaseStorageProvider implements StorageProvider {
             storage.create(blobInfo, data);
 
             String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());
-            String downloadUrl = String.format("https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media",
+            String downloadUrl = String.format("https://storage.googleapis.com/%s/%s",
                     firebaseBucket, encodedFileName);
 
             log.info("Uploaded file to Firebase storage: {}", downloadUrl);
