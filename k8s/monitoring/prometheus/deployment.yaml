@@ -80,7 +80,7 @@ metadata:
   name: hustsim-prometheus
 rules:
   - apiGroups: [""]
-    resources: ["pods", "nodes", "services", "endpoints"]
+    resources: ["pods", "nodes", "nodes/metrics", "nodes/proxy", "services", "endpoints"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
