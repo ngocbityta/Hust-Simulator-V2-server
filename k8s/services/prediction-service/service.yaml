@@ -14,3 +14,6 @@ spec:
     - port: 50055
       targetPort: 50055
       name: grpc
+    - port: 50056
+      targetPort: 50056
+      name: http

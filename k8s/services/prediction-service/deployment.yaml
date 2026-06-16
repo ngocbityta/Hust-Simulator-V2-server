@@ -25,6 +25,8 @@ spec:
           ports:
             - containerPort: 50055
               name: grpc
+            - containerPort: 50056
+              name: http
           envFrom:
             - configMapRef:
                 name: hustsim-config
@@ -46,8 +48,8 @@ spec:
               value: "http://jaeger:4318/v1/traces"
           resources:
             requests:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "10m"
+              memory: "64Mi"
             limits:
               cpu: "1000m"
               memory: "1Gi"
