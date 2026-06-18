@@ -33,7 +33,7 @@ def sync_pois():
     
     logger.info("Fetching active buildings from context.buildings...")
     cursor.execute("""
-        SELECT id, name, centroid_lat, centroid_lng, category 
+        SELECT id, name, centroid_lat, centroid_lng, category, coordinates
         FROM context.buildings 
         WHERE is_active = true 
         ORDER BY id ASC
@@ -48,7 +48,7 @@ def sync_pois():
         
     new_pois = {}
     valid_count = 0
-    for b_id, b_name, lat, lng, category in rows:
+    for b_id, b_name, lat, lng, category, coordinates in rows:
         if lat is None or lng is None:
             continue
             
@@ -57,7 +57,8 @@ def sync_pois():
             "name": b_name,
             "lat": lat,
             "lng": lng,
-            "category": category or "CLASSROOM"
+            "category": category or "CLASSROOM",
+            "polygon_coords": json.loads(coordinates) if coordinates else []
         }
         valid_count += 1
         
