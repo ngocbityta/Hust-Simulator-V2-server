@@ -26,7 +26,7 @@ DB_SSLMODE  = os.environ.get('POSTGRES_SSL',      'disable')
 # Stay Point Parameters
 DIST_THRESHOLD_M = 30.0  # Maximum radius of stay cluster
 TIME_THRESHOLD_S = 300.0  # Minimum stay duration (5 minutes)
-POI_SNAP_RADIUS_M = 30.0  # Snapping radius to a building
+POI_SNAP_RADIUS_M = 10.0  # Snapping radius to a building
 
 def haversine_m(lat1, lng1, lat2, lng2):
     """Return distance in meters between two GPS coordinates."""

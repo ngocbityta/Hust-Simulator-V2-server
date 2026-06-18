@@ -20,23 +20,23 @@ data:
       - url: http://loki.hustsim.svc.cluster.local:3100/loki/api/v1/push
 
     scrape_configs:
-      - job_name: kubernetes-pods
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names:
-                - hustsim
+      - job_name: kubernetes-pods-static
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: kubernetes-pods
+              __path__: /var/log/containers/*_hustsim_*.log
         pipeline_stages:
-          - docker: {}
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            target_label: app
-          - source_labels: [__meta_kubernetes_pod_container_name]
-            target_label: container
+          - regex:
+              expression: "^/var/log/containers/(?P<pod>[a-zA-Z0-9_-]+)_(?P<namespace>[a-zA-Z0-9_-]+)_(?P<container>[a-zA-Z0-9_-]+)-(?P<container_id>[a-zA-Z0-9]+)\\.log$"
+              source: filename
+          - labels:
+              pod:
+              namespace:
+              container:
+              app: container
+          - cri: {}
 ---
 apiVersion: apps/v1
 kind: DaemonSet
