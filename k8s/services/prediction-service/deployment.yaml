@@ -44,6 +44,8 @@ spec:
               value: "1"
             - name: NUMEXPR_NUM_THREADS
               value: "1"
+            - name: POSTGRES_DB
+              value: "hustsim_prediction"
             - name: OTLP_ENDPOINT
               value: "http://jaeger:4318/v1/traces"
           resources:

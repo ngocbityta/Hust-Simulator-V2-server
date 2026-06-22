@@ -78,10 +78,11 @@ CREATE TABLE search_history (
 -- User Cache (Event-Driven)
 CREATE TABLE user_cache (
     id UUID PRIMARY KEY,
-    username VARCHAR(255),
-    phonenumber VARCHAR(20),
-    avatar TEXT,
-    cover_image TEXT,
+    username VARCHAR,
+    full_name VARCHAR,
+    phonenumber VARCHAR,
+    avatar VARCHAR,
+    cover_image VARCHAR,
     description TEXT,
     role VARCHAR(20),
     synced_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

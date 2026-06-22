@@ -36,3 +36,4 @@ context-service/build/
 
 # Docker
 docker-compose.override.yml
+k8s/secrets.yaml

@@ -42,6 +42,7 @@ public class UserEventListener {
 
         cache.setId(event.getUserId());
         cache.setUsername(event.getUsername());
+        cache.setFullName(event.getFullName());
         cache.setPhonenumber(event.getPhonenumber());
         cache.setAvatar(event.getAvatar());
         cache.setCoverImage(event.getCoverImage());

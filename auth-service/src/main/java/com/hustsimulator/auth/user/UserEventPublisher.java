@@ -29,6 +29,7 @@ public class UserEventPublisher {
                 .userId(user.getId())
                 .username(user.getUsername())
                 .phonenumber(user.getPhonenumber())
+                .fullName(user.getFullName())
                 .avatar(user.getAvatar())
                 .coverImage(user.getCoverImage())
                 .description(user.getDescription())

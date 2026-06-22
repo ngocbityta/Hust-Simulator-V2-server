@@ -22,6 +22,8 @@ public class UserEvent implements Serializable {
     private UUID userId;
     private String username;
     private String phonenumber;
+    private String fullName;
     private String avatar;
+    private String coverImage;
     private String role;
 }

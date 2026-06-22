@@ -39,6 +39,24 @@ services:
       retries: 10
       start_period: 40s
 
+  postgres:
+    image: postgis/postgis:17-3.5-alpine
+    container_name: hustsim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hustsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-dbs.sql:/docker-entrypoint-initdb.d/init-dbs.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hustsim}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── LiveKit Server ────────────────────────────────────────────────
   livekit:
     image: livekit/livekit-server:v1.5
@@ -86,7 +104,7 @@ services:
         condition: service_healthy
     # No host ports — accessed via API Gateway only
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=auth&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB_AUTH:-hustsim_auth}?currentSchema=auth&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
       SPRING_FLYWAY_ENABLED: "true"
@@ -115,7 +133,7 @@ services:
         condition: service_healthy
     # No host ports — accessed via API Gateway only
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=context&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB_CONTEXT:-hustsim_context}?currentSchema=context&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
       SPRING_FLYWAY_ENABLED: "true"
@@ -152,7 +170,7 @@ services:
     volumes:
       - social_uploads:/app/uploads
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=social&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB_SOCIAL:-hustsim_social}?currentSchema=social&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
       SPRING_FLYWAY_ENABLED: "true"
@@ -184,7 +202,7 @@ services:
       livekit: { condition: service_started }
     # No host ports — accessed via API Gateway only
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-hustsimulator}?currentSchema=streaming&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB_STREAMING:-hustsim_streaming}?currentSchema=streaming&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
       SPRING_FLYWAY_ENABLED: "true"
@@ -365,7 +383,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB_PREDICTION:-hustsim_prediction}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -457,6 +475,7 @@ services:
           memory: 256M
 
 volumes:
+  postgres_data:
   redis_data:
   rabbitmq_data:
   loki_data:

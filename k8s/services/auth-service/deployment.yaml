@@ -40,8 +40,8 @@ spec:
             - secretRef:
                 name: hustsim-secrets
           env:
-            - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?currentSchema=auth&sslmode=$(POSTGRES_SSL)&channel_binding=$(POSTGRES_CHANNEL_BINDING)"
+            - name: POSTGRES_DB
+              value: "hustsim_auth"
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:

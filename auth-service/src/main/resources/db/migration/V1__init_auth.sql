@@ -5,6 +5,7 @@ CREATE TABLE users (
     phonenumber VARCHAR UNIQUE NOT NULL,
     password VARCHAR NOT NULL,
     username VARCHAR,
+    full_name VARCHAR,
     avatar VARCHAR,
     cover_image VARCHAR,
     description TEXT,

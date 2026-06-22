@@ -24,6 +24,7 @@ public class UserCache {
 
     private String username;
     private String phonenumber;
+    private String fullName;
     private String avatar;
 
     @Column(name = "cover_image")

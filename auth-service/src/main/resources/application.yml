@@ -4,7 +4,7 @@ spring:
 
   # PostgreSQL
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:hustsimulator}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB_AUTH:hustsim_auth}?sslmode=${POSTGRES_SSL:disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:prefer}
     username: ${POSTGRES_USER:hustsim}
     password: ${POSTGRES_PASSWORD:hustsim_secret}
     driver-class-name: org.postgresql.Driver

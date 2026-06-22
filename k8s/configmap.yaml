@@ -6,9 +6,9 @@ metadata:
   labels:
     app.kubernetes.io/part-of: hustsimulator
 data:
-  # ─── PostgreSQL (Neon Cloud) ──────────────────────────────────
-  POSTGRES_HOST: "ep-aged-cloud-a1lkicvq-pooler.ap-southeast-1.aws.neon.tech"
-  POSTGRES_DB: "neondb"
+  # ─── PostgreSQL (Google Cloud SQL) ──────────────────────────────────
+  POSTGRES_HOST: "34.21.136.81"
+  POSTGRES_DB: "hustsim_auth"  # Will be overridden by service-specific env vars if needed
   POSTGRES_PORT: "5432"
   POSTGRES_SSL: "require"
   POSTGRES_CHANNEL_BINDING: "prefer"
@@ -47,9 +47,9 @@ data:
   LIVEKIT_URL: "http://livekit:7880"
   LIVEKIT_CLIENT_URL: "wss://live.hustsimulator.id.vn"
 
-  # ─── Spring Boot Common ──────────────────────────────────────
-  SPRING_FLYWAY_ENABLED: "true"
-  SPRING_FLYWAY_CREATE_SCHEMAS: "true"
+  # ─── Spring & Flyway Flags ─────────────────────────────────
+  SPRING_FLYWAY_ENABLED: "false"
+  SPRING_FLYWAY_CREATE_SCHEMAS: "false"
 
   # ─── Java / Node Tuning ──────────────────────────────────────
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC"
