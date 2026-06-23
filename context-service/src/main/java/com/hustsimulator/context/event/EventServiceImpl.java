@@ -179,10 +179,20 @@ public class EventServiceImpl implements EventService {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         org.springframework.data.domain.Page<Event> eventPage;
         if (search != null && !search.trim().isEmpty()) {
-            eventPage = eventRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+            eventPage = eventRepository.findByNameOrIdContainingIgnoreCase(search.trim(), pageable);
         } else {
-            eventPage = eventRepository.findAll(pageable);
+            eventPage = eventRepository.findGroupedByName(pageable);
         }
+        
+        for (Event event : eventPage.getContent()) {
+            java.util.List<Object[]> stats = eventRepository.findMinMaxTimeByName(event.getName());
+            if (stats != null && !stats.isEmpty()) {
+                Object[] row = stats.get(0);
+                if (row[0] != null) event.setStartTime((java.time.LocalDateTime) row[0]);
+                if (row[1] != null) event.setEndTime((java.time.LocalDateTime) row[1]);
+            }
+        }
+        
         return new com.hustsimulator.context.common.PageResponse<>(eventPage);
     }
 }

@@ -1,4 +1,4 @@
-CREATE TABLE heatmap_history (
+CREATE TABLE IF NOT EXISTS heatmap_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cell_x INT NOT NULL,
     cell_y INT NOT NULL,
@@ -6,5 +6,5 @@ CREATE TABLE heatmap_history (
     recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_heatmap_history_cell ON heatmap_history(cell_x, cell_y);
-CREATE INDEX idx_heatmap_history_time ON heatmap_history(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_heatmap_history_cell ON heatmap_history(cell_x, cell_y);
+CREATE INDEX IF NOT EXISTS idx_heatmap_history_time ON heatmap_history(recorded_at);

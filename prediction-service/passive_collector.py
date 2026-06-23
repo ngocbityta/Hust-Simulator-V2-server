@@ -163,7 +163,7 @@ def collect_and_process():
             conn.commit()
 
         run_start_time = datetime.now(timezone.utc).replace(tzinfo=None)
-        overlap_time = last_sync_time - timedelta(hours=1)
+        overlap_time = last_sync_time - timedelta(hours=4)
         logger.info(f"Syncing user_locations since {overlap_time} (last_sync: {last_sync_time})")
 
         # Fetch active map bounding box
@@ -234,39 +234,100 @@ def collect_and_process():
                 'time': ts
             })
 
+        # ── Merge window: if user's last checkin is at the same POI within
+        #    this window, we skip inserting a duplicate record.
+        MERGE_WINDOW_S = 7200  # 2 hours
+
+        # Pre-fetch each user's latest checkin from DB for dedup
+        user_last_checkin = {}
+        user_ids_list = list(trajectories.keys())
+        if user_ids_list:
+            placeholders = ','.join(['%s'] * len(user_ids_list))
+            cursor.execute(f"""
+                SELECT DISTINCT ON (user_id)
+                       user_id::text, poi_id::text, timestamp, duration_seconds
+                FROM   prediction.checkin_sequences
+                WHERE  user_id::text IN ({placeholders})
+                ORDER  BY user_id, timestamp DESC
+            """, user_ids_list)
+            for uid, pid, ts, dur in cursor.fetchall():
+                user_last_checkin[uid] = {'poi_id': pid, 'timestamp': ts, 'duration': dur or 0}
+
         checkins_to_insert = []
+        skipped_merge = 0
         
         for user_id, points in trajectories.items():
             stay_points = detect_stay_points(points)
             if stay_points:
                 logger.info(f"User {user_id}: Detected {len(stay_points)} stay points.")
-                
+
+            # Track the "running" last checkin for this user so that
+            # consecutive stay points within the same sync batch are
+            # also deduplicated against each other.
+            last_checkin = user_last_checkin.get(user_id)
+
             for sp in stay_points:
                 snapped_poi, dist = snap_to_poi(sp['lat'], sp['lng'], pois)
-                if snapped_poi:
-                    poi_uuid = snapped_poi['db_uuid']
-                    poi_name = snapped_poi['name']
-                    
-                    time_rounded = sp['start_time'].replace(minute=0, second=0, microsecond=0)
-                    deterministic_id = str(uuid.uuid5(
-                        uuid.NAMESPACE_DNS, 
-                        f"{user_id}_{poi_uuid}_{time_rounded.isoformat()}"
-                    ))
-                    
-                    checkins_to_insert.append((
-                        deterministic_id,
-                        user_id,
-                        poi_uuid,
-                        sp['start_time'].replace(tzinfo=None)
-                    ))
-                    logger.debug(f"Stay detected for user {user_id} at {poi_name} (PiP dist: {dist:.1f}m).")
+                if not snapped_poi:
+                    continue
+
+                poi_uuid = snapped_poi['db_uuid']
+                poi_name = snapped_poi['name']
+
+                # ── Dedup: skip if same POI as the last checkin and
+                #    within the merge window ──
+                if last_checkin and last_checkin['poi_id'] == poi_uuid:
+                    gap = abs((sp['start_time'] - last_checkin['timestamp']).total_seconds())
+                    if gap <= MERGE_WINDOW_S:
+                        skipped_merge += 1
+                        # Extend the duration of the existing record
+                        new_end = sp['end_time'].replace(tzinfo=None)
+                        original_start = last_checkin['timestamp'] - timedelta(seconds=last_checkin.get('duration', 0))
+                        extended_duration = int((new_end - original_start).total_seconds())
+                        if extended_duration > last_checkin.get('duration', 0):
+                            cursor.execute("""
+                                UPDATE prediction.checkin_sequences
+                                SET duration_seconds = %s
+                                WHERE user_id::text = %s AND poi_id::text = %s AND timestamp = %s
+                            """, (extended_duration, user_id, poi_uuid, last_checkin['timestamp']))
+                            logger.debug(
+                                f"Merging: user {user_id} still at {poi_name}, "
+                                f"extended duration to {extended_duration}s."
+                            )
+                        last_checkin['timestamp'] = last_checkin['timestamp']  # keep original timestamp
+                        last_checkin['duration'] = extended_duration
+                        continue
+
+                time_rounded = sp['start_time'].replace(minute=0, second=0, microsecond=0)
+                deterministic_id = str(uuid.uuid5(
+                    uuid.NAMESPACE_DNS, 
+                    f"{user_id}_{poi_uuid}_{time_rounded.isoformat()}"
+                ))
+                
+                duration_s = int((sp['end_time'] - sp['start_time']).total_seconds())
+
+                checkins_to_insert.append((
+                    deterministic_id,
+                    user_id,
+                    poi_uuid,
+                    sp['start_time'].replace(tzinfo=None),
+                    duration_s
+                ))
+                logger.debug(f"Stay detected for user {user_id} at {poi_name} ({duration_s}s, dist: {dist:.1f}m).")
+
+                # Update running tracker
+                last_checkin = {'poi_id': poi_uuid, 'timestamp': sp['start_time'].replace(tzinfo=None), 'duration': duration_s}
+                user_last_checkin[user_id] = last_checkin
+
+        if skipped_merge:
+            logger.info(f"Skipped {skipped_merge} duplicate stay points (merged with previous checkin at same POI).")
 
         if checkins_to_insert:
             logger.info(f"Inserting/Updating {len(checkins_to_insert)} stay points into prediction.checkin_sequences...")
             cursor.executemany("""
-                INSERT INTO prediction.checkin_sequences (id, user_id, poi_id, timestamp)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (id) DO NOTHING;
+                INSERT INTO prediction.checkin_sequences (id, user_id, poi_id, timestamp, duration_seconds)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET duration_seconds = EXCLUDED.duration_seconds;
             """, checkins_to_insert)
             
             inserted_count = cursor.rowcount

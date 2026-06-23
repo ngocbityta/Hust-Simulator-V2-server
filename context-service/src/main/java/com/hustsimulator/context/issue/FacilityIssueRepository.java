@@ -15,8 +15,10 @@ public interface FacilityIssueRepository extends JpaRepository<FacilityIssue, UU
     @Query("SELECT i FROM FacilityIssue i WHERE " +
            "(:buildingId IS NULL OR i.buildingId = :buildingId) AND " +
            "(:status IS NULL OR i.status = :status) AND " +
-           "(:roomId IS NULL OR i.roomId = :roomId)")
+           "(:roomId IS NULL OR i.roomId = :roomId) AND " +
+           "(:search IS NULL OR :search = '' OR LOWER(i.description) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(i.id AS string) LIKE CONCAT('%', :search, '%'))")
     Page<FacilityIssue> findIssuesWithFilters(
+            @Param("search") String search,
             @Param("buildingId") UUID buildingId,
             @Param("status") IssueStatus status,
             @Param("roomId") UUID roomId,
@@ -25,4 +27,6 @@ public interface FacilityIssueRepository extends JpaRepository<FacilityIssue, UU
     int countByBuildingIdAndStatus(UUID buildingId, IssueStatus status);
     
     int countByRoomIdAndStatus(UUID roomId, IssueStatus status);
+    
+    int countByStatus(IssueStatus status);
 }

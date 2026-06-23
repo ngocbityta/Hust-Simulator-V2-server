@@ -11,7 +11,7 @@ public interface FacilityIssueService {
     
     FacilityIssue updateStatus(UUID issueId, FacilityIssueDTO.UpdateIssueStatusRequest request);
     
-    PageResponse<FacilityIssue> getIssuesPaged(UUID buildingId, UUID roomId, IssueStatus status, int page, int size, String sort);
+    PageResponse<FacilityIssue> getIssuesPaged(String search, UUID buildingId, UUID roomId, IssueStatus status, int page, int size, String sort);
     
     int countOpenIssues(UUID buildingId);
     

@@ -280,8 +280,11 @@ def get_time_weight(poi_category: str, hour: float) -> float:
         },
     }
     cat_weights = weights.get(poi_category, weights['CLASSROOM'])
-    for (start, end), mult in cat_weights.items():
-        if isinstance(start, (int, float)) and start <= hour < end:
+    for time_range, mult in cat_weights.items():
+        if time_range == 'default':
+            continue
+        start, end = time_range
+        if start <= hour < end:
             return mult
     return cat_weights.get('default', 0.1)
 
@@ -347,14 +350,31 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                     )  # (1, num_pois)
                     probs_np = probs[0].numpy()
                     
-                    # Apply time-aware POI scoring post-processing (using Vietnam local hour)
+                    # Calculate personal historical frequency from entire trajectory
+                    total_checkins = len(checkins)
+                    poi_freq = {}
+                    if total_checkins > 0:
+                        for c in checkins:
+                            poi_freq[c[0]] = poi_freq.get(c[0], 0) + 1
+
+                    # Apply time-aware POI scoring post-processing and Personal History Blending
                     local_hour = (hour_of_week % 24 + 7) % 24
+                    ALPHA = 0.75 # 75% weight to personal history, 25% to STTF model for strong personalization
+                    
                     for idx in range(len(probs_np)):
                         poi_id = POI_IDS_SORTED[idx]
+                        
+                        # Personal historical probability
+                        hist_prob = poi_freq.get(poi_id, 0) / total_checkins if total_checkins > 0 else 0
+                        
+                        # Blend the probabilities
+                        blended_prob = (1 - ALPHA) * probs_np[idx] + ALPHA * hist_prob
+                        
                         poi = POIS[poi_id]
                         category = str(poi.get('category') or 'CLASSROOM').upper()
                         time_weight = get_time_weight(category, local_hour)
-                        probs_np[idx] *= time_weight
+                        
+                        probs_np[idx] = blended_prob * time_weight
 
                     # Re-normalize
                     total = probs_np.sum()

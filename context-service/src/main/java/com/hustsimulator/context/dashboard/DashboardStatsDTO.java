@@ -11,6 +11,7 @@ public record DashboardStatsDTO(
     long roomsBusy,
     long roomsEmpty,
     long roomsClosed,
+    long roomsWithIssues,
     long totalEvents,
     long eventsOngoing,
     long totalRecurringEvents,

@@ -131,7 +131,7 @@ public class BuildingServiceImpl implements BuildingService {
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sortObj);
             
             if (search != null && !search.trim().isEmpty()) {
-                buildingPage = buildingRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+                buildingPage = buildingRepository.findByNameOrIdContainingIgnoreCase(search.trim(), pageable);
             } else {
                 buildingPage = buildingRepository.findAll(pageable);
             }

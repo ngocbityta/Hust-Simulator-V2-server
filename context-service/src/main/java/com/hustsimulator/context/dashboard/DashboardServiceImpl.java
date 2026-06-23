@@ -15,6 +15,8 @@ import com.hustsimulator.context.heatmap.HeatmapHistoryRepository;
 import com.hustsimulator.context.recurringevent.RecurringEventRepository;
 import com.hustsimulator.context.room.RoomRepository;
 import com.hustsimulator.context.userstate.UserStateRepository;
+import com.hustsimulator.context.issue.FacilityIssueRepository;
+import com.hustsimulator.context.enums.IssueStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +42,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final UserStateRepository userStateRepository;
     private final HeatmapHistoryRepository heatmapHistoryRepository;
     private final CampusNodeRepository campusNodeRepository;
+    private final FacilityIssueRepository facilityIssueRepository;
 
     @Value("${simulation.grid.meters-per-lat:111000.0}")
     private double metersPerLat;
@@ -63,6 +66,7 @@ public class DashboardServiceImpl implements DashboardService {
         long roomsBusy = allRooms.stream().filter(r -> r.getStatus() == RoomStatus.BUSY).count();
         long roomsEmpty = allRooms.stream().filter(r -> r.getStatus() == RoomStatus.EMPTY).count();
         long roomsClosed = allRooms.stream().filter(r -> r.getStatus() == RoomStatus.CLOSED).count();
+        long roomsWithIssues = facilityIssueRepository.countByStatus(IssueStatus.OPEN);
 
         Map<UUID, String> buildingNames = buildingRepository.findAll().stream()
                 .collect(Collectors.toMap(Building::getId, Building::getName));
@@ -70,7 +74,7 @@ public class DashboardServiceImpl implements DashboardService {
         return new DashboardStatsDTO(
                 buildingRepository.count(),
                 roomRepository.count(),
-                roomsBusy, roomsEmpty, roomsClosed,
+                roomsBusy, roomsEmpty, roomsClosed, roomsWithIssues,
                 eventRepository.count(),
                 eventRepository.findByStatus(EventStatus.ONGOING).size(),
                 recurringEventRepository.count(),
@@ -234,7 +238,10 @@ public class DashboardServiceImpl implements DashboardService {
 
     private List<DashboardStatsDTO.EventTimelineItem> getEventsTimeline() {
         List<DashboardStatsDTO.EventTimelineItem> eventsTimeline = new ArrayList<>();
-        var timelineEvents = eventRepository.findByStatusIn(List.of(EventStatus.SCHEDULED, EventStatus.ONGOING));
+        var timelineEvents = eventRepository.findByStatusInAndEndTimeAfter(
+            List.of(EventStatus.SCHEDULED, EventStatus.ONGOING), 
+            LocalDateTime.now()
+        );
         timelineEvents.sort(Comparator.comparing(Event::getStartTime));
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern(DashboardConstants.TIME_FORMAT_DATETIME);
         

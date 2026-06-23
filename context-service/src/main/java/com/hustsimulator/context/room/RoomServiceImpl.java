@@ -75,7 +75,7 @@ public class RoomServiceImpl implements RoomService {
             roomPage = roomRepository.findRoomsWithFilters(buildingId, floorNum, type, search, pageable);
         } else {
             if (search != null && !search.trim().isEmpty()) {
-                roomPage = roomRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+                roomPage = roomRepository.findByNameOrIdContainingIgnoreCase(search.trim(), pageable);
             } else {
                 roomPage = roomRepository.findAll(pageable);
             }

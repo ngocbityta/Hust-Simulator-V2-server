@@ -38,13 +38,14 @@ public class FacilityIssueController {
     @GetMapping("/paged")
     @Operation(summary = "Get issues with pagination", description = "Retrieve a paginated list of facility issues with optional filters")
     public PageResponse<FacilityIssue> getIssuesPaged(
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID roomId,
             @RequestParam(required = false) IssueStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
-        return issueService.getIssuesPaged(buildingId, roomId, status, page, size, sort);
+        return issueService.getIssuesPaged(search, buildingId, roomId, status, page, size, sort);
     }
     
     @GetMapping("/building/{buildingId}/open-count")

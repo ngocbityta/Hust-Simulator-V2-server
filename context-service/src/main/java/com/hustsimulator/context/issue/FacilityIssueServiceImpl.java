@@ -52,13 +52,13 @@ public class FacilityIssueServiceImpl implements FacilityIssueService {
     }
 
     @Override
-    public PageResponse<FacilityIssue> getIssuesPaged(UUID buildingId, UUID roomId, IssueStatus status, int page, int size, String sort) {
+    public PageResponse<FacilityIssue> getIssuesPaged(String search, UUID buildingId, UUID roomId, IssueStatus status, int page, int size, String sort) {
         String[] sortParams = sort.split(",");
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sortObj = Sort.by(direction, sortParams[0]);
         Pageable pageable = PageRequest.of(page, size, sortObj);
 
-        Page<FacilityIssue> issuesPage = issueRepository.findIssuesWithFilters(buildingId, status, roomId, pageable);
+        Page<FacilityIssue> issuesPage = issueRepository.findIssuesWithFilters(search, buildingId, status, roomId, pageable);
         return new PageResponse<>(issuesPage);
     }
 

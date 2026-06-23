@@ -22,6 +22,9 @@ export class PredictNextLocationDto {
 
   @ApiProperty({ description: 'Current heading in degrees', example: 90.0, required: false })
   currentHeading?: number;
+
+  @ApiProperty({ description: 'Target timestamp to predict for (ms)', example: 1718000000000, required: false })
+  targetTimestampMs?: number;
 }
 
 @ApiTags('Prediction')
@@ -37,6 +40,7 @@ export class PredictionController {
       userId: request.userId,
       trajectory: request.trajectory,
       currentHeading: request.currentHeading ?? 0.0,
+      targetTimestampMs: request.targetTimestampMs,
     };
     const response = await this.grpcPredictionClient.predictNextLocation(grpcRequest);
     return response;

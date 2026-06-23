@@ -76,8 +76,8 @@ def main():
         logger.error(f"Database initialization failed: {db_result.stderr}")
         sys.exit(1)
         
-    # Schedule passive collection every 10 minutes
-    schedule.every(10).minutes.do(run_passive_collection)
+    # Schedule passive collection every 3 hours
+    schedule.every(3).hours.do(run_passive_collection)
     
     # Schedule full ETL & Training pipeline every 1 hour
     schedule.every(1).hours.do(run_pipeline)

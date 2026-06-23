@@ -64,7 +64,7 @@ public class UserServiceImpl implements UserService {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         org.springframework.data.domain.Page<User> userPage;
         if (search != null && !search.trim().isEmpty()) {
-            userPage = userRepository.findByUsernameContainingIgnoreCaseOrPhonenumberContainingIgnoreCase(search.trim(), search.trim(), pageable);
+            userPage = userRepository.searchUsers(search.trim(), pageable);
         } else {
             userPage = userRepository.findAll(pageable);
         }
