@@ -15,9 +15,8 @@ COPY prediction-service/ .
 
 # Entrypoint: bootstrap model if missing, then start services
 CMD ["sh", "-c", "\
-  if [ ! -f model/sttf_model.pth ]; then \
-    echo '[Bootstrap] No trained model found. Generating synthetic data and training...'; \
-    python generate_synthetic_data.py --num-users 200 --journeys-per-user 15 && \
-    python train.py --data data/checkin_sequences.csv --epochs 30; \
+  if [ ! -f model/learned_weights.json ]; then \
+    echo '[Bootstrap] No learned weights found. Running Logistic Regression...'; \
+    python train.py; \
   fi && \
   python pipeline_orchestrator.py & python main.py"]

@@ -23,45 +23,22 @@ def run_pipeline():
     sync_result = subprocess.run([sys.executable, 'sync_pois.py'], capture_output=True, text=True)
     
     if sync_result.returncode == 1:
-        logger.info("POIs have changed. Triggering full cold-start bootstrap...")
-        bootstrap_result = subprocess.run(['./bootstrap_train.sh'], capture_output=True, text=True)
-        logger.info(f"Bootstrap Output:\n{bootstrap_result.stdout}")
-        
-        if bootstrap_result.returncode == 0:
-            with open('model_updated.flag', 'w') as f:
-                f.write(str(datetime.now().timestamp()))
-        else:
-            logger.error(f"Bootstrap failed: {bootstrap_result.stderr}")
+        logger.info("POIs have changed. Re-running Logistic Regression...")
+        train_result = subprocess.run([sys.executable, 'train.py'], capture_output=True, text=True)
+        logger.info(f"Train Output:\n{train_result.stdout}")
         return
     elif sync_result.returncode != 0:
         logger.error(f"POI Sync failed: {sync_result.stderr}")
         return
         
-    # 1. Check and Extract Data (Active + Passive Union)
-    extract_result = subprocess.run([sys.executable, 'extract_and_preprocess.py'], capture_output=True, text=True)
-    logger.info(f"Extract Output:\n{extract_result.stdout}")
-    
-    if extract_result.returncode != 0:
-        logger.error(f"Extraction failed: {extract_result.stderr}")
-        return
-        
-    if "Threshold not met" in extract_result.stdout or "No valid check-in sequences" in extract_result.stdout:
-        logger.info("No new data to train on. Pipeline check complete.")
-        return
-        
     # 2. Train Model
-    logger.info("New data extracted. Starting training...")
-    train_result = subprocess.run([sys.executable, 'train.py', '--data', 'data/checkin_sequences.csv'], capture_output=True, text=True)
+    logger.info("Running scheduled Logistic Regression weight update...")
+    train_result = subprocess.run([sys.executable, 'train.py'], capture_output=True, text=True)
     logger.info(f"Train Output:\n{train_result.stdout}")
     
     if train_result.returncode != 0:
         logger.error(f"Training failed: {train_result.stderr}")
         return
-        
-    # 3. Notify main.py to hot-reload
-    logger.info("Training successful. Updating model flag...")
-    with open('model_updated.flag', 'w') as f:
-        f.write(str(datetime.now().timestamp()))
         
     logger.info("Pipeline run complete.")
 

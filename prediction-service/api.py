@@ -124,7 +124,7 @@ def trigger_training():
         try:
             print("Starting background training pipeline...")
             # 1. Extract and Preprocess
-            subprocess.run(["python", "extract_and_preprocess.py"], check=False)
+            # Skipped extract
             
             # 2. Train Model
             subprocess.run(["python", "train.py", "--data", "data/checkin_sequences.csv"], check=False)
