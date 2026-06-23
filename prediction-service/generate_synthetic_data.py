@@ -1,5 +1,5 @@
 """
-Synthetic trajectory data generator for STTF-Recommender cold-start training.
+Synthetic trajectory data generator for Logistic Regression model cold-start training.
 Simulates realistic HUST student movement patterns.
 
 Usage:
@@ -161,7 +161,7 @@ def generate_dataset(num_users, journeys_per_user, output_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate synthetic trajectory data for STTF-Recommender'
+        description='Generate synthetic trajectory data for Logistic Regression model'
     )
     parser.add_argument('--num-users', type=int, default=200,
                         help='Number of synthetic users')

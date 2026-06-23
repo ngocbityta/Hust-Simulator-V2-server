@@ -87,6 +87,9 @@ public class BuildingServiceImpl implements BuildingService {
         if (request.category() != null) {
             building.setCategory(request.category());
         }
+        if (request.imageUrl() != null) {
+            building.setImageUrl(request.imageUrl());
+        }
         log.info("Updating building: {}", id);
         return buildingRepository.save(building);
     }

@@ -16,6 +16,7 @@ public class BuildingDTO {
             String fillColor,
             Double labelMinZoom,
             Boolean isLabelVisible,
-            String category
+            String category,
+            String imageUrl
     ) {}
 }

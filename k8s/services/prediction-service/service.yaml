@@ -11,8 +11,8 @@ spec:
   selector:
     app: prediction-service
   ports:
-    - port: 50055
-      targetPort: 50055
+    - port: 50051
+      targetPort: 50051
       name: grpc
     - port: 50056
       targetPort: 50056

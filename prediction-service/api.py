@@ -119,7 +119,7 @@ import time
 
 @app.post("/train")
 def trigger_training():
-    """Trigger the data extraction and STTF model training pipeline in the background."""
+    """Trigger the data extraction and Logistic Regression model training pipeline in the background."""
     def run_training_pipeline():
         try:
             print("Starting background training pipeline...")

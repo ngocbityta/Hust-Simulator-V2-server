@@ -17,8 +17,8 @@ export class PredictNextLocationDto {
   @ApiProperty({ description: 'User ID UUID string', example: '123e4567-e89b-12d3-a456-426614174000' })
   userId: string;
 
-  @ApiProperty({ description: 'List of recent trajectory points', type: [TrajectoryPointDto] })
-  trajectory: TrajectoryPointDto[];
+  @ApiProperty({ description: 'List of recent trajectory points', type: [TrajectoryPointDto], required: false })
+  trajectory?: TrajectoryPointDto[];
 
   @ApiProperty({ description: 'Current heading in degrees', example: 90.0, required: false })
   currentHeading?: number;
@@ -33,12 +33,12 @@ export class PredictionController {
   constructor(private readonly grpcPredictionClient: GrpcPredictionClient) {}
 
   @Post('predict-next')
-  @ApiOperation({ summary: 'Predict next location using AI STTF-Recommender model' })
+  @ApiOperation({ summary: 'Predict next location using AI Logistic Regression model' })
   @ApiResponse({ status: 201, description: 'Return prediction results including predicted POI, coordinates, confidence, and intent' })
   async predictNext(@Body() request: PredictNextLocationDto) {
     const grpcRequest: PredictNextLocationRequest = {
       userId: request.userId,
-      trajectory: request.trajectory,
+      trajectory: request.trajectory ?? [],
       currentHeading: request.currentHeading ?? 0.0,
       targetTimestampMs: request.targetTimestampMs,
     };

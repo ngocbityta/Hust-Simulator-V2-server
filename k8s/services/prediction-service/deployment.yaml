@@ -23,7 +23,7 @@ spec:
           image: asia-southeast1-docker.pkg.dev/hustsimulator/hustsim-repo/prediction-service:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 50055
+            - containerPort: 50051
               name: grpc
             - containerPort: 50056
               name: http
@@ -57,12 +57,12 @@ spec:
               memory: "1Gi"
           readinessProbe:
             tcpSocket:
-              port: 50055
+              port: 50051
             initialDelaySeconds: 60
             periodSeconds: 15
           livenessProbe:
             tcpSocket:
-              port: 50055
+              port: 50051
             initialDelaySeconds: 120
             periodSeconds: 30
             failureThreshold: 5

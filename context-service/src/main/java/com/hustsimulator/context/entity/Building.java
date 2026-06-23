@@ -44,6 +44,9 @@ public class Building extends BaseEntity {
     @Builder.Default
     private Boolean isLabelVisible = true;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "category", length = 50)
     @Builder.Default
     private String category = "OTHER";

@@ -1,7 +1,7 @@
 """
-ETL: Extract GPS journey data from PostgreSQL → Check-in sequences for STTF-Recommender.
+ETL: Extract GPS journey data from PostgreSQL → Check-in sequences for AI Model.
 
-STTF input format: each row = one check-in = (journey_id, step, user_id, poi_id, hour_of_week, target_poi)
+Model input format: each row = one check-in = (journey_id, step, user_id, poi_id, hour_of_week, target_poi)
 - poi_id       : integer index of nearest POI (GPS → POI snapping)
 - hour_of_week : int [0..167] = day_of_week*24 + hour  (weekly periodicity, paper §4.1)
 - target_poi   : POI id of the FINAL destination of this journey (label for next-location prediction)
@@ -260,6 +260,6 @@ if __name__ == '__main__':
     if count >= THRESHOLD:
         success = extract_and_preprocess(last_sync)
         if success:
-            print("ETL complete. Run train.py to retrain STTF-Recommender.")
+            print("ETL complete. Run train.py to retrain Logistic Regression model.")
     else:
         print(f"Threshold not met ({count} < {THRESHOLD}). Skipping extraction.")
