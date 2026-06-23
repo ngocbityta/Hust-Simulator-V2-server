@@ -19,4 +19,4 @@ CMD ["sh", "-c", "\
     echo '[Bootstrap] No learned weights found. Running Logistic Regression...'; \
     python train.py; \
   fi && \
-  python pipeline_orchestrator.py & python main.py"]
+  python pipeline_orchestrator.py & python main.py & python api.py"]
