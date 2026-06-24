@@ -190,9 +190,9 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     prediction_pb2_grpc.add_PredictionServiceServicer_to_server(PredictionServiceServicer(), server)
-    server.add_insecure_port('[::]:50055')
+    server.add_insecure_port('[::]:50051')
     server.start()
-    logger.info("Prediction Service running with Context-Aware Recommender on port 50055.")
+    logger.info("Prediction Service running with Context-Aware Recommender on port 50051.")
     try:
         while True:
             time.sleep(86400)

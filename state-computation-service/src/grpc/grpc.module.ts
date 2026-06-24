@@ -37,7 +37,7 @@ import { GrpcInterestMatcherClient } from './interest-matcher.client';
             protoPath: [
               join(__dirname, '../../../proto/prediction.proto'),
             ],
-            url: `${configService.get<string>('PREDICTION_SERVICE_HOST', 'prediction-service')}:${configService.get<number>('PREDICTION_SERVICE_GRPC_PORT', 50055)}`,
+            url: `${configService.get<string>('PREDICTION_SERVICE_HOST', 'prediction-service')}:${configService.get<number>('PREDICTION_SERVICE_GRPC_PORT', 50051)}`,
           },
         }),
       },
