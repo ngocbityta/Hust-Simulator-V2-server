@@ -43,10 +43,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public User update(UUID id, User updated) {
         User user = findById(id);
-        user.setUsername(updated.getUsername());
-        user.setAvatar(updated.getAvatar());
-        user.setCoverImage(updated.getCoverImage());
-        user.setDescription(updated.getDescription());
+        if (updated.getUsername() != null) user.setUsername(updated.getUsername());
+        if (updated.getPhonenumber() != null) user.setPhonenumber(updated.getPhonenumber());
+        if (updated.getFullName() != null) user.setFullName(updated.getFullName());
+        if (updated.getRole() != null) user.setRole(updated.getRole());
+        if (updated.getAvatar() != null) user.setAvatar(updated.getAvatar());
+        if (updated.getCoverImage() != null) user.setCoverImage(updated.getCoverImage());
+        if (updated.getDescription() != null) user.setDescription(updated.getDescription());
         User saved = userRepository.save(user);
         userEventPublisher.publish(saved, UserEvent.EventType.UPDATED);
         return saved;

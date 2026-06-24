@@ -29,6 +29,7 @@ public class EventServiceImpl implements EventService {
     private final BuildingRepository buildingRepository;
     private final ObjectMapper objectMapper;
     private final EventEventPublisher eventEventPublisher;
+    private final com.hustsimulator.context.userstate.EventAttendanceRepository eventAttendanceRepository;
 
     @Override
     public List<Event> findAll() {
@@ -190,6 +191,10 @@ public class EventServiceImpl implements EventService {
                 Object[] row = stats.get(0);
                 if (row[0] != null) event.setStartTime((java.time.LocalDateTime) row[0]);
                 if (row[1] != null) event.setEndTime((java.time.LocalDateTime) row[1]);
+            }
+            
+            if (event.getStatus() == EventStatus.ONGOING || event.getStatus() == EventStatus.COMPLETED) {
+                event.setActualParticipants(eventAttendanceRepository.countDistinctUserIdByEventId(event.getId()));
             }
         }
         

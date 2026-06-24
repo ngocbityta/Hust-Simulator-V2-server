@@ -19,10 +19,10 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.startTime <= :targetTime AND e.endTime >= :targetTime")
     List<Event> findActiveAt(@org.springframework.data.repository.query.Param("targetTime") java.time.LocalDateTime targetTime);
 
-    @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.createdAt IN (SELECT MIN(e2.createdAt) FROM Event e2 GROUP BY e2.name) AND (:search IS NULL OR :search = '' OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(e.id AS string) LIKE CONCAT('%', :search, '%'))")
+    @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.createdAt IN (SELECT MIN(e2.createdAt) FROM Event e2 GROUP BY e2.name) AND (:search IS NULL OR :search = '' OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(e.id AS string) LIKE CONCAT('%', :search, '%')) ORDER BY CASE e.status WHEN 'ONGOING' THEN 1 WHEN 'SCHEDULED' THEN 2 ELSE 3 END ASC, e.startTime ASC")
     Page<Event> findByNameOrIdContainingIgnoreCase(@org.springframework.data.repository.query.Param("search") String search, Pageable pageable);
 
-    @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.createdAt IN (SELECT MIN(e2.createdAt) FROM Event e2 GROUP BY e2.name)")
+    @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.createdAt IN (SELECT MIN(e2.createdAt) FROM Event e2 GROUP BY e2.name) ORDER BY CASE e.status WHEN 'ONGOING' THEN 1 WHEN 'SCHEDULED' THEN 2 ELSE 3 END ASC, e.startTime ASC")
     Page<Event> findGroupedByName(Pageable pageable);
 
     @org.springframework.data.jpa.repository.Query("SELECT MIN(e.startTime), MAX(e.endTime) FROM Event e WHERE e.name = :name")

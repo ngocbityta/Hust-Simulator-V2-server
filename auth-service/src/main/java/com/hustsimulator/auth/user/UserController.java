@@ -36,6 +36,9 @@ public class UserController {
     public User update(@PathVariable UUID id, @RequestBody UpdateUserRequest request) {
         User user = new User();
         user.setUsername(request.username());
+        user.setPhonenumber(request.phonenumber());
+        user.setFullName(request.fullName());
+        user.setRole(request.role());
         user.setAvatar(request.avatar());
         user.setCoverImage(request.coverImage());
         user.setDescription(request.description());
@@ -46,6 +49,8 @@ public class UserController {
             String id,
             String phonenumber,
             String username,
+            String fullName,
+            com.hustsimulator.auth.enums.Role role,
             String avatar,
             String coverImage,
             String description

@@ -60,6 +60,9 @@ public abstract class Event {
     @Column(name = "estimated_participants")
     private Integer estimatedParticipants;
 
+    @Transient
+    private Long actualParticipants;
+
     @Column(name = "type", insertable = false, updatable = false)
     @Enumerated(EnumType.STRING)
     private EventType eventType;
