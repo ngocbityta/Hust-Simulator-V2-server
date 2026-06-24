@@ -21,7 +21,7 @@ public class User extends BaseEntity {
 
     @NotBlank
     @Column(nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private String username;
