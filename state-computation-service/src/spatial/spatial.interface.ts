@@ -9,6 +9,11 @@ export interface ISpatialService {
   getAoiCells(centerCell: GridCell): GridCell[];
   getCellChannel(cell: GridCell): string;
   getCellSize(): number;
+  
+  getHeatmapGridCell(latitude: number, longitude: number): GridCell;
+  getHeatmapCellKey(cell: GridCell): string;
+  getHeatmapCellSize(): number;
+
   getMetersPerLat(): number;
   getMetersPerLng(): number;
   getZoneId(longitude: number): number;

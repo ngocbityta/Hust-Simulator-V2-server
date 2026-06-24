@@ -59,8 +59,7 @@ def extract_features():
                 x_pos = [
                     trans_counts.get((prev_pid, pid), 0) / max(1, i),
                     temp_counts.get((hw, pid), 0) / max(1, i),
-                    pref_counts.get(pid, 0) / max(1, i),
-                    0.0  # Placeholder for event context
+                    pref_counts.get(pid, 0) / max(1, i)
                 ]
                 X.append(x_pos)
                 y.append(1)
@@ -72,8 +71,7 @@ def extract_features():
                 x_neg = [
                     trans_counts.get((prev_pid, neg_pid), 0) / max(1, i),
                     temp_counts.get((hw, neg_pid), 0) / max(1, i),
-                    pref_counts.get(neg_pid, 0) / max(1, i),
-                    0.0
+                    pref_counts.get(neg_pid, 0) / max(1, i)
                 ]
                 X.append(x_neg)
                 y.append(0)
@@ -96,22 +94,25 @@ def train_model():
     clf = LogisticRegression(fit_intercept=False) # Force positive weights
     clf.fit(X, y)
     
-    # Normalize weights so they sum to 1 (or roughly)
-    coefs = clf.coef_[0]
+    # LR coefficients can be negative — clamp to 0 to avoid nonsensical negative probabilities
+    coefs = np.maximum(clf.coef_[0], 0)
+    
+    # If all coefficients are zero after clamping, use defaults
     total = np.sum(coefs)
     if total > 0:
         coefs = coefs / total
+    else:
+        coefs = np.array([0.4, 0.4, 0.2])
         
     weights = {
         "alpha": float(coefs[0]),
         "beta": float(coefs[1]),
-        "gamma": float(coefs[2]),
-        "delta": 0.2  # Event feature is often sparse, hardcode a reasonable weight or let it be if learned
+        "gamma": float(coefs[2])
     }
     
-    # Ensure no zeroes if normalization failed or features were sparse
-    if weights['alpha'] == 0: weights['alpha'] = 0.3
-    if weights['beta'] == 0: weights['beta'] = 0.3
+    # Ensure no zeroes for core features
+    if weights['alpha'] == 0: weights['alpha'] = 0.4
+    if weights['beta'] == 0: weights['beta'] = 0.4
     if weights['gamma'] == 0: weights['gamma'] = 0.2
     
     logger.info(f"Learned Weights: {weights}")

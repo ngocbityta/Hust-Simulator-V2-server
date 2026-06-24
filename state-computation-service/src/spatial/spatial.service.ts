@@ -10,6 +10,8 @@ export class SpatialService implements ISpatialService {
   private readonly logger = new Logger(SpatialService.name);
   private readonly cellSize: number;
 
+  private readonly heatmapCellSize: number;
+
   private readonly METERS_PER_LAT = METERS_PER_LAT;
   private readonly METERS_PER_LNG: number;
 
@@ -21,6 +23,7 @@ export class SpatialService implements ISpatialService {
 
   constructor(private configService: ConfigService) {
     this.cellSize = this.configService.get<number>('GRID_CELL_SIZE', 50);
+    this.heatmapCellSize = this.configService.get<number>('HEATMAP_CELL_SIZE', 10);
     const avgLat = this.configService.get<number>('MAP_CENTER_LAT', 21.003);
     this.METERS_PER_LNG = METERS_PER_LAT * Math.cos((avgLat * Math.PI) / 180);
 
@@ -31,7 +34,7 @@ export class SpatialService implements ISpatialService {
     this.borderMarginDeg = this.cellSize / this.METERS_PER_LNG;
 
     this.logger.log(
-      `SpatialService initialized with cell size ${this.cellSize}m`,
+      `SpatialService initialized with cell size ${this.cellSize}m and heatmap cell size ${this.heatmapCellSize}m`,
     );
   }
 
@@ -43,6 +46,20 @@ export class SpatialService implements ISpatialService {
 
   getCellKey(cell: GridCell): string {
     return `${cell.x}:${cell.y}`;
+  }
+
+  getHeatmapGridCell(latitude: number, longitude: number): GridCell {
+    const x = Math.floor((longitude * this.METERS_PER_LNG) / this.heatmapCellSize);
+    const y = Math.floor((latitude * this.METERS_PER_LAT) / this.heatmapCellSize);
+    return { x, y };
+  }
+
+  getHeatmapCellKey(cell: GridCell): string {
+    return `${cell.x}:${cell.y}`;
+  }
+
+  getHeatmapCellSize(): number {
+    return this.heatmapCellSize;
   }
 
   getAoiCells(centerCell: GridCell): GridCell[] {

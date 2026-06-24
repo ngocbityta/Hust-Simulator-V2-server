@@ -7,7 +7,6 @@ import { IntentPrediction } from '../intent/intent.interface';
 import { RedisKey } from '../common/enums/redis-key.enum';
 import { getCampusPhase, getDistance, getPolygonCellsWithGaussian, interpolatePolyline } from '../common/utils/geo.util';
 import { CampusDataUtil } from '../common/utils/campus-data.util';
-import { WeatherService } from './services/weather.service';
 import { ContextApiService, Poi } from './services/context-api.service';
 import { HeatmapMultiplierService } from './services/heatmap-multiplier.service';
 import { distributeFlockingWeight } from './utils/flocking.util';
@@ -66,7 +65,6 @@ export class PredictiveHeatmapService implements OnModuleInit {
     @Inject(ISpatialService) private spatialService: ISpatialService,
     @Inject(IIntentService) private intentService: IIntentService,
     private redisService: RedisService,
-    private weatherService: WeatherService,
     private contextApiService: ContextApiService,
     private heatmapMultiplierService: HeatmapMultiplierService,
   ) {}
@@ -118,10 +116,9 @@ export class PredictiveHeatmapService implements OnModuleInit {
       }
 
       let phaseInfo = getCampusPhase(targetTimestampMs);
-      const weather = await this.weatherService.fetchWeather();
-      phaseInfo = this.heatmapMultiplierService.adjustTransitPhase(phaseInfo, weather);
+      phaseInfo = this.heatmapMultiplierService.adjustTransitPhase(phaseInfo);
 
-      const globalReasons = this.heatmapMultiplierService.getMultiplierReasons(targetTimestampMs, weather);
+      const globalReasons = this.heatmapMultiplierService.getMultiplierReasons(targetTimestampMs);
       const poiReasons: Record<string, string[]> = {};
 
       const { transitRatio, nodeHotspots, wayDensityMultiplier } = phaseInfo;
@@ -168,7 +165,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
                 phantomDensities.push({
                   lat: poi.lat,
                   lng: poi.lng,
-                  count: participants * this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs, weather) * 0.5,
+                  count: participants * this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs) * 0.5,
                   name: `[Event|${poi.name}] ${ev.name}`
                 });
               }
@@ -238,7 +235,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
              return;
            }
 
-          const activityMultiplier = this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs, weather);
+          const activityMultiplier = this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs);
           let candidates = prediction.candidateDestinations?.slice(0, 3) || [];
           if (candidates.length === 0 && prediction.predictedDestinationId) {
             candidates = [{
@@ -467,17 +464,11 @@ export class PredictiveHeatmapService implements OnModuleInit {
       const metersPerLat = this.spatialService.getMetersPerLat();
       const metersPerLng = this.spatialService.getMetersPerLng();
 
-      // ── 1. Weather: use override or fetch real ──
-      let weather = await this.weatherService.fetchWeather();
-      if (params.weatherOverride) {
-        weather = { temp: params.weatherOverride.temp, rain: params.weatherOverride.rain };
-        simulationReasons.push(`Giả lập thời tiết: ${weather.temp}°C, mưa ${weather.rain}mm`);
-      }
-
+      // ── 1. Determine Phase ──
       let phaseInfo = getCampusPhase(targetTimestampMs);
-      phaseInfo = this.heatmapMultiplierService.adjustTransitPhase(phaseInfo, weather);
+      phaseInfo = this.heatmapMultiplierService.adjustTransitPhase(phaseInfo);
 
-      const globalReasons = this.heatmapMultiplierService.getMultiplierReasons(targetTimestampMs, weather);
+      const globalReasons = this.heatmapMultiplierService.getMultiplierReasons(targetTimestampMs);
       const poiReasons: Record<string, string[]> = {};
 
       const { transitRatio, nodeHotspots, wayDensityMultiplier } = phaseInfo;
@@ -582,7 +573,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
               phantomDensities.push({
                 lat: poi.lat,
                 lng: poi.lng,
-                count: participants * this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs, weather) * 0.5,
+                count: participants * this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs) * 0.5,
                 name: `[Event|${poi.name}] ${ev.name}`,
               });
             }
@@ -640,7 +631,7 @@ export class PredictiveHeatmapService implements OnModuleInit {
             return;
           }
 
-          const activityMultiplier = this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs, weather);
+          const activityMultiplier = this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs);
           let candidates = prediction.candidateDestinations?.slice(0, 3) || [];
           if (candidates.length === 0 && prediction.predictedDestinationId) {
             candidates = [{

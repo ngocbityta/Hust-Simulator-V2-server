@@ -4,7 +4,6 @@ import { SpatialModule } from '../spatial/spatial.module';
 import { HeatmapController } from './heatmap.controller';
 import { IntentModule } from '../intent/intent.module';
 import { PredictiveHeatmapService } from './predictive-heatmap.service';
-import { WeatherService } from './services/weather.service';
 import { ContextApiService } from './services/context-api.service';
 import { HeatmapMultiplierService } from './services/heatmap-multiplier.service';
 
@@ -14,7 +13,6 @@ import { HeatmapMultiplierService } from './services/heatmap-multiplier.service'
   providers: [
     HeatmapService, 
     PredictiveHeatmapService,
-    WeatherService,
     ContextApiService,
     HeatmapMultiplierService
   ],

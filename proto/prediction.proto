@@ -6,18 +6,11 @@ service PredictionService {
   rpc PredictNextLocation (PredictNextLocationRequest) returns (PredictNextLocationResponse);
 }
 
-message TrajectoryPoint {
-  double latitude = 1;
-  double longitude = 2;
-  int64 timestamp = 3; // Milliseconds since epoch
-}
-
 message PredictNextLocationRequest {
   string user_id = 1;
-  repeated TrajectoryPoint trajectory = 2; // Last N points
   // We can include current context if needed
-  double current_heading = 3;
-  optional int64 target_timestamp_ms = 4;
+  double current_heading = 2;
+  optional int64 target_timestamp_ms = 3;
 }
 
 message PoiPrediction {

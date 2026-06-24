@@ -48,7 +48,7 @@ export class HeatmapService implements OnModuleInit {
 
   async aggregateHeatmap(): Promise<void> {
     const startTime = Date.now();
-    const cellSize = this.spatialService.getCellSize();
+    const cellSize = this.spatialService.getHeatmapCellSize();
     const metersPerLat = this.spatialService.getMetersPerLat();
     const metersPerLng = this.spatialService.getMetersPerLng();
 
@@ -96,8 +96,8 @@ export class HeatmapService implements OnModuleInit {
 
         totalOnline++;
 
-        const cell = this.spatialService.getGridCell(lat, lng);
-        const cellKey = this.spatialService.getCellKey(cell);
+        const cell = this.spatialService.getHeatmapGridCell(lat, lng);
+        const cellKey = this.spatialService.getHeatmapCellKey(cell);
         const activity = state.activityState || 'UNKNOWN';
 
         if (!cellMap.has(cellKey)) {

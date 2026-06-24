@@ -2,16 +2,8 @@ import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import type { ClientGrpc } from '@nestjs/microservices';
 import { Observable, firstValueFrom } from 'rxjs';
 
-// Matching prediction.proto definition
-export interface TrajectoryPoint {
-  latitude: number;
-  longitude: number;
-  timestamp: number;
-}
-
 export interface PredictNextLocationRequest {
   userId: string;
-  trajectory: TrajectoryPoint[];
   currentHeading: number;
   targetTimestampMs?: number;
 }

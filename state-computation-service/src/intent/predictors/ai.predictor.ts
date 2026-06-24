@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GrpcPredictionClient, TrajectoryPoint } from '../../grpc/prediction.client';
+import { GrpcPredictionClient } from '../../grpc/prediction.client';
 import { IPredictor, IntentPrediction, PredictContext } from '../intent.interface';
 import { IntentType } from '../../common/enums/intent.enum';
 
@@ -10,17 +10,11 @@ export class AIPredictor implements IPredictor {
   constructor(private readonly grpcPredictionClient: GrpcPredictionClient) {}
 
   async predict(context: PredictContext): Promise<IntentPrediction | null> {
-    const { userId, trajectory, clientHeading } = context;
-
-    if (!trajectory || trajectory.length < 5) {
-      this.logger.debug(`Insufficient trajectory data for user ${userId}. Need at least 5 points.`);
-      return null;
-    }
+    const { userId, clientHeading } = context;
 
     try {
       const response = await this.grpcPredictionClient.predictNextLocation({
         userId,
-        trajectory,
         currentHeading: clientHeading || 0,
         targetTimestampMs: context.targetTimestampMs,
       });

@@ -51,16 +51,8 @@ export class HeuristicPredictor implements IPredictor {
       };
     }
 
-    let prevLat = currentLat;
-    let prevLng = currentLng;
-    if (context.trajectory && context.trajectory.length >= 2) {
-      const prevPoint = context.trajectory[context.trajectory.length - 2];
-      prevLat = prevPoint.latitude;
-      prevLng = prevPoint.longitude;
-    } else {
-      prevLat = parseFloat(state.latitude || '0');
-      prevLng = parseFloat(state.longitude || '0');
-    }
+    let prevLat = parseFloat(state.latitude || '0');
+    let prevLng = parseFloat(state.longitude || '0');
 
     if (prevLat === 0 && prevLng === 0) {
       return {

@@ -6,7 +6,6 @@ import { ConfigModule } from '@nestjs/config';
 import { IIntentService } from './intent.interface';
 import { HeuristicPredictor } from './predictors/heuristic.predictor';
 import { AIPredictor } from './predictors/ai.predictor';
-import { TrajectoryService } from './trajectory.service';
 
 @Module({
   imports: [RedisModule, GrpcModule, ConfigModule],
@@ -17,8 +16,7 @@ import { TrajectoryService } from './trajectory.service';
     },
     HeuristicPredictor,
     AIPredictor,
-    TrajectoryService,
   ],
-  exports: [IIntentService, TrajectoryService],
+  exports: [IIntentService],
 })
 export class IntentModule {}

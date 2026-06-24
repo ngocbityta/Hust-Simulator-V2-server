@@ -1,12 +1,11 @@
 import { IntentType } from '../common/enums/intent.enum';
-import { TrajectoryPoint, PoiPrediction } from '../grpc/prediction.client';
+import { PoiPrediction } from '../grpc/prediction.client';
 
 export interface PredictContext {
   userId: string;
   currentLat: number;
   currentLng: number;
   clientHeading?: number;
-  trajectory?: TrajectoryPoint[];
   targetTimestampMs?: number;
 }
 

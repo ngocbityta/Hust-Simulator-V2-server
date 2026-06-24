@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IIntentService, IntentPrediction } from './intent.interface';
 import { HeuristicPredictor } from './predictors/heuristic.predictor';
 import { AIPredictor } from './predictors/ai.predictor';
-import { TrajectoryService } from './trajectory.service';
 import { IntentType } from '../common/enums/intent.enum';
 import { ConfigService } from '@nestjs/config';
 
@@ -13,7 +12,6 @@ export class IntentService implements IIntentService {
   constructor(
     private readonly heuristicPredictor: HeuristicPredictor,
     private readonly aiPredictor: AIPredictor,
-    private readonly trajectoryService: TrajectoryService,
     private readonly configService: ConfigService,
   ) { }
 
@@ -25,15 +23,7 @@ export class IntentService implements IIntentService {
     targetTimestampMs?: number,
   ): Promise<IntentPrediction | null> {
     try {
-      // 1. Log the new point into trajectory (only in live mode to avoid polluting the trajectory during forecast requests)
-      if (!targetTimestampMs) {
-        await this.trajectoryService.addPoint(userId, currentLat, currentLng, Date.now());
-      }
-
-      // 2. Fetch recent trajectory
-      const trajectory = await this.trajectoryService.getTrajectory(userId);
-
-      // 3. Hybrid Strategy
+      // 1. Hybrid Strategy
       let aiPrediction: IntentPrediction | null = null;
 
       const context = {
@@ -41,19 +31,18 @@ export class IntentService implements IIntentService {
         currentLat,
         currentLng,
         clientHeading,
-        trajectory,
         targetTimestampMs,
       };
 
       const forceHeuristicVal = this.configService.get('USE_HEURISTIC_ONLY');
       const forceHeuristic = forceHeuristicVal === true || forceHeuristicVal === 'true';
 
-      if (!forceHeuristic && trajectory && trajectory.length >= 5) {
-        this.logger.debug(`[Hybrid] Calling AI Predictor for ${userId} with ${trajectory.length} points.`);
+      if (!forceHeuristic) {
+        this.logger.debug(`[Hybrid] Calling AI Predictor for ${userId}`);
         aiPrediction = await this.aiPredictor.predict(context);
         this.logger.debug(`[Hybrid] AI Predictor returned: ${JSON.stringify(aiPrediction)}`);
       } else {
-        this.logger.debug(`[Hybrid] Skipped AI Predictor. forceHeuristic=${forceHeuristic}, trajectoryLength=${trajectory?.length}`);
+        this.logger.debug(`[Hybrid] Skipped AI Predictor. forceHeuristic=${forceHeuristic}`);
       }
 
       if (aiPrediction) {

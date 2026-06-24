@@ -24,16 +24,12 @@ DB_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
 DB_PORT = os.environ.get('POSTGRES_PORT', '5432')
 DB_SSLMODE = os.environ.get('POSTGRES_SSL', 'disable')
 DB_PREDICTION = os.environ.get('POSTGRES_DB', 'neondb')
-DB_CONTEXT = os.environ.get('POSTGRES_DB_CONTEXT', 'neondb')
 
 def get_prediction_db():
     return psycopg2.connect(host=DB_HOST, database=DB_PREDICTION, user=DB_USER, password=DB_PASSWORD, port=DB_PORT, sslmode=DB_SSLMODE)
 
-def get_context_db():
-    return psycopg2.connect(host=DB_HOST, database=DB_CONTEXT, user=DB_USER, password=DB_PASSWORD, port=DB_PORT, sslmode=DB_SSLMODE)
-
 # Load learned weights
-weights = {"alpha": 0.35, "beta": 0.35, "gamma": 0.1, "delta": 0.2}
+weights = {"alpha": 0.4, "beta": 0.4, "gamma": 0.2}
 weights_path = 'model/learned_weights.json'
 if os.path.exists(weights_path):
     try:
@@ -43,97 +39,73 @@ if os.path.exists(weights_path):
     except Exception as e:
         logger.error(f"Failed to load weights, using defaults: {e}")
 
-CHECK_IN_RADIUS_M = 30
+def get_hour_of_week(timestamp_ms=None):
+    """Return hour_of_week [0..167] for the given timestamp, or current time if None."""
+    if timestamp_ms and timestamp_ms > 0:
+        dt = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+    else:
+        dt = datetime.now(timezone.utc)
+    return dt.weekday() * 24 + dt.hour
 
-def haversine_m(lat1, lng1, lat2, lng2):
-    R = 6_371_000
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi  = math.radians(lat2 - lat1)
-    dlambda = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+def temporal_distance(hw1, hw2):
+    """Circular distance between two hour_of_week values [0..167], accounting for weekly wrap-around."""
+    diff = abs(hw1 - hw2)
+    return min(diff, 168 - diff)
 
-def snap_to_poi(lat, lng):
-    best_id, best_dist = None, float('inf')
-    for poi_id, poi in POIS.items():
-        d = haversine_m(lat, lng, poi['lat'], poi['lng'])
-        if d < best_dist:
-            best_dist, best_id = d, poi_id
-    if best_dist <= CHECK_IN_RADIUS_M:
-        return best_id, best_dist
-    return None, best_dist
-
-def get_hour_of_week():
-    now = datetime.now(timezone.utc)
-    return now.weekday() * 24 + now.hour
+def temporal_weight(hw1, hw2, bandwidth=2):
+    """Gaussian kernel weight for temporal similarity. bandwidth in hours."""
+    dist = temporal_distance(hw1, hw2)
+    return math.exp(-0.5 * (dist / bandwidth) ** 2)
 
 class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
     
     def fetch_user_history(self, user_id):
+        import uuid
+        try:
+            uuid_obj = uuid.UUID(user_id, version=4)
+        except ValueError:
+            return []
+            
         conn = get_prediction_db()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
             SELECT poi_id, timestamp, duration_seconds 
             FROM prediction.checkin_sequences 
             WHERE user_id = %s ORDER BY timestamp ASC
-        """, (user_id,))
+        """, (str(uuid_obj),))
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
         return rows
 
-    def check_user_has_events(self, user_id):
-        try:
-            conn = get_context_db()
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM context.event_attendance WHERE user_id = %s", (user_id,))
-            count = cursor.fetchone()[0]
-            cursor.close()
-            conn.close()
-            return count > 0
-        except Exception as e:
-            logger.error(f"Error checking user event affinity: {e}")
-            return False
-
-
-    def fetch_active_events(self):
-        try:
-            conn = get_context_db()
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            # Fetch events active currently
-            cursor.execute("""
-                SELECT map_id, type FROM context.events 
-                WHERE status = 'ONGOING' OR (start_time <= NOW() AND end_time >= NOW())
-            """)
-            events = cursor.fetchall()
-            cursor.close()
-            conn.close()
-            
-            # Map map_id (UUID) back to our short POI IDs
-            active_pois = {}
-            for e in events:
-                map_id = str(e['map_id'])
-                # Find matching POI
-                for poi_id, poi_data in POIS.items():
-                    if poi_data.get('db_uuid') == map_id:
-                        active_pois[poi_id] = e['type']
-            return active_pois
-        except Exception as e:
-            logger.error(f"Error fetching events: {e}")
-            return {}
-
     def PredictNextLocation(self, request, context):
         user_id = request.user_id
-        target_hw = get_hour_of_week()
         
-        # 1. Determine Current POI
-        current_poi = None
-        if len(request.trajectory) > 0:
-            last_pt = request.trajectory[-1]
-            current_poi, _ = snap_to_poi(last_pt.latitude, last_pt.longitude)
-            
-        # 2. Fetch History
+        # Safe check using getattr to avoid AttributeError if proto is missing it
+        ts_val = getattr(request, 'target_timestamp_ms', 0)
+        target_ts_ms = ts_val if ts_val and ts_val > 0 else None
+        target_hw = get_hour_of_week(target_ts_ms)
+        
+        # 1. Fetch History
         history = self.fetch_user_history(user_id)
+        
+        # If no history, return empty predictions
+        if not history:
+            return prediction_pb2.PredictNextLocationResponse(
+                predicted_poi_id="",
+                predicted_poi_name="Unknown",
+                confidence=0.0,
+                intent_type="UNKNOWN",
+                target_lat=0.0,
+                target_lng=0.0,
+                candidate_destinations=[]
+            )
+            
+        uuid_to_id = {v.get('db_uuid', k): k for k, v in POIS.items()}
+        
+        # Determine Current POI from history
+        current_uuid_str = str(history[-1]['poi_id'])
+        current_poi = uuid_to_id.get(current_uuid_str)
         
         # Calculate Base Probabilities
         transitions = {} # from current_poi -> next_poi
@@ -144,8 +116,6 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
         total_temporal = 0
         total_transitions = 0
         
-        uuid_to_id = {v.get('db_uuid', k): k for k, v in POIS.items()}
-
         for i in range(total_visits):
             r = history[i]
             pid = uuid_to_id.get(str(r['poi_id']))
@@ -155,9 +125,12 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
             hw = ts_dt.weekday() * 24 + ts_dt.hour
             
             preferences[pid] = preferences.get(pid, 0) + 1
-            if hw == target_hw:
-                temporal[pid] = temporal.get(pid, 0) + 1
-                total_temporal += 1
+            
+            # Use gaussian kernel for temporal similarity (±2hr window)
+            tw = temporal_weight(hw, target_hw, bandwidth=2)
+            if tw > 0.01:  # Only count if within meaningful range
+                temporal[pid] = temporal.get(pid, 0) + tw
+                total_temporal += tw
                 
             if i > 0 and current_poi is not None:
                 prev_pid = uuid_to_id.get(str(history[i-1]['poi_id']))
@@ -165,24 +138,17 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                     transitions[pid] = transitions.get(pid, 0) + 1
                     total_transitions += 1
                 
-        # 3. Fetch Events Context
-        active_events = self.fetch_active_events()
-        has_event_affinity = self.check_user_has_events(user_id)
-
-        
-        # 4. Score all POIs
+        # 3. Score all POIs
         scores = {}
         for poi_id in POIS.keys():
             p_trans = (transitions.get(poi_id, 0) / total_transitions) if total_transitions > 0 else 0
             p_temp = (temporal.get(poi_id, 0) / total_temporal) if total_temporal > 0 else 0
             p_pref = (preferences.get(poi_id, 0) / total_visits) if total_visits > 0 else 0
-            p_event = 1.0 if (poi_id in active_events and has_event_affinity) else 0.0
             
             # Linear combination
             score = (weights['alpha'] * p_trans) + \
                     (weights['beta'] * p_temp) + \
-                    (weights['gamma'] * p_pref) + \
-                    (weights['delta'] * p_event)
+                    (weights['gamma'] * p_pref)
             
             # If completely 0, give tiny baseline based on global preference or default
             if score == 0:
@@ -224,9 +190,9 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     prediction_pb2_grpc.add_PredictionServiceServicer_to_server(PredictionServiceServicer(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port('[::]:50055')
     server.start()
-    logger.info("Prediction Service running with Context-Aware Recommender on port 50051.")
+    logger.info("Prediction Service running with Context-Aware Recommender on port 50055.")
     try:
         while True:
             time.sleep(86400)
