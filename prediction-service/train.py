@@ -67,23 +67,32 @@ def extract_features():
                     pref_counts.get(pid, 0) / max(1, i)
                 ]
                 
-                # 19 Negative samples
-                neg_pids = random.sample([p for p in all_pois if p != pid], min(19, len(all_pois)-1))
-                
-                x_step = [x_pos]
-                for neg_pid in neg_pids:
-                    x_step.append([
-                        trans_counts.get((prev_pid, neg_pid), 0) / max(1, i),
-                        temp_counts.get((hw, neg_pid), 0) / max(1, i),
-                        pref_counts.get(neg_pid, 0) / max(1, i)
-                    ])
-                
                 if i <= train_end:
+                    # 19 Negative samples for Training
+                    neg_pids = random.sample([p for p in all_pois if p != pid], min(19, len(all_pois)-1))
+                    x_step = [x_pos]
+                    for neg_pid in neg_pids:
+                        x_step.append([
+                            trans_counts.get((prev_pid, neg_pid), 0) / max(1, i),
+                            temp_counts.get((hw, neg_pid), 0) / max(1, i),
+                            pref_counts.get(neg_pid, 0) / max(1, i)
+                        ])
                     X_train.append(x_step)
-                elif i <= val_end:
-                    X_val.append(x_step)
                 else:
-                    X_test.append(x_step)
+                    # ALL Negative samples for Validation & Test (Global Ranking)
+                    neg_pids = [p for p in all_pois if p != pid]
+                    x_step = [x_pos]
+                    for neg_pid in neg_pids:
+                        x_step.append([
+                            trans_counts.get((prev_pid, neg_pid), 0) / max(1, i),
+                            temp_counts.get((hw, neg_pid), 0) / max(1, i),
+                            pref_counts.get(neg_pid, 0) / max(1, i)
+                        ])
+                    
+                    if i <= val_end:
+                        X_val.append(x_step)
+                    else:
+                        X_test.append(x_step)
                 
             # Update running stats
             pref_counts[pid] += 1
@@ -97,7 +106,7 @@ from scipy.optimize import minimize
 
 def cce_loss(weights, X):
     if len(X) == 0: return 0
-    scores = np.dot(X, weights) # shape (N, 20)
+    scores = np.dot(X, weights) # shape (N, M)
     scores -= np.max(scores, axis=1, keepdims=True)
     exp_scores = np.exp(scores)
     probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
@@ -108,7 +117,7 @@ def cce_loss(weights, X):
 
 def evaluate_metrics(weights, X):
     if len(X) == 0: return {"HR@1": 0.0, "HR@3": 0.0, "HR@5": 0.0, "MRR": 0.0}
-    scores = np.dot(X, weights) # shape (N, 20)
+    scores = np.dot(X, weights) # shape (N, M)
     
     # argsort sorts ascending, so we take [:, ::-1] to get descending
     sorted_indices = np.argsort(scores, axis=1)[:, ::-1]
