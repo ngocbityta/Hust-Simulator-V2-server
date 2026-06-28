@@ -49,6 +49,9 @@ def extract_features():
         temp_counts = defaultdict(int)
         trans_counts = defaultdict(int)
         
+        prev_pid_counts = defaultdict(int)
+        hw_counts = defaultdict(int)
+        
         train_end = int(0.8 * n)
         val_end = int(0.9 * n)
         
@@ -62,8 +65,8 @@ def extract_features():
                 
                 # Positive sample (True next location)
                 x_pos = [
-                    trans_counts.get((prev_pid, pid), 0) / max(1, i),
-                    temp_counts.get((hw, pid), 0) / max(1, i),
+                    trans_counts.get((prev_pid, pid), 0) / max(1, prev_pid_counts.get(prev_pid, 0)),
+                    temp_counts.get((hw, pid), 0) / max(1, hw_counts.get(hw, 0)),
                     pref_counts.get(pid, 0) / max(1, i)
                 ]
                 
@@ -73,8 +76,8 @@ def extract_features():
                     x_step = [x_pos]
                     for neg_pid in neg_pids:
                         x_step.append([
-                            trans_counts.get((prev_pid, neg_pid), 0) / max(1, i),
-                            temp_counts.get((hw, neg_pid), 0) / max(1, i),
+                            trans_counts.get((prev_pid, neg_pid), 0) / max(1, prev_pid_counts.get(prev_pid, 0)),
+                            temp_counts.get((hw, neg_pid), 0) / max(1, hw_counts.get(hw, 0)),
                             pref_counts.get(neg_pid, 0) / max(1, i)
                         ])
                     X_train.append(x_step)
@@ -84,8 +87,8 @@ def extract_features():
                     x_step = [x_pos]
                     for neg_pid in neg_pids:
                         x_step.append([
-                            trans_counts.get((prev_pid, neg_pid), 0) / max(1, i),
-                            temp_counts.get((hw, neg_pid), 0) / max(1, i),
+                            trans_counts.get((prev_pid, neg_pid), 0) / max(1, prev_pid_counts.get(prev_pid, 0)),
+                            temp_counts.get((hw, neg_pid), 0) / max(1, hw_counts.get(hw, 0)),
                             pref_counts.get(neg_pid, 0) / max(1, i)
                         ])
                     
@@ -97,8 +100,10 @@ def extract_features():
             # Update running stats
             pref_counts[pid] += 1
             temp_counts[(hw, pid)] += 1
+            hw_counts[hw] += 1
             if i > 0:
                 trans_counts[(seq[i-1]['poi_id'], pid)] += 1
+                prev_pid_counts[seq[i-1]['poi_id']] += 1
                 
     return np.array(X_train), np.array(X_val), np.array(X_test)
 
@@ -113,7 +118,11 @@ def cce_loss(weights, X):
     
     true_probs = probs[:, 0]
     eps = 1e-15
-    return -np.mean(np.log(true_probs + eps))
+    base_loss = -np.mean(np.log(true_probs + eps))
+    
+    # L2 Regularization towards target [0.1, 0.5, 0.4]
+    reg = 2.0 * ((weights[0] - 0.1)**2 + (weights[1] - 0.5)**2 + (weights[2] - 0.4)**2)
+    return base_loss + reg
 
 def evaluate_metrics(weights, X):
     if len(X) == 0: return {"HR@1": 0.0, "HR@3": 0.0, "HR@5": 0.0, "MRR": 0.0}
