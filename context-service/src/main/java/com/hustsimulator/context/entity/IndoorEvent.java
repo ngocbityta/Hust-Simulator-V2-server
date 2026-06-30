@@ -29,5 +29,6 @@ public class IndoorEvent extends Event {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "event_rooms", joinColumns = @JoinColumn(name = "event_id"))
     @Column(name = "room_id")
+    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
     private List<UUID> roomIds;
 }

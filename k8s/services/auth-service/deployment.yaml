@@ -38,6 +38,8 @@ spec:
             - secretRef:
                 name: hustsim-secrets
           env:
+            - name: JAVA_OPTS
+              value: "-Xms128m -Xmx256m"
             - name: POSTGRES_DB
               value: "hustsim_auth"
             - name: SPRING_DATASOURCE_USERNAME
