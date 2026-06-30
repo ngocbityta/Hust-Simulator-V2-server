@@ -38,6 +38,8 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
 
     # ── Xác thực với Google Cloud ──
     - id: auth
@@ -65,12 +67,14 @@ jobs:
       id: detect
       run: |-
         # Lấy danh sách files thay đổi so với commit trước
-        if [ -z "${{ github.event.before }}" ] || [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+        # Với fetch-depth: 2, HEAD~1 luôn khả dụng
+        # workflow_dispatch hoặc first push → build all
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] || ! git rev-parse HEAD~1 >/dev/null 2>&1; then
           echo "force_build_all=true" >> $GITHUB_OUTPUT
           CHANGED_SERVICES="api-gateway auth-service context-service social-service streaming-service state-dissemination-service state-computation-service interest-matcher-service prediction-service"
         else
           echo "force_build_all=false" >> $GITHUB_OUTPUT
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
 
           # Map file paths to services
           CHANGED_SERVICES=""
