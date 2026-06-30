@@ -5,6 +5,7 @@ public class DashboardConstants {
     public static final String BEHAVIOR_EVENT = "Tham gia sự kiện";
     public static final String BEHAVIOR_LIBRARY = "Ngồi ở thư viện";
     public static final String BEHAVIOR_ROAMING = "Tự do/Đi dạo";
+    public static final String BEHAVIOR_OUTSIDE = "Ngoài khuôn viên";
     
     public static final String ROOM_STATUS_EMPTY = "EMPTY";
     public static final String ROOM_STATUS_BUSY = "BUSY";

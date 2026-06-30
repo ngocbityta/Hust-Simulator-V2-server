@@ -114,6 +114,7 @@ public class DashboardServiceImpl implements DashboardService {
         long eventCount = 0;
         long libraryCount = 0;
         long roamingCount = 0;
+        long outsideCount = 0;
 
         for (Object[] row : userStateRepository.countByActivityState()) {
             com.hustsimulator.context.enums.UserActivityState state = com.hustsimulator.context.enums.UserActivityState.valueOf(row[0].toString());
@@ -129,10 +130,12 @@ public class DashboardServiceImpl implements DashboardService {
                 case SPECTATING_RECURRING_EVENT:
                     learningCount += count;
                     break;
+                case OUTSIDE_MAP:
+                    outsideCount += count;
+                    break;
                 case IN_BUILDING:
                 case SPECTATING_BUILDING:
                 case ROAMING:
-                case OUTSIDE_MAP:
                 default:
                     roamingCount += count;
                     break;
@@ -157,10 +160,12 @@ public class DashboardServiceImpl implements DashboardService {
                     case SPECTATING_RECURRING_EVENT:
                         learningCount -= count;
                         break;
+                    case OUTSIDE_MAP:
+                        outsideCount -= count;
+                        break;
                     case IN_BUILDING:
                     case SPECTATING_BUILDING:
                     case ROAMING:
-                    case OUTSIDE_MAP:
                     default:
                         roamingCount -= count;
                         break;
@@ -172,7 +177,8 @@ public class DashboardServiceImpl implements DashboardService {
                 new DashboardStatsDTO.BehaviorDistribution(DashboardConstants.BEHAVIOR_LEARNING, Math.max(0, learningCount)),
                 new DashboardStatsDTO.BehaviorDistribution(DashboardConstants.BEHAVIOR_EVENT, Math.max(0, eventCount)),
                 new DashboardStatsDTO.BehaviorDistribution(DashboardConstants.BEHAVIOR_LIBRARY, libraryCount),
-                new DashboardStatsDTO.BehaviorDistribution(DashboardConstants.BEHAVIOR_ROAMING, Math.max(0, roamingCount))
+                new DashboardStatsDTO.BehaviorDistribution(DashboardConstants.BEHAVIOR_ROAMING, Math.max(0, roamingCount)),
+                new DashboardStatsDTO.BehaviorDistribution(DashboardConstants.BEHAVIOR_OUTSIDE, Math.max(0, outsideCount))
         );
     }
 
