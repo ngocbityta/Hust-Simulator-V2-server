@@ -239,26 +239,21 @@ public class DashboardServiceImpl implements DashboardService {
         LocalDateTime since = filter.getSince(LocalDateTime.now());
 
         var activeNodes = campusNodeRepository.findByIsActiveTrue();
-        List<int[]> cells = new ArrayList<>();
-        Map<String, CampusNode> nodeByCellKey = new LinkedHashMap<>();
         for (CampusNode node : activeNodes) {
             if (node.getNodeType() != null && node.getNodeType().equals("BUILDING")) continue;
+            
             int cellX = (int) Math.floor((node.getLongitude() * metersPerLng) / cellSize);
             int cellY = (int) Math.floor((node.getLatitude() * metersPerLat) / cellSize);
-            cells.add(new int[]{cellX, cellY});
-            nodeByCellKey.put(cellX + "," + cellY, node);
-        }
 
-        Map<String, Object[]> peakByCell = heatmapHistoryRepository.findPeakDensityForCellsSince(cells, since);
-        for (Map.Entry<String, CampusNode> entry : nodeByCellKey.entrySet()) {
-            Object[] row = peakByCell.get(entry.getKey());
-            if (row != null) {
+            List<Object[]> peakData = heatmapHistoryRepository.findPeakDensityForCellSince(cellX, cellY, since);
+            if (!peakData.isEmpty() && peakData.get(0) != null) {
+                Object[] row = peakData.get(0);
                 java.sql.Timestamp ts = (java.sql.Timestamp) row[0];
                 long peakCount = ((Number) row[1]).longValue();
                 topNodesList.add(new DashboardStatsDTO.TopNode(
-                        entry.getValue().getName(), ts.toLocalDateTime().format(fmt), peakCount));
+                        node.getName(), ts.toLocalDateTime().format(fmt), peakCount));
             } else {
-                topNodesList.add(new DashboardStatsDTO.TopNode(entry.getValue().getName(), "--:--", 0));
+                topNodesList.add(new DashboardStatsDTO.TopNode(node.getName(), "--:--", 0));
             }
         }
 
