@@ -8,15 +8,13 @@ metadata:
     app.kubernetes.io/part-of: hustsimulator
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: auth-service
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 1
+      maxUnavailable: 0
       maxSurge: 1
   template:
     metadata:
