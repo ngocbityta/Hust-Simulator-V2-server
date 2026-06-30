@@ -33,16 +33,16 @@ spec:
               # Extract ordinal: interest-matcher-0 → 0
               export ZONE_ID=${HOSTNAME##*-}
               
-              # Tính port cho zone này (cùng port 4000 trên các Pod khác nhau là an toàn vì mỗi pod có IP riêng)
-              export IM_PORT=4000
-              export IM_BASE_PORT=$((4000 - ZONE_ID))
+              # Tính port cho zone này (sử dụng cổng động để khớp với client)
+              export IM_PORT=$((4000 + ZONE_ID))
+              export IM_BASE_PORT=4000
               
               # Xây dựng NEIGHBOR_BROKERS dựa trên ZONE_ID
               TOTAL_ZONES=3
               NEIGHBORS=""
               for i in $(seq 0 $((TOTAL_ZONES - 1))); do
                 if [ "$i" != "$ZONE_ID" ]; then
-                  PEER_PORT=4000
+                  PEER_PORT=$((4000 + i))
                   PEER_HOST="interest-matcher-${i}.interest-matcher"
                   if [ -n "$NEIGHBORS" ]; then
                     NEIGHBORS="${NEIGHBORS},"
@@ -60,7 +60,11 @@ spec:
               exec node dist/main
           ports:
             - containerPort: 4000
-              name: grpc
+              name: grpc-0
+            - containerPort: 4001
+              name: grpc-1
+            - containerPort: 4002
+              name: grpc-2
           envFrom:
             - configMapRef:
                 name: hustsim-config
@@ -71,18 +75,24 @@ spec:
               value: "http://jaeger:4318/v1/traces"
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "25m"
+              memory: "64Mi"
             limits:
               cpu: "500m"
               memory: "384Mi"
           readinessProbe:
-            tcpSocket:
-              port: 4000
+            exec:
+              command:
+                - node
+                - -e
+                - "const port = 4000 + parseInt(require('os').hostname().split('-').pop() || '0', 10); require('net').connect(port, '127.0.0.1').on('error', () => process.exit(1)).on('connect', () => process.exit(0))"
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
-            tcpSocket:
-              port: 4000
+            exec:
+              command:
+                - node
+                - -e
+                - "const port = 4000 + parseInt(require('os').hostname().split('-').pop() || '0', 10); require('net').connect(port, '127.0.0.1').on('error', () => process.exit(1)).on('connect', () => process.exit(0))"
             initialDelaySeconds: 15
             periodSeconds: 15

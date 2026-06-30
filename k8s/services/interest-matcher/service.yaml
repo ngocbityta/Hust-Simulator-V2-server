@@ -15,4 +15,10 @@ spec:
   ports:
     - port: 4000
       targetPort: 4000
-      name: grpc
+      name: grpc-0
+    - port: 4001
+      targetPort: 4001
+      name: grpc-1
+    - port: 4002
+      targetPort: 4002
+      name: grpc-2

@@ -27,4 +27,11 @@ public interface HeatmapHistoryRepository extends JpaRepository<HeatmapHistory, 
 
     @Query(value = "SELECT h.recorded_at, h.average_count FROM context.heatmap_history h WHERE h.cell_x = :cellX AND h.cell_y = :cellY AND h.recorded_at >= :since ORDER BY h.average_count DESC LIMIT 1", nativeQuery = true)
     List<Object[]> findPeakDensityForCellSince(@org.springframework.data.repository.query.Param("cellX") Integer cellX, @org.springframework.data.repository.query.Param("cellY") Integer cellY, @org.springframework.data.repository.query.Param("since") LocalDateTime since);
+
+    @Query(value = "SELECT cell_x, cell_y, recorded_at, average_count FROM (" +
+            "SELECT h.cell_x, h.cell_y, h.recorded_at, h.average_count, " +
+            "ROW_NUMBER() OVER (PARTITION BY h.cell_x, h.cell_y ORDER BY h.average_count DESC) as rn " +
+            "FROM context.heatmap_history h WHERE h.recorded_at >= :since" +
+            ") sub WHERE rn = 1", nativeQuery = true)
+    List<Object[]> findPeakDensitiesSince(@org.springframework.data.repository.query.Param("since") LocalDateTime since);
 }
