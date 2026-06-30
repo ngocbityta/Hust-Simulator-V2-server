@@ -58,8 +58,8 @@ spec:
               value: "http://jaeger:4318/v1/traces"
           resources:
             requests:
-              cpu: "100m"
-              memory: "512Mi"
+              cpu: "50m"
+              memory: "256Mi"
             limits:
               cpu: "500m"
               memory: "2048Mi"
