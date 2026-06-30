@@ -27,4 +27,19 @@ public interface HeatmapHistoryRepository extends JpaRepository<HeatmapHistory, 
 
     @Query(value = "SELECT h.recorded_at, h.average_count FROM context.heatmap_history h WHERE h.cell_x = :cellX AND h.cell_y = :cellY AND h.recorded_at >= :since ORDER BY h.average_count DESC LIMIT 1", nativeQuery = true)
     List<Object[]> findPeakDensityForCellSince(@org.springframework.data.repository.query.Param("cellX") Integer cellX, @org.springframework.data.repository.query.Param("cellY") Integer cellY, @org.springframework.data.repository.query.Param("since") LocalDateTime since);
+
+    @org.springframework.data.jpa.repository.Query(value = "SELECT DISTINCT ON (h.cell_x, h.cell_y) h.cell_x, h.cell_y, h.recorded_at, h.average_count FROM context.heatmap_history h WHERE h.recorded_at >= :since AND (h.cell_x, h.cell_y) IN (:cells) ORDER BY h.cell_x, h.cell_y, h.average_count DESC", nativeQuery = true)
+    List<Object[]> findPeakDensityForCellsSinceRaw(@org.springframework.data.repository.query.Param("cells") List<int[]> cells, @org.springframework.data.repository.query.Param("since") LocalDateTime since);
+
+    default Map<String, Object[]> findPeakDensityForCellsSince(List<int[]> cells, LocalDateTime since) {
+        if (cells.isEmpty()) return java.util.Collections.emptyMap();
+        List<Object[]> rows = findPeakDensityForCellsSinceRaw(cells, since);
+        Map<String, Object[]> result = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            String key = row[0] + "," + row[1];
+            Object[] peakData = new Object[]{row[2], row[3]};
+            result.put(key, peakData);
+        }
+        return result;
+    }
 }

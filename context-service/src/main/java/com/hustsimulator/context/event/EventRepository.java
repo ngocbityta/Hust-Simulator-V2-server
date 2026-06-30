@@ -14,6 +14,8 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     List<Event> findByStatusIn(List<EventStatus> statuses);
     List<Event> findByStatusInAndEndTimeAfter(List<EventStatus> statuses, java.time.LocalDateTime endTime);
     List<Event> findByStatus(EventStatus status);
+
+    long countByStatus(EventStatus status);
     List<Event> findByMapId(UUID mapId);
     
     @org.springframework.data.jpa.repository.Query("SELECT e FROM Event e WHERE e.startTime <= :targetTime AND e.endTime >= :targetTime")

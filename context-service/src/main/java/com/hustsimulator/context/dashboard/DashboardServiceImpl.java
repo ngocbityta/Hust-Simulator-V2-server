@@ -34,6 +34,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DashboardServiceImpl implements DashboardService {
 
+    private volatile DashboardStatsDTO cachedStats;
+    private volatile long cachedStatsTime;
+    private volatile String cachedStatsTimeRange;
+    private static final long CACHE_TTL_MS = 30_000;
+
     private final BuildingRepository buildingRepository;
     private final RoomRepository roomRepository;
     private final EventRepository eventRepository;
@@ -61,7 +66,15 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public DashboardStatsDTO getStats(String timeRange) {
-        TimeRangeFilter timeFilter = TimeRangeFilter.fromCode(timeRange);
+        String effectiveTimeRange = (timeRange == null || timeRange.isBlank()) ? "1d" : timeRange;
+        long now = System.currentTimeMillis();
+        if (cachedStats != null && effectiveTimeRange.equals(cachedStatsTimeRange)
+                && (now - cachedStatsTime) < CACHE_TTL_MS) {
+            log.debug("Returning cached dashboard stats");
+            return cachedStats;
+        }
+
+        TimeRangeFilter timeFilter = TimeRangeFilter.fromCode(effectiveTimeRange);
         var allRooms = roomRepository.findAll();
         long roomsBusy = allRooms.stream().filter(r -> r.getStatus() == RoomStatus.BUSY).count();
         long roomsEmpty = allRooms.stream().filter(r -> r.getStatus() == RoomStatus.EMPTY).count();
@@ -71,7 +84,7 @@ public class DashboardServiceImpl implements DashboardService {
         Map<UUID, String> buildingNames = buildingRepository.findAll().stream()
                 .collect(Collectors.toMap(Building::getId, Building::getName));
 
-        return new DashboardStatsDTO(
+        DashboardStatsDTO stats = new DashboardStatsDTO(
                 buildingRepository.count(),
                 roomRepository.count(),
                 roomsBusy, roomsEmpty, roomsClosed, roomsWithIssues,
@@ -93,6 +106,11 @@ public class DashboardServiceImpl implements DashboardService {
                 getRoomOccupancy(buildingNames),
                 getLiveClassAttendance()
         );
+
+        cachedStats = stats;
+        cachedStatsTime = now;
+        cachedStatsTimeRange = effectiveTimeRange;
+        return stats;
     }
 
     private List<DashboardStatsDTO.BuildingUserCount> getUsersPerBuilding(Map<UUID, String> buildingNames) {
@@ -185,7 +203,7 @@ public class DashboardServiceImpl implements DashboardService {
     private Map<String, Long> getEventStatusDistribution() {
         Map<String, Long> eventStatusDistribution = new LinkedHashMap<>();
         for (EventStatus status : EventStatus.values()) {
-            eventStatusDistribution.put(status.name(), (long) eventRepository.findByStatus(status).size());
+            eventStatusDistribution.put(status.name(), eventRepository.countByStatus(status));
         }
         return eventStatusDistribution;
     }
@@ -220,21 +238,27 @@ public class DashboardServiceImpl implements DashboardService {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern(filter.getFormat());
         LocalDateTime since = filter.getSince(LocalDateTime.now());
 
-        for (CampusNode node : campusNodeRepository.findByIsActiveTrue()) {
+        var activeNodes = campusNodeRepository.findByIsActiveTrue();
+        List<int[]> cells = new ArrayList<>();
+        Map<String, CampusNode> nodeByCellKey = new LinkedHashMap<>();
+        for (CampusNode node : activeNodes) {
             if (node.getNodeType() != null && node.getNodeType().equals("BUILDING")) continue;
-            
             int cellX = (int) Math.floor((node.getLongitude() * metersPerLng) / cellSize);
             int cellY = (int) Math.floor((node.getLatitude() * metersPerLat) / cellSize);
+            cells.add(new int[]{cellX, cellY});
+            nodeByCellKey.put(cellX + "," + cellY, node);
+        }
 
-            List<Object[]> peakData = heatmapHistoryRepository.findPeakDensityForCellSince(cellX, cellY, since);
-            if (!peakData.isEmpty() && peakData.get(0) != null) {
-                Object[] row = peakData.get(0);
+        Map<String, Object[]> peakByCell = heatmapHistoryRepository.findPeakDensityForCellsSince(cells, since);
+        for (Map.Entry<String, CampusNode> entry : nodeByCellKey.entrySet()) {
+            Object[] row = peakByCell.get(entry.getKey());
+            if (row != null) {
                 java.sql.Timestamp ts = (java.sql.Timestamp) row[0];
                 long peakCount = ((Number) row[1]).longValue();
                 topNodesList.add(new DashboardStatsDTO.TopNode(
-                        node.getName(), ts.toLocalDateTime().format(fmt), peakCount));
+                        entry.getValue().getName(), ts.toLocalDateTime().format(fmt), peakCount));
             } else {
-                topNodesList.add(new DashboardStatsDTO.TopNode(node.getName(), "--:--", 0));
+                topNodesList.add(new DashboardStatsDTO.TopNode(entry.getValue().getName(), "--:--", 0));
             }
         }
 
@@ -326,10 +350,22 @@ public class DashboardServiceImpl implements DashboardService {
             }
         }
         
+        List<UUID> roomIds = ongoingClasses.stream().limit(5)
+                .map(com.hustsimulator.context.entity.RecurringEvent::getRoomId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, String> roomNames = new HashMap<>();
+        if (!roomIds.isEmpty()) {
+            for (var room : roomRepository.findAllById(roomIds)) {
+                roomNames.put(room.getId(), room.getName());
+            }
+        }
+
         for (var clazz : ongoingClasses.stream().limit(5).toList()) {
             long actual = classAttendanceMap.getOrDefault(clazz.getId(), 0L);
             String roomName = clazz.getRoomId() != null 
-                    ? roomRepository.findById(clazz.getRoomId()).map(com.hustsimulator.context.entity.Room::getName).orElse("Unknown") 
+                    ? roomNames.getOrDefault(clazz.getRoomId(), "Unknown") 
                     : "Unknown";
             
             liveClassAttendance.add(new DashboardStatsDTO.LiveClassAttendance(
