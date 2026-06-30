@@ -2,6 +2,8 @@ import { Controller, Get, Post, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { HeatmapService } from './heatmap.service';
 import { PredictiveHeatmapService, SimulationParams } from './predictive-heatmap.service';
+import { RedisService } from '../redis/redis.service';
+import { RedisKey } from '../common/enums/redis-key.enum';
 
 export class HeatmapCellDto {
   @ApiProperty({ description: 'Cell X index', example: 45 })
@@ -84,7 +86,50 @@ export class HeatmapController {
   constructor(
     private readonly heatmapService: HeatmapService,
     private readonly predictiveHeatmapService: PredictiveHeatmapService,
+    private readonly redisService: RedisService,
   ) {}
+
+  @Get('players')
+  @ApiOperation({ summary: 'Get all online player positions and usernames for live map display' })
+  @ApiResponse({ status: 200, description: 'Returns list of online players with lat/lng/username/activityState' })
+  async getOnlinePlayers() {
+    const client = this.redisService.client;
+    const userIds = await client.zrange(RedisKey.PLAYER_GEO_KEY, 0, -1);
+    if (userIds.length === 0) return { players: [] };
+
+    const pipeline = client.pipeline();
+    for (const uid of userIds) {
+      pipeline.hgetall(`${RedisKey.PLAYER_STATE_PREFIX}${uid}`);
+    }
+    const results = await pipeline.exec();
+
+    const players: Array<{
+      userId: string;
+      username: string;
+      latitude: number;
+      longitude: number;
+      activityState: string;
+    }> = [];
+
+    results?.forEach((res, idx) => {
+      const [err, hash] = res;
+      if (err || !hash || Object.keys(hash as object).length === 0) return;
+      const h = hash as Record<string, string>;
+      if (h.isOnline !== 'true') return;
+      const lat = parseFloat(h.latitude || '0');
+      const lng = parseFloat(h.longitude || '0');
+      if (lat === 0 && lng === 0) return;
+      players.push({
+        userId: userIds[idx],
+        username: h.username || '',
+        latitude: lat,
+        longitude: lng,
+        activityState: h.activityState || 'UNKNOWN',
+      });
+    });
+
+    return { players };
+  }
 
   @Get('latest')
   @ApiOperation({ summary: 'Get the latest aggregated standard heatmap data' })

@@ -14,10 +14,19 @@ interface HeatmapCell {
   activities: Record<string, number>;
 }
 
+export interface PlayerDot {
+  userId: string;
+  username: string;
+  latitude: number;
+  longitude: number;
+  activityState: string;
+}
+
 export interface HeatmapPayload {
   timestamp: number;
   totalOnline: number;
   cells: HeatmapCell[];
+  players: PlayerDot[];
 }
 
 @Injectable()
@@ -81,9 +90,10 @@ export class HeatmapService implements OnModuleInit {
           activities: Map<string, number>;
         }
       >();
+      const players: PlayerDot[] = [];
       let totalOnline = 0;
 
-      results?.forEach((res) => {
+      results?.forEach((res, idx) => {
         const [err, hash] = res;
         if (err || !hash || Object.keys(hash as object).length === 0) return;
 
@@ -95,6 +105,13 @@ export class HeatmapService implements OnModuleInit {
         if (lat === 0 && lng === 0) return;
 
         totalOnline++;
+        players.push({
+          userId: userIds[idx],
+          username: state.username || '',
+          latitude: lat,
+          longitude: lng,
+          activityState: state.activityState || 'UNKNOWN',
+        });
 
         const cell = this.spatialService.getHeatmapGridCell(lat, lng);
         const cellKey = this.spatialService.getHeatmapCellKey(cell);
@@ -143,6 +160,7 @@ export class HeatmapService implements OnModuleInit {
         timestamp: Date.now(),
         totalOnline,
         cells,
+        players,
       };
       
       this.latestHeatmap = payload;
