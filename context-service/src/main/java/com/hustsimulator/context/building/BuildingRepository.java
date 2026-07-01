@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface BuildingRepository extends JpaRepository<Building, UUID> {
     List<Building> findByMapId(UUID mapId);
     List<Building> findByIsActiveTrue();
+    boolean existsByName(String name);
+    boolean existsByNameAndIdNot(String name, UUID id);
     @org.springframework.data.jpa.repository.Query("SELECT b FROM Building b WHERE :search IS NULL OR :search = '' OR LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(b.id AS string) LIKE CONCAT('%', :search, '%')")
     Page<Building> findByNameOrIdContainingIgnoreCase(@org.springframework.data.repository.query.Param("search") String search, Pageable pageable);
 

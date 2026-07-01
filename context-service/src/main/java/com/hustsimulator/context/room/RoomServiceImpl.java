@@ -41,6 +41,11 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public Room create(RoomDTO.CreateRoomRequest request) {
+        if (request.name() != null && request.buildingId() != null) {
+            if (roomRepository.existsByNameAndBuildingId(request.name(), request.buildingId())) {
+                throw new IllegalArgumentException("Lỗi: Phòng này đã tồn tại trong tòa nhà!");
+            }
+        }
         log.info("Creating room '{}' in building {}", request.name(), request.buildingId());
         Room room = Room.builder()
                 .name(request.name())
@@ -52,7 +57,10 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public Room update(UUID id, RoomDTO.UpdateRoomRequest request) {
         Room room = findById(id);
-        if (request.name() != null) {
+        if (request.name() != null && !request.name().equals(room.getName())) {
+            if (roomRepository.existsByNameAndBuildingIdAndIdNot(request.name(), room.getBuildingId(), id)) {
+                throw new IllegalArgumentException("Lỗi: Phòng này đã tồn tại trong tòa nhà!");
+            }
             room.setName(request.name());
         }
         log.info("Updating room: {}", id);

@@ -48,7 +48,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public User register(AuthDTO.RegisterRequest registerRequest) {
         if (userRepository.existsByPhonenumber(registerRequest.phonenumber())) {
-            throw new IllegalArgumentException("Error: Phonenumber is already taken!");
+            throw new IllegalArgumentException("Lỗi: Số điện thoại này đã được sử dụng!");
+        }
+        if (userRepository.existsByUsername(registerRequest.username())) {
+            throw new IllegalArgumentException("Lỗi: Tên đăng nhập này đã được sử dụng!");
         }
 
         User user = User.builder()

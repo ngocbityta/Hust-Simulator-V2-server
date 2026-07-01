@@ -44,6 +44,18 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid phonenumber or password", ex);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        String message = "Lỗi cơ sở dữ liệu: Vi phạm ràng buộc dữ liệu.";
+        if (ex.getRootCause() != null && ex.getRootCause().getMessage() != null) {
+            String rootMsg = ex.getRootCause().getMessage();
+            if (rootMsg.contains("users_phonenumber_key")) {
+                message = "Lỗi: Số điện thoại này đã được sử dụng!";
+            }
+        }
+        return buildResponse(HttpStatus.BAD_REQUEST, message, ex);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);

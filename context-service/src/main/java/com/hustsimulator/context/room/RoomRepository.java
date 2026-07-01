@@ -12,6 +12,8 @@ import java.util.UUID;
 public interface RoomRepository extends JpaRepository<Room, UUID> {
     List<Room> findByBuildingId(UUID buildingId);
     List<Room> findByStatusNot(RoomStatus status);
+    boolean existsByNameAndBuildingId(String name, UUID buildingId);
+    boolean existsByNameAndBuildingIdAndIdNot(String name, UUID buildingId, UUID id);
     @org.springframework.data.jpa.repository.Query("SELECT r FROM Room r WHERE :search IS NULL OR :search = '' OR LOWER(r.name) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(r.id AS string) LIKE CONCAT('%', :search, '%')")
     Page<Room> findByNameOrIdContainingIgnoreCase(@org.springframework.data.repository.query.Param("search") String search, Pageable pageable);
 

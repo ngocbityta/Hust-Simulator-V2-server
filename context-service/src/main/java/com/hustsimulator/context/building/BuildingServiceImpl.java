@@ -49,6 +49,9 @@ public class BuildingServiceImpl implements BuildingService {
     @Override
     @CacheEvict(value = {"buildings_all", "buildings_active", "buildings_by_map"}, allEntries = true)
     public Building create(BuildingDTO.CreateBuildingRequest request) {
+        if (request.name() != null && buildingRepository.existsByName(request.name())) {
+            throw new IllegalArgumentException("Lỗi: Tên tòa nhà đã tồn tại!");
+        }
         log.info("Creating building '{}' on map {}", request.name(), request.mapId());
 
         String coordinatesJson = serializePoints(request.points());
@@ -69,7 +72,10 @@ public class BuildingServiceImpl implements BuildingService {
     @CacheEvict(value = {"buildings", "buildings_all", "buildings_active", "buildings_by_map"}, allEntries = true)
     public Building update(UUID id, BuildingDTO.UpdateBuildingRequest request) {
         Building building = findById(id);
-        if (request.name() != null) {
+        if (request.name() != null && !request.name().equals(building.getName())) {
+            if (buildingRepository.existsByNameAndIdNot(request.name(), id)) {
+                throw new IllegalArgumentException("Lỗi: Tên tòa nhà đã tồn tại!");
+            }
             building.setName(request.name());
         }
         if (request.isActive() != null) {

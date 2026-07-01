@@ -15,6 +15,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByPhonenumber(String phonenumber);
 
+    boolean existsByUsername(String username);
+
     @org.springframework.data.jpa.repository.Query("SELECT u FROM User u WHERE :search IS NULL OR :search = '' OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.phonenumber) LIKE LOWER(CONCAT('%', :search, '%')) OR CAST(u.id AS string) LIKE CONCAT('%', :search, '%')")
     Page<User> searchUsers(@org.springframework.data.repository.query.Param("search") String search, Pageable pageable);
 

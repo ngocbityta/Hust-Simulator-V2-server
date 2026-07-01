@@ -32,7 +32,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User create(User user) {
         if (userRepository.existsByPhonenumber(user.getPhonenumber())) {
-            throw new IllegalArgumentException("Error: Phonenumber is already taken!");
+            throw new IllegalArgumentException("Lỗi: Số điện thoại này đã được sử dụng!");
+        }
+        if (user.getUsername() != null && userRepository.existsByUsername(user.getUsername())) {
+            throw new IllegalArgumentException("Lỗi: Tên đăng nhập này đã được sử dụng!");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         User saved = userRepository.save(user);
@@ -43,8 +46,18 @@ public class UserServiceImpl implements UserService {
     @Override
     public User update(UUID id, User updated) {
         User user = findById(id);
-        if (updated.getUsername() != null) user.setUsername(updated.getUsername());
-        if (updated.getPhonenumber() != null) user.setPhonenumber(updated.getPhonenumber());
+        if (updated.getUsername() != null && !updated.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(updated.getUsername())) {
+                throw new IllegalArgumentException("Lỗi: Tên đăng nhập này đã được sử dụng!");
+            }
+            user.setUsername(updated.getUsername());
+        }
+        if (updated.getPhonenumber() != null && !updated.getPhonenumber().equals(user.getPhonenumber())) {
+            if (userRepository.existsByPhonenumber(updated.getPhonenumber())) {
+                throw new IllegalArgumentException("Lỗi: Số điện thoại này đã được sử dụng!");
+            }
+            user.setPhonenumber(updated.getPhonenumber());
+        }
         if (updated.getFullName() != null) user.setFullName(updated.getFullName());
         if (updated.getRole() != null) user.setRole(updated.getRole());
         if (updated.getAvatar() != null) user.setAvatar(updated.getAvatar());
