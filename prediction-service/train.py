@@ -1,5 +1,6 @@
 import json
 import os
+import math
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import logging
@@ -20,6 +21,16 @@ DB_PREDICTION = os.environ.get('POSTGRES_DB', 'neondb')
 def get_prediction_db():
     return psycopg2.connect(host=DB_HOST, database=DB_PREDICTION, user=DB_USER, password=DB_PASSWORD, port=DB_PORT)
 
+def temporal_distance(hw1, hw2):
+    """Circular distance between two hour_of_week values [0..167]."""
+    diff = abs(hw1 - hw2)
+    return min(diff, 168 - diff)
+
+def temporal_weight(hw1, hw2, bandwidth=2):
+    """Gaussian kernel weight for temporal similarity. Must match main.py."""
+    dist = temporal_distance(hw1, hw2)
+    return math.exp(-0.5 * (dist / bandwidth) ** 2)
+
 def extract_features():
     logger.info("Extracting features from historical data...")
     conn = get_prediction_db()
@@ -36,9 +47,6 @@ def extract_features():
     X_val = []
     X_test = []
     
-    # We will compute global stats to simplify feature extraction for training
-    # For a real system, you compute features *prior* to the timestamp, but for fast LR we use global approximations.
-    
     all_pois = list(set(r['poi_id'] for r in rows))
     
     for uid, seq in users.items():
@@ -46,11 +54,11 @@ def extract_features():
         if n < 2: continue
         
         pref_counts = defaultdict(int)
-        temp_counts = defaultdict(int)
+        # temporal: for each POI, store list of hour_of_week values seen so far
+        temporal_hw_by_poi = defaultdict(list)
         trans_counts = defaultdict(int)
         
         prev_pid_counts = defaultdict(int)
-        hw_counts = defaultdict(int)
         
         train_end = int(0.8 * n)
         val_end = int(0.9 * n)
@@ -63,10 +71,23 @@ def extract_features():
             if i > 0:
                 prev_pid = seq[i-1]['poi_id']
                 
+                # Compute temporal score using Gaussian kernel (matching main.py)
+                total_temp_weight = 0.0
+                temp_weight_pid = 0.0
+                for past_pid, past_hw_list in temporal_hw_by_poi.items():
+                    for past_hw in past_hw_list:
+                        tw = temporal_weight(past_hw, hw, bandwidth=2)
+                        if tw > 0.01:
+                            total_temp_weight += tw
+                            if past_pid == pid:
+                                temp_weight_pid += tw
+                
+                p_temp_pos = (temp_weight_pid / total_temp_weight) if total_temp_weight > 0 else 0
+                
                 # Positive sample (True next location)
                 x_pos = [
                     trans_counts.get((prev_pid, pid), 0) / max(1, prev_pid_counts.get(prev_pid, 0)),
-                    temp_counts.get((hw, pid), 0) / max(1, hw_counts.get(hw, 0)),
+                    p_temp_pos,
                     pref_counts.get(pid, 0) / max(1, i)
                 ]
                 
@@ -75,9 +96,15 @@ def extract_features():
                     neg_pids = random.sample([p for p in all_pois if p != pid], min(19, len(all_pois)-1))
                     x_step = [x_pos]
                     for neg_pid in neg_pids:
+                        temp_weight_neg = 0.0
+                        for past_hw in temporal_hw_by_poi.get(neg_pid, []):
+                            tw = temporal_weight(past_hw, hw, bandwidth=2)
+                            if tw > 0.01:
+                                temp_weight_neg += tw
+                        p_temp_neg = (temp_weight_neg / total_temp_weight) if total_temp_weight > 0 else 0
                         x_step.append([
                             trans_counts.get((prev_pid, neg_pid), 0) / max(1, prev_pid_counts.get(prev_pid, 0)),
-                            temp_counts.get((hw, neg_pid), 0) / max(1, hw_counts.get(hw, 0)),
+                            p_temp_neg,
                             pref_counts.get(neg_pid, 0) / max(1, i)
                         ])
                     X_train.append(x_step)
@@ -86,9 +113,15 @@ def extract_features():
                     neg_pids = [p for p in all_pois if p != pid]
                     x_step = [x_pos]
                     for neg_pid in neg_pids:
+                        temp_weight_neg = 0.0
+                        for past_hw in temporal_hw_by_poi.get(neg_pid, []):
+                            tw = temporal_weight(past_hw, hw, bandwidth=2)
+                            if tw > 0.01:
+                                temp_weight_neg += tw
+                        p_temp_neg = (temp_weight_neg / total_temp_weight) if total_temp_weight > 0 else 0
                         x_step.append([
                             trans_counts.get((prev_pid, neg_pid), 0) / max(1, prev_pid_counts.get(prev_pid, 0)),
-                            temp_counts.get((hw, neg_pid), 0) / max(1, hw_counts.get(hw, 0)),
+                            p_temp_neg,
                             pref_counts.get(neg_pid, 0) / max(1, i)
                         ])
                     
@@ -99,8 +132,7 @@ def extract_features():
                 
             # Update running stats
             pref_counts[pid] += 1
-            temp_counts[(hw, pid)] += 1
-            hw_counts[hw] += 1
+            temporal_hw_by_poi[pid].append(hw)
             if i > 0:
                 trans_counts[(seq[i-1]['poi_id'], pid)] += 1
                 prev_pid_counts[seq[i-1]['poi_id']] += 1

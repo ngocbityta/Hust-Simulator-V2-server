@@ -7,7 +7,7 @@ import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Import generated classes
 import prediction_pb2
@@ -39,12 +39,15 @@ if os.path.exists(weights_path):
     except Exception as e:
         logger.error(f"Failed to load weights, using defaults: {e}")
 
+VIETNAM_TZ = timezone(timedelta(hours=7))
+
 def get_hour_of_week(timestamp_ms=None):
-    """Return hour_of_week [0..167] for the given timestamp, or current time if None."""
+    """Return hour_of_week [0..167] for the given timestamp, or current time if None.
+    Uses UTC+7 (Vietnam) to match historical data stored as naive local time in DB."""
     if timestamp_ms and timestamp_ms > 0:
-        dt = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+        dt = datetime.fromtimestamp(timestamp_ms / 1000, tz=VIETNAM_TZ)
     else:
-        dt = datetime.now(timezone.utc)
+        dt = datetime.now(VIETNAM_TZ)
     return dt.weekday() * 24 + dt.hour
 
 def temporal_distance(hw1, hw2):
@@ -107,6 +110,10 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
         current_uuid_str = str(history[-1]['poi_id'])
         current_poi = uuid_to_id.get(current_uuid_str)
         
+        if current_poi is None:
+            logger.warning(f"Current POI UUID {current_uuid_str} not found in pois.json (may have been deactivated). "
+                         "Transition feature will be disabled, relying on temporal + preference only.")
+        
         # Calculate Base Probabilities
         transitions = {} # from current_poi -> next_poi
         temporal = {}    # poi -> count at target_hw
@@ -134,7 +141,7 @@ class PredictionServiceServicer(prediction_pb2_grpc.PredictionServiceServicer):
                 
             if i > 0 and current_poi is not None:
                 prev_pid = uuid_to_id.get(str(history[i-1]['poi_id']))
-                if prev_pid == current_poi:
+                if prev_pid == current_poi and pid != current_poi:
                     transitions[pid] = transitions.get(pid, 0) + 1
                     total_transitions += 1
                 
