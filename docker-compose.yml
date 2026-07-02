@@ -85,6 +85,8 @@ services:
       rabbitmq:
         condition: service_healthy
     # No host ports — accessed via API Gateway only
+    ports:
+      - "8081:8081"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB_AUTH:-hustsim_auth}?currentSchema=auth&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
@@ -118,9 +120,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB_CONTEXT:-hustsim_context}?currentSchema=context&sslmode=${POSTGRES_SSL:-disable}&channel_binding=${POSTGRES_CHANNEL_BINDING:-prefer}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-hustsim}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-hustsim_secret}
-      SPRING_FLYWAY_ENABLED: "true"
-      SPRING_FLYWAY_DEFAULT_SCHEMA: context
-      SPRING_FLYWAY_CREATE_SCHEMAS: "true"
+      SPRING_FLYWAY_ENABLED: "false"
       RABBITMQ_HOST: rabbitmq
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -253,7 +253,8 @@ services:
       interest-matcher-0: { condition: service_started }
       interest-matcher-1: { condition: service_started }
       interest-matcher-2: { condition: service_started }
-    # No host ports — internal gRPC only
+    ports:
+      - "3003:3003"
     environment:
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -458,6 +459,26 @@ services:
         limits:
           cpus: "0.25"
           memory: 256M
+
+  admin:
+    build:
+      context: ../admin
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
+        VITE_WS_URL: ""
+    container_name: hustsim-admin
+    restart: unless-stopped
+    depends_on:
+      auth-service: { condition: service_started }
+      state-computation-service: { condition: service_started }
+    ports:
+      - "8080:80"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
 
 volumes:
   redis_data:

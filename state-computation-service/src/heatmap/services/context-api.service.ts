@@ -34,7 +34,9 @@ export class ContextApiService {
       if (res.ok) {
         const buildings = await res.json();
         for (const b of buildings) {
-          poisMap.set(b.id, { name: b.name, lat: b.centroidLat, lng: b.centroidLng });
+          if (b.centroidLat != null && b.centroidLng != null) {
+            poisMap.set(b.id, { name: b.name, lat: b.centroidLat, lng: b.centroidLng });
+          }
         }
         this.logger.log(`Loaded ${poisMap.size} buildings for POIs.`);
       }

@@ -31,7 +31,6 @@ export interface PredictiveHeatmapPayload {
 }
 
 export interface SimulationParams {
-  weatherOverride?: { temp: number; rain: number } | null;
   virtualEvents?: Array<{
     name: string;
     buildingId: string;
@@ -474,19 +473,9 @@ export class PredictiveHeatmapService implements OnModuleInit {
       const { transitRatio, nodeHotspots, wayDensityMultiplier } = phaseInfo;
 
       const userIds = await this.redisService.client.zrange(RedisKey.PLAYER_GEO_KEY, 0, -1);
-      if (userIds.length === 0) {
-        return {
-          timestamp: targetTimestampMs,
-          totalOnline: 0,
-          cells: [],
-          globalReasons,
-          poiReasons,
-          simulationApplied: true,
-          simulationReasons: [...simulationReasons, 'Không có user online'],
-        };
-      }
-
-      const coords = await this.redisService.client.geopos(RedisKey.PLAYER_GEO_KEY, ...userIds);
+      const coords = userIds.length > 0
+        ? await this.redisService.client.geopos(RedisKey.PLAYER_GEO_KEY, ...userIds)
+        : [];
 
       const cellMap = new Map<string, { cellX: number; cellY: number; count: number; intents: Map<string, number> }>();
       const eventMultipliers = new Map<string, number>();
@@ -724,6 +713,62 @@ export class PredictiveHeatmapService implements OnModuleInit {
         await Promise.allSettled(batch.map(task => task()));
       }
 
+      // ── If no live users, generate predicted density from campus infrastructure ──
+      if (totalOnline === 0) {
+        simulationReasons.push('Sinh mật độ dự đoán từ cơ sở hạ tầng trường và pha thời gian');
+        const activityMultiplier = this.heatmapMultiplierService.calculateActivityMultiplier(targetTimestampMs);
+
+        const openPois = [...this.poisMap.entries()].filter(
+          ([id]) => !closedBuildingSet.has(id) && this.poisMap.get(id)?.lat != null && this.poisMap.get(id)?.lng != null,
+        );
+
+        if (openPois.length > 0) {
+          const baseScale = 50;
+          const weightPerPoi = (activityMultiplier * baseScale) / openPois.length;
+          for (const [poiId, poi] of openPois) {
+            const buildingWeight = weightPerPoi * (1 - transitRatio);
+            globalTransitWeight += weightPerPoi * transitRatio;
+
+            const intentLabel = `[Predicted] ${poi.name}`;
+            let spreadAcrossPolygon = false;
+
+            if (campusDataUtil.isInitialized()) {
+              const bpoly = campusDataUtil.getData().buildingPolygons.get(poiId);
+              if (bpoly && bpoly.polygon.length >= 3) {
+                const gaussCells = getPolygonCellsWithGaussian(
+                  bpoly.polygon, bpoly.centroidLng, bpoly.centroidLat,
+                  cellSize, metersPerLat, metersPerLng,
+                );
+                if (gaussCells.length > 0) {
+                  spreadAcrossPolygon = true;
+                  for (const gc of gaussCells) {
+                    const gcKey = `${gc.cellX}:${gc.cellY}`;
+                    if (!cellMap.has(gcKey)) {
+                      cellMap.set(gcKey, { cellX: gc.cellX, cellY: gc.cellY, count: 0, intents: new Map<string, number>() });
+                    }
+                    const cd = cellMap.get(gcKey)!;
+                    const w = buildingWeight * gc.weight;
+                    cd.count += w;
+                    cd.intents.set(intentLabel, (cd.intents.get(intentLabel) || 0) + w);
+                  }
+                }
+              }
+            }
+
+            if (!spreadAcrossPolygon) {
+              const targetCell = this.spatialService.getGridCell(poi.lat, poi.lng);
+              const tCellKey = this.spatialService.getCellKey(targetCell);
+              if (!cellMap.has(tCellKey)) {
+                cellMap.set(tCellKey, { cellX: targetCell.x, cellY: targetCell.y, count: 0, intents: new Map<string, number>() });
+              }
+              const cellData = cellMap.get(tCellKey)!;
+              cellData.count += buildingWeight;
+              cellData.intents.set(intentLabel, (cellData.intents.get(intentLabel) || 0) + buildingWeight);
+            }
+          }
+        }
+      }
+
       // ── Transit distribution (filter out closed nodes) ──
       if (globalTransitWeight > 0 && campusDataUtil.isInitialized()) {
         const campusData = campusDataUtil.getData();
@@ -815,9 +860,11 @@ export class PredictiveHeatmapService implements OnModuleInit {
         simulationReasons.push(`Nhân số lượng người x${multiplier}`);
       }
 
+      const predictedTotal = cells.reduce((s, c) => s + c.count, 0);
+
       const payload: PredictiveHeatmapPayload = {
         timestamp: targetTimestampMs,
-        totalOnline: Math.round(totalOnline * multiplier),
+        totalOnline: Math.round(predictedTotal),
         cells,
         globalReasons,
         poiReasons,
